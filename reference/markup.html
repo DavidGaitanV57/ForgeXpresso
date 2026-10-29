@@ -1,0 +1,247 @@
+
+<section class="intro" id="intro">
+  <div class="intro-in" id="introIn">
+    <span class="mascot mark" aria-hidden="true"></span>
+    <h1>¿Qué juego quieres <span>forjar</span> hoy?</h1>
+    <p class="sub">Descríbelo con tus palabras. El agente arma el mundo, el héroe y la música, y te deja jugarlo en segundos.</p>
+    <form class="ask" id="askForm" autocomplete="off">
+      <div class="agent"><i></i>Director de juego · listo</div>
+      <textarea id="askIn" rows="3" placeholder="Ej: un panda samurái que cruza un bosque de bambú al amanecer" aria-label="Describe tu juego"></textarea>
+      <div class="ask-bar">
+        <div class="dimsw" role="group" aria-label="Espacio"><button type="button" data-d="2d" class="on">2D</button><button type="button" data-d="3d">3D</button></div>
+        <span class="sp"></span>
+        <button class="send" id="askSend" type="submit" aria-label="Crear juego" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      </div>
+    </form>
+    <div class="sugs" id="sugs"></div>
+  </div>
+</section>
+
+<section class="loader" id="loader" hidden aria-live="polite">
+  <canvas id="embers" aria-hidden="true"></canvas>
+  <div class="ld-in">
+    <div class="ld-head" style="--d:0">
+      <div class="ld-mark"><span class="ring"></span><span class="ring r2"></span><span class="mascot" aria-hidden="true"></span></div>
+      <div style="min-width:0"><div class="ld-eyebrow"><i></i><span id="ldEyebrow">El agente está forjando tu juego</span></div><h2 class="ld-title" id="ldTitle"></h2><p class="ld-idea" id="ldIdea"></p></div>
+    </div>
+    <div class="ld-grid" style="--d:.15">
+      <div class="ld-preview"><canvas id="ldCv"></canvas><div class="ld-scan"></div><span class="ld-tag" id="ldTag"><i></i><span>Plano del nivel</span></span></div>
+      <ol class="ld-steps" id="ldSteps"></ol>
+    </div>
+    <div class="ld-assets" id="ldAssets" style="--d:.3"></div>
+    <div class="ld-prog" style="--d:.4"><div class="ld-bar"><i id="ldBar"></i></div><span class="mono" id="ldPct">0%</span></div>
+    <div class="ld-tip" id="ldTip" style="--d:.5"></div>
+  </div>
+</section>
+
+<div class="app" id="studio" hidden>
+  <header class="top asm from-top" style="--asd:.6s">
+    <button class="brand" id="homeBtn" type="button" title="Volver al inicio" aria-label="Volver al inicio">
+      <span class="mascot" aria-hidden="true"></span>
+      forge <span class="light">Light</span>
+    </button>
+    <span class="proj" id="projName">Panda samurái</span>
+    <span class="spacer"></span>
+    <button class="iconbtn help" id="helpBtn" type="button" title="Ver recorrido" aria-label="Ver recorrido de ayuda">?</button>
+    <button class="btn ghost" id="proBtn" type="button">Abrir en Forge Pro</button>
+    <span class="vsep" aria-hidden="true"></span>
+    <button class="btn export" id="exportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>Exportar</button>
+  </header>
+
+  <section class="st-head asm from-top" aria-live="polite" style="--asd:.7s">
+    <div class="ld-mark"><span class="ring"></span><span class="ring r2"></span><span class="mascot" aria-hidden="true"></span></div>
+    <div class="st-ttl">
+      <div class="ld-eyebrow"><i></i><span id="bnEyebrow">Plataformas de precisión</span></div>
+      <h1 class="st-title"><span class="hl" id="stHero">Panda samurái</span></h1>
+      <p class="st-idea" id="stIdea"></p>
+    </div>
+    <button class="btn play-cta" id="playBtn" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Jugar</button>
+  </section>
+
+  <div class="st-grid">
+    <div class="st-left">
+      <div class="st-preview">
+        <div class="viewport" id="vp" tabindex="0" aria-label="Vista previa jugable">
+          <canvas id="game"></canvas>
+          <canvas id="game3d" hidden></canvas>
+          <div class="hud">
+            <span id="hudItems">Onigiri <b>0/0</b></span>
+            <span id="hudKeys" hidden>Llaves <b>0/3</b></span>
+            <span id="hudHearts" hidden>Vidas <b>3</b></span>
+            <span class="r">Tiempo <b id="hudTime">0.0s</b></span>
+          </div>
+          <div class="ctlhint"><kbd>←</kbd><kbd>→</kbd> mover <kbd>Espacio</kbd> saltar <kbd>J</kbd> atacar <kbd>R</kbd> reiniciar</div>
+          <div class="debug" id="dbg" hidden></div>
+          <button type="button" class="vp-expand" id="vpExpand" title="Pantalla completa" aria-label="Jugar en pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+          <div class="overlay" id="startOv"><div class="card" id="startCard"></div></div>
+          <div class="cine" id="cineOv" hidden aria-live="polite"><i class="bar t"></i><i class="bar b"></i><div class="cine-title" id="cineTitle"></div><div class="cine-sub" id="cineSub"></div><button type="button" class="cine-skip" id="cineSkip">Saltar ›</button></div>
+          <div class="overlay" id="winOv" hidden>
+            <div class="card"><span class="mascot" style="height:52px;animation:hop .7s ease infinite" aria-hidden="true"></span><b id="winT">¡Nivel completado!</b><span id="winS"></span><div class="ov-acts"><button class="btn small" id="againBtn" type="button">Jugar otra vez</button><button class="btn small ghost" id="winBack" type="button">Volver al estudio</button></div></div>
+          </div>
+          <div class="touch">
+            <div><button data-k="arrowleft" aria-label="Izquierda">◀</button><button data-k="arrowright" aria-label="Derecha">▶</button></div>
+            <div><button data-k="j" aria-label="Atacar">✦</button><button data-k=" " aria-label="Saltar">▲</button></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="st-tools asm from-under" style="--asd:0s">
+        <span class="pill v" id="loopPill">Plataformas de precisión</span>
+        <div class="tools">
+          <button class="iconbtn" id="cineBtn" type="button" title="Ver cinemática" aria-label="Ver cinemática"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M3 9l2.5-5 3.5 1-2.5 5M10 6l3.5 1L11 12M16.5 7.5l3.5 1L18 12"/></svg></button>
+          <button class="iconbtn on" id="sndBtn" type="button" title="Sonido" aria-label="Sonido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path id="sndWave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+        </div>
+      </div>
+      <section class="dock asm from-under" id="dock" style="--asd:.08s" aria-label="Chat con Forge">
+        <div class="dock-logw"><div class="dock-log" id="dockLog"></div><div class="dock-rail" id="dockRail" hidden><i id="dockThumb"></i></div></div>
+        <div class="dock-hint" id="dockHint" hidden></div>
+        <form class="dock-in" id="dockForm" autocomplete="off"><span class="mascot" aria-hidden="true"></span><input id="dockIn" placeholder="Pide un cambio a Forge con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
+      </section>
+      <section class="st-assets asm from-under" style="--asd:.3s">
+        <div class="st-sec"><span class="ld-eyebrow"><i style="background:var(--violet);box-shadow:0 0 8px var(--violet)"></i>Recursos del juego</span><span class="muted-s">Marca lo que te gusta o cámbialo con un clic</span></div>
+        <div class="assets" id="assets"></div>
+      </section>
+    </div>
+    <aside class="flow asm from-left" id="flow" aria-label="Pasos de creación" style="--asd:.45s"></aside>
+  </div>
+
+
+</div>
+
+
+<section class="pro" id="pro" hidden aria-label="Forge Pro">
+  <canvas id="proSky" aria-hidden="true"></canvas>
+  <header class="pro-top">
+    <button type="button" class="pro-brand" id="proHome" title="Volver a mi juego"><span class="mascot" aria-hidden="true"></span><span><b>Forge</b><small>AI GAME PIPELINE</small></span></button>
+    <span class="sp"></span>
+    <button type="button" class="pro-link" id="proWhat">Qué hace</button>
+    <button type="button" class="btn small" id="proBack">← Volver a mi juego</button>
+    <button type="button" class="btn small primary-s" id="proSign">Iniciar sesión</button>
+  </header>
+  <div class="pro-hero">
+    <div class="pro-copy">
+      <span class="pro-pill" style="--d:.05"><i></i>FORGE PRO · PRODUCCIÓN DE JUEGOS CON IA</span>
+      <h1 style="--d:.12">Del concepto a un <span class="grad">vertical slice</span> jugable.</h1>
+      <p style="--d:.2">Forge orquesta la IA en un lienzo visual: lleva una idea de juego más allá del prototipo hacia <b>documentos de diseño, arte y un vertical slice jugable</b> del juego real.</p>
+      <div class="pro-cta" style="--d:.28"><button type="button" class="btn primary-s pro-big" id="proSign2">Iniciar sesión →</button><button type="button" class="btn pro-big" id="proWhat2">Ver qué hace Forge</button></div>
+      <small class="pro-note mono" style="--d:.34">Para estudios autorizados · acceso por invitación</small>
+      <div class="pro-import" style="--d:.42">
+        <span class="mascot" aria-hidden="true"></span>
+        <div><b>Tu prototipo <span id="proProj">Panda samurái</span> está listo para importar</b><span id="proMeta">5 recursos · Plataformas de precisión</span></div>
+        <button type="button" class="btn small" id="proImport">Importar</button>
+      </div>
+    </div>
+    <div class="pro-win" id="proWin">
+      <div class="pw-bar"><span class="mascot" aria-hidden="true"></span><span class="mono">forge · concept pipeline</span></div>
+      <div class="pw-body">
+        <svg class="pw-wires" viewBox="0 0 540 320" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M150 196 C 200 196, 205 120, 262 120"/>
+          <path d="M150 196 C 240 196, 300 220, 395 222"/>
+          <path d="M150 196 C 190 196, 200 262, 262 262"/>
+        </svg>
+        <div class="pw-stack"><div class="pc" style="--r:-14deg;--i:0"><canvas data-pk="hero"></canvas><span>concept_seeds #1</span></div><div class="pc" style="--r:-6deg;--i:1"><canvas data-pk="bg"></canvas><span>concept_seeds #2</span></div><div class="pc" style="--r:4deg;--i:2"><canvas data-pk="collect"></canvas><span>moodboard</span></div></div>
+        <div class="node on" style="left:5%;top:52%;--i:0"><div class="nh"><span>1.1 Exploración de concepto</span><i></i></div><div class="nr"><em>3 imágenes generadas</em></div><div class="nf"><span>CREATIVO</span><b>✓ aprobado</b></div></div>
+        <div class="node" style="left:49%;top:29%;--i:1"><div class="nh"><span>1.2 Mercado</span><i></i></div><div class="nf"><span>ANÁLISIS</span><b>2</b></div></div>
+        <div class="node" style="left:49%;top:73%;--i:2"><div class="nh"><span>1.3 Audiencia</span><i></i></div><div class="nf"><span>ANÁLISIS</span><b>2</b></div></div>
+        <div class="node" style="left:73%;top:62%;--i:3"><div class="nh"><span>1.4 Selección de concepto</span><i></i></div><div class="nf"><span>DECISIÓN</span><b>3</b></div></div>
+        <div class="pw-ai">
+          <div class="ah"><span class="mascot" aria-hidden="true"></span><b>Forge Assistant</b><em class="mono">1.1</em></div>
+          <div class="ab you">Explora 3 direcciones de concepto para el pitch.</div>
+          <div class="ab bot" id="proBot"></div>
+          <div class="ai-in"><span>Pide o describe un ajuste…</span><i>→</i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <section class="pro-feat" id="proFeat">
+    <h2>Todo para ir de la idea a un vertical slice</h2>
+    <p>Un solo pipeline que lleva un concepto más allá del prototipo: hacia un resultado documentado, con recursos y jugable.</p>
+    <div class="pf-grid">
+      <article class="pf" style="--c:#8b5cf6;--i:0"><span class="pf-ic"><svg viewBox="0 0 24 24"><path d="M12 4l7 8-7 8-7-8z" fill="currentColor"/></svg></span><em>PIPELINE VISUAL</em><h3>Un lienzo de nodos de IA</h3><p>Conecta concepto → diseño → documentos → recursos y mira correr cada paso. Sin cajas negras: cada etapa se puede revisar y volver a ejecutar.</p></article>
+      <article class="pf" style="--c:#ff7a1a;--i:1"><span class="pf-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></span><em>DOCUMENTACIÓN PRIMERO</em><h3>GDD y TDD que aceptan los ingenieros</h3><p>Forge arma documentos de diseño y técnicos consistentes desde la misma fuente, sin prosa vaga que se contradice entre documentos.</p></article>
+      <article class="pf" style="--c:#60a5fa;--i:2"><span class="pf-ic"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8z" fill="currentColor"/></svg></span><em>IA MULTIMODELO</em><h3>El modelo correcto para cada tarea</h3><p>Orquesta varios proveedores (razonamiento, visión, imagen, 3D) y elige el mejor motor para cada trabajo en vez de uno solo para todo.</p></article>
+      <article class="pf" style="--c:#2dd4bf;--i:3"><span class="pf-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16M15 4v16"/></svg></span><em>RECURSOS 2D Y 3D</em><h3>Arte que mantiene el estilo</h3><p>Sprites, fondos, audio y modelos 3D generados con la misma guía visual, listos para el motor de tu estudio.</p></article>
+      <article class="pf" style="--c:#fbbf24;--i:4"><span class="pf-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12l8-8M4 20L20 4M12 20l8-8"/></svg></span><em>HECHO PARA ESTUDIOS</em><h3>Roles, revisiones y control</h3><p>Aprobaciones por etapa, historial de versiones y acceso por invitación para todo el equipo.</p></article>
+      <article class="pf" style="--c:#4ade80;--i:5"><span class="pf-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="10" height="10" rx="2"/><rect x="10" y="10" width="10" height="10" rx="2"/></svg></span><em>PLANTILLAS REUTILIZABLES</em><h3>Blueprints que se repiten</h3><p>Guarda un pipeline que funcionó y úsalo en tu próximo juego con un clic.</p></article>
+    </div>
+  </section>
+  <footer class="pro-foot mono">Forge Pro es una vista previa dentro de Forge Light · el acceso real es por invitación</footer>
+</section>
+
+<div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourT">
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-card" id="tourCard">
+    <div class="tour-h"><span class="mascot" aria-hidden="true"></span><span class="mono" id="tourStep">1 de 8</span><button type="button" class="tour-skip" id="tourSkip">Saltar</button></div>
+    <h3 id="tourT"></h3>
+    <p id="tourD"></p>
+    <div class="tour-f"><div class="tour-dots" id="tourDots"></div><button type="button" class="btn small ghost" id="tourBack">Atrás</button><button type="button" class="btn small primary-s" id="tourNext">Siguiente</button></div>
+  </div>
+</div>
+
+<section class="play" id="play" hidden aria-label="Primera jugada">
+  <header class="play-top">
+    <span class="mascot" aria-hidden="true"></span>
+    <div class="play-ttl"><small>PRIMERA JUGADA</small><b id="playTitle">Panda samurái</b></div>
+    <span class="sp"></span>
+    <div class="play-tools">
+      <button class="iconbtn on" id="sndBtn2" type="button" title="Sonido" aria-label="Sonido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="sndWave2" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+      <button class="iconbtn" id="dbgBtn" type="button" title="Modo depuración" aria-label="Modo depuración"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 12h16M12 4v16"/></svg></button>
+      <button class="iconbtn" id="rstBtn" type="button" title="Reiniciar nivel" aria-label="Reiniciar nivel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <button class="btn small ghost" id="playExit" type="button">Salir <kbd>Esc</kbd></button>
+  </header>
+  <div class="play-stage"><div class="play-slot" id="playSlot"></div></div>
+</section>
+
+<div class="chat" id="chat">
+  <div class="chat-tip" id="chatTip" hidden><span id="chatTipTxt"></span><button type="button" id="chatTipX" aria-label="Cerrar aviso">×</button></div>
+  <section class="chat-win" id="chatWin" hidden aria-label="Chat con Forge">
+    <header><span class="mascot" aria-hidden="true"></span><div><b>Forge</b><small>Director de juego</small></div><button class="iconbtn" id="chatClose" type="button" aria-label="Cerrar chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chat-ctx" id="chatCtx"></div>
+    <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
+  </section>
+  <button class="chat-fab" id="chatFab" type="button" aria-label="Abrir chat con Forge" aria-expanded="false"><span class="mascot" aria-hidden="true"></span><i class="dot" id="chatDot" hidden></i></button>
+</div>
+
+<div class="av" id="av" hidden role="dialog" aria-modal="true" aria-labelledby="avName">
+  <div class="av-card">
+    <div class="av-stage" id="avStage">
+      <canvas id="av2d"></canvas><canvas id="av3d" hidden></canvas>
+      <div class="av-hint" id="avHint">Arrastra para girar · rueda para acercar</div>
+      <div class="av-load" id="avLoad" hidden><span class="mascot" aria-hidden="true"></span>Cargando visor 3D…</div>
+      <div class="av-play" id="avPlay" hidden><button type="button" class="btn small primary-s" id="avPlayBtn"></button></div>
+    </div>
+    <aside class="av-info">
+      <button class="iconbtn av-x" id="avClose" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="eyebrow" id="avKind">Héroe</div>
+      <h3 id="avName">Panda samurái</h3>
+      <div class="tg av-tags" id="avTags"></div>
+      <dl class="av-spec" id="avSpec"></dl>
+      <div class="av-anim" id="avAnim" hidden>
+        <div class="lbl">Animación del personaje</div>
+        <div class="presets" id="avClips"></div>
+        <div class="av-animrow"><button type="button" class="btn small primary-s" id="avApply">Usar en el juego</button><button type="button" class="btn small" id="avUpAnim">Subir animación</button></div>
+        <div class="note" id="avAnimNote">La animación elegida se ve cuando el personaje está quieto.</div>
+      </div>
+      <div class="av-acts" id="avActs"></div>
+    </aside>
+  </div>
+</div>
+<input type="file" id="animIn" accept=".fbx,.glb,.gltf,.bvh" hidden>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal-card">
+    <button class="iconbtn x" id="mClose" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <span class="mascot" style="height:44px;animation:bob 1.6s ease-in-out infinite" aria-hidden="true"></span><div><div class="eyebrow">Exportar</div><h3 id="mTitle">Compilando tu juego</h3></div>
+    <div class="prog"><i id="mProg"></i></div>
+    <div class="stages" id="mStages"></div>
+    <div class="dl">
+      <button id="dlApk" type="button" disabled><b>Descargar APK</b><span>Android · 18 MB</span></button>
+      <button id="dlWeb" type="button" disabled><b>Enlace web</b><span>HTML5 jugable</span></button>
+      <button id="dlSrc" type="button" disabled><b>Paquete fuente</b><span>Proyecto Forge</span></button>
+    </div>
+    <div class="note">Prototipo: la compilación es una simulación. La exportación real se hace en Forge Pro.</div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="upIn" hidden>
