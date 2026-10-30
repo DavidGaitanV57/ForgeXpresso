@@ -24,6 +24,11 @@ Your module only contains the gameplay.
 - \`forge.save(key, value)\`, \`forge.load(key, fallback)\`: persistent storage (best score, unlocked levels).
 - \`forge.rand()\`: seeded random in [0,1). \`forge.shake(intensity0to1)\`: screen shake handled by the runtime.
 - \`forge.paused\`: boolean; the runtime already stops your update while paused.
+- \`forge.cinematic\`: live intro state while the letterboxed cinematic plays:
+  \`{ active, t, duration, lineIndex, shotIndex, shot, direction }\`.
+  \`direction\` is \`forge.design.cinematic.direction\` (approach, mood, shots[]) from the silent cinematic expert —
+  unique per game. Implement \`onCinematic(dt, cine)\` on the object you return from createGame (Three) or next to \`scenes\` (Phaser)
+  to drive camera/parallax/staging. While \`forge.cinematic.active\`, skip normal gameplay input; restore the play camera when it ends.
 `;
 
 const PHASER = `
@@ -36,7 +41,13 @@ export default function createGame(forge, Phaser) {
     create() { /* build the level */ }
     update(time, delta) { /* gameplay */ }
   }
-  return { scenes: [MainScene], physics: "arcade", gravity: 0, background: "#101420" };
+  return {
+    scenes: [MainScene],
+    physics: "arcade",
+    gravity: 0,
+    background: "#101420",
+    onCinematic(dt, cine) { /* camera / parallax for this game's cinematic direction */ },
+  };
 }
 \`\`\`
 - Logical resolution is 1280×720 (scaled to fit). \`physics\`: "arcade" (default, recommended) or "matter". \`gravity\` is the world default (px/s²); for platformers set per‑body gravity from \`forge.tune\` instead.
@@ -69,6 +80,10 @@ export default async function createGame(forge, ctx) {
   // build the world…
   return {
     update(dt, time) { /* gameplay; runtime steps physics AFTER this */ },
+    onCinematic(dt, cine) {
+      /* REQUIRED when design.cinematic.direction exists: tween camera from cine.shot.camera.from→to, lookAt, apply fx.
+         cine = forge.cinematic snapshot. Do not leave a static frame. */
+    },
     dispose() { /* optional */ },
   };
 }

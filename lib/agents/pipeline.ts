@@ -2,6 +2,7 @@ import { config } from "../config";
 import { emit } from "../events";
 import type { AnthropicUsage } from "../providers/anthropic";
 import { pool } from "../providers/http";
+import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
 import type { ApiProvider, AssetRecord, ChatMsg, GameDesign, Job, JobStage, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
@@ -192,11 +193,32 @@ async function createFlow(projectId: string) {
       generateMany(projectId, audio, design, p0.imageProvider, ctl, "audio"),
       models3d ? generateMany(projectId, models, design, p0.imageProvider, ctl, "models") : Promise.resolve(),
     ]);
+    // Silent cinematic expert (no loader stage): plan unique in-engine intro for this design.
+    const cineJob = (async () => {
+      if (design.cinematic?.direction?.shots?.length) return;
+      try {
+        const { direction, usage } = await runCinematicDirector(p0.idea, design, p0.dimension);
+        await ctl.trackAnthropic(usage, "cinematic");
+        design = {
+          ...design,
+          cinematic: { ...design.cinematic, style: design.cinematic?.style || "epica", lines: design.cinematic?.lines || [], direction },
+        };
+        await updateProject(projectId, (p) => {
+          if (p.design) p.design.cinematic = design.cinematic;
+        });
+        emit(projectId, { type: "design", design });
+      } catch (e) {
+        console.warn("[forge] cinematic director skipped", e);
+      }
+    })();
+
+    await cineJob;
     const codeJob = (async () => {
       await ctl.stage("code", "run", "Escribiendo el código");
+      const fresh = await getProject(projectId);
       const code = await codeAgent({
-        design,
-        assets: all,
+        design: fresh?.design || design,
+        assets: Object.values(fresh?.assets || records),
         mode: "create",
         idea: p0.idea,
         onProgress: (d) => void ctl.stage("code", "run", d),

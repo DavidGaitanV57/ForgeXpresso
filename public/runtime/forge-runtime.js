@@ -586,6 +586,8 @@ const forge = {
   lose(o = {}) {
     endRun("lose", o);
   },
+  /** Live cinematic snapshot (updated while letterbox intro runs). */
+  cinematic: { active: false, t: 0, duration: 0, lineIndex: -1, shotIndex: -1, shot: null, direction: null },
   _placeholder: placeholderCanvas,
 };
 window.forge = forge;
@@ -734,10 +736,50 @@ async function restart() {
 
 /* ---------------- Cinematic ---------------- */
 let cine = null;
+function shotTimeline(direction, lines, fallbackPer, voiceDur) {
+  const shots = direction?.shots?.length ? direction.shots : null;
+  if (!shots) {
+    const n = Math.max(1, lines.length || 1);
+    const per = voiceDur ? Math.max(2.6, voiceDur / n) : fallbackPer;
+    return {
+      dur: per * n + 2.6,
+      at(t) {
+        const i = Math.min(n - 1, Math.floor(t / per));
+        return { lineIndex: lines.length ? i : -1, shotIndex: i, shot: null, local: t - i * per, shotDur: per };
+      },
+    };
+  }
+  let acc = 0;
+  const spans = shots.map((s) => {
+    const start = acc;
+    const dur = Math.max(1.2, Number(s.durationSec) || 3);
+    acc += dur;
+    return { start, dur, shot: s };
+  });
+  return {
+    dur: acc + 2.2,
+    at(t) {
+      let hit = spans[spans.length - 1];
+      for (const sp of spans) {
+        if (t < sp.start + sp.dur) {
+          hit = sp;
+          break;
+        }
+      }
+      return {
+        lineIndex: hit.shot.lineIndex,
+        shotIndex: spans.indexOf(hit),
+        shot: hit.shot,
+        local: Math.max(0, t - hit.start),
+        shotDur: hit.dur,
+      };
+    },
+  };
+}
 function playCinematic(onEnd) {
   const d = BOOT.design || {};
   const lines = d.cinematic?.lines || [];
-  if (!lines.length) return onEnd && onEnd();
+  if (!lines.length && !d.cinematic?.direction?.shots?.length) return onEnd && onEnd();
   const prev = state.screen;
   state.screen = "cine";
   hideOverlay();
@@ -745,34 +787,50 @@ function playCinematic(onEnd) {
   AC.resume().catch(() => {});
   root.classList.remove("paused");
   root.classList.add("cine");
+  try {
+    host?.resume?.();
+  } catch {}
   const el = $("#fxCine");
   el.hidden = false;
   el.classList.remove("titled");
   $("#fxCineTtl").innerHTML = `<b>${esc(d.title || "")}</b><span>${esc(d.tagline || "")}</span>`;
   requestAnimationFrame(() => el.classList.add("on"));
   const voice = buffers.narration ? audio.play("narration", { volume: 1 }) : null;
-  const per = buffers.narration ? Math.max(2.6, buffers.narration.duration / lines.length) : 3;
-  cine = { t: 0, lines, per, voice, prev, onEnd, dur: per * lines.length + 2.6 };
+  const direction = d.cinematic?.direction || null;
+  const timeline = shotTimeline(direction, lines, 3, buffers.narration?.duration);
+  cine = { t: 0, lines, voice, prev, onEnd, timeline, direction };
+  forge.cinematic = { active: true, t: 0, duration: timeline.dur, lineIndex: -1, shotIndex: -1, shot: null, direction, progress: 0 };
   post({ type: "screen", screen: "cine" });
 }
 function cineTick(dt) {
   if (!cine) return;
   cine.t += dt;
-  const i = Math.floor(cine.t / cine.per);
+  const beat = cine.timeline.at(cine.t);
   const sub = $("#fxCineSub");
-  if (i < cine.lines.length) {
-    const local = cine.t - i * cine.per;
-    sub.textContent = cine.lines[i].slice(0, Math.floor(local * 34));
-  } else {
+  if (beat.lineIndex >= 0 && beat.lineIndex < cine.lines.length && cine.t < cine.timeline.dur - 2) {
+    sub.textContent = cine.lines[beat.lineIndex].slice(0, Math.floor(beat.local * 34));
+  } else if (cine.t >= cine.timeline.dur - 2.2) {
     sub.textContent = "";
     $("#fxCine").classList.add("titled");
   }
-  if (cine.t >= cine.dur) endCinematic();
+  forge.cinematic = {
+    active: true,
+    t: cine.t,
+    duration: cine.timeline.dur,
+    lineIndex: beat.lineIndex,
+    shotIndex: beat.shotIndex,
+    shot: beat.shot,
+    direction: cine.direction,
+    progress: beat.shotDur > 0 ? clamp(beat.local / beat.shotDur, 0, 1) : 0,
+  };
+  // Host is resumed during cine; Three/Phaser hooks read forge.cinematic each frame.
+  if (cine.t >= cine.timeline.dur) endCinematic();
 }
 function endCinematic() {
   if (!cine) return;
   const c = cine;
   cine = null;
+  forge.cinematic = { active: false, t: 0, duration: 0, lineIndex: -1, shotIndex: -1, shot: null, direction: null, progress: 0 };
   if (c.voice) c.voice.stop();
   const el = $("#fxCine");
   el.classList.remove("on", "titled");
@@ -781,10 +839,21 @@ function endCinematic() {
     if (!cine) el.hidden = true;
   }, 600);
   state.screen = c.prev;
-  if (c.onEnd) c.onEnd();
-  else if (c.prev === "start") showStart();
-  else if (c.prev === "play") host.resume();
+  if (c.onEnd) {
+    try {
+      host?.pause?.();
+    } catch {}
+    c.onEnd();
+  } else if (c.prev === "start") {
+    try {
+      host?.pause?.();
+    } catch {}
+    showStart();
+  } else if (c.prev === "play") host.resume();
   else if (c.prev === "pause") {
+    try {
+      host?.pause?.();
+    } catch {}
     root.classList.add("paused");
     AC.suspend().catch(() => {});
     showPauseMenu();

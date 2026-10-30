@@ -11,6 +11,7 @@ export async function createHost(createGame, ctx) {
   let game = null;
   let debug = false;
   let progressed = false;
+  let onCinematic = null;
 
   forge.phaser = helpers(Phaser, forge);
 
@@ -22,8 +23,9 @@ export async function createHost(createGame, ctx) {
       } catch (e) {
         return reject(e);
       }
+      onCinematic = typeof def.onCinematic === "function" ? def.onCinematic.bind(def) : null;
       const scenes = Array.isArray(def.scenes) ? def.scenes : def.scene ? [def.scene] : [];
-      if (!scenes.length) return reject(new Error("createGame debe devolver { scenes: [...] }"));
+      if (!scenes.length) return reject(new Error("createGame must return { scenes: [...] }"));
 
       class ForgeBoot extends Phaser.Scene {
         constructor() {
@@ -84,7 +86,16 @@ export async function createHost(createGame, ctx) {
         disableContextMenu: true,
         scene: [ForgeBoot, ...scenes],
       });
-      game.events.on(Phaser.Core.Events.PRE_STEP, () => input._begin());
+      game.events.on(Phaser.Core.Events.PRE_STEP, (_time, delta) => {
+        input._begin();
+        if (forge.cinematic?.active && onCinematic) {
+          try {
+            onCinematic(Math.min(0.05, (delta || 16) / 1000), forge.cinematic);
+          } catch (e) {
+            console.warn("[forge] phaser cinematic", e);
+          }
+        }
+      });
       game.events.on(Phaser.Core.Events.POST_STEP, () => input._end());
     });
   }
@@ -163,6 +174,13 @@ export async function createHost(createGame, ctx) {
       await build();
     },
     replaceImage,
+    cinematic(dt, cine) {
+      try {
+        onCinematic?.(dt, cine);
+      } catch (e) {
+        console.warn("[forge] phaser cinematic", e);
+      }
+    },
     setDebug(on) {
       debug = on;
       if (!game) return;

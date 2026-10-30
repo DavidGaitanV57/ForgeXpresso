@@ -94,13 +94,17 @@ export async function codeAgent(input: CodeInput): Promise<string> {
   const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n`;
   let task: string;
   if (input.mode === "create") {
+    const cine = input.design.cinematic?.direction;
+    const cineHint = cine?.shots?.length
+      ? ` CRITICAL CINEMATIC: design.cinematic.direction is a unique in-engine intro for THIS game (approach=${cine.approach}). Implement createGame return value with onCinematic(dt, cine) that drives camera/parallax/staging from direction.shots while forge.cinematic.active — do NOT leave a static frame. Match mood/rationale/notes; sync beats to cine.lineIndex / shotIndex. After cinematic ends, restore the gameplay camera. Never rely on an external video file.`
+      : " CRITICAL CINEMATIC: if design.cinematic.lines exist, still implement onCinematic(dt, cine) with a short camera/parallax move that fits the genre (not a frozen title card).";
     task = `Write the complete game for this design. Implement every mechanic, the level outline, the objective and lose condition, juice and audio. Use the tuning keys via forge.tune.${
       forceMesh
         ? input.design.dimension === "3d"
           ? " CRITICAL: full 3D — hero, enemies, collectibles, goals, hazards and props MUST be 3D meshes. Use forge.three.character(imageId, height) for each (loads *_3d GLB when available; otherwise auto low-poly Capsule/Sphere primitives textured with the image). Never use forge.three.sprite."
           : " CRITICAL from the idea/design: CHARACTERS (hero, enemies, NPCs) MUST be real 3D meshes via forge.three.character(imageId, height) — prefers *_3d GLB, else builds low-poly primitives with the image texture. FORBIDDEN: forge.three.sprite / billboard paper cutouts. Décor/sky/far layers MAY stay 2D (forge.three.backdrop, skydome, or textured PlaneGeometry for parallax)."
         : ""
-    }`;
+    }${cineHint}`;
   } else if (input.mode === "edit") {
     task = `# Current game code\n\`\`\`js\n${input.previousCode}\n\`\`\`\n\n# Requested change\n${input.instructions}\n\nApply the change carefully, keep everything else working exactly as before, and return the full updated module.${
       forceMesh

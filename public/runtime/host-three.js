@@ -546,19 +546,23 @@ export async function createHost(createGame, ctx) {
     composer.setSize(w, h);
     const g = await createGame(forge, { THREE, RAPIER, scene, camera, renderer, world });
     R.game = g || {};
-    if (typeof R.game.update !== "function") throw new Error("createGame debe devolver { update(dt) }");
+    if (typeof R.game.update !== "function") throw new Error("createGame must return { update(dt) }");
   }
 
   const tmpV = new THREE.Vector3();
   function step(dt) {
     input._begin();
-    R.game.update(dt, time);
-    R.world.timestep = clamp(dt, 1 / 240, 1 / 30);
-    R.world.step();
-    for (const l of R.links) {
-      const t = l.body.translation(), q = l.body.rotation();
-      l.mesh.position.set(t.x + l.offset.x, t.y + l.offset.y, t.z + l.offset.z);
-      l.mesh.quaternion.set(q.x, q.y, q.z, q.w);
+    if (forge.cinematic?.active && typeof R.game.onCinematic === "function") {
+      R.game.onCinematic(dt, forge.cinematic);
+    } else {
+      R.game.update(dt, time);
+      R.world.timestep = clamp(dt, 1 / 240, 1 / 30);
+      R.world.step();
+      for (const l of R.links) {
+        const t = l.body.translation(), q = l.body.rotation();
+        l.mesh.position.set(t.x + l.offset.x, t.y + l.offset.y, t.z + l.offset.z);
+        l.mesh.quaternion.set(q.x, q.y, q.z, q.w);
+      }
     }
     R.particles.update(dt);
     input._end();
@@ -717,5 +721,15 @@ export async function createHost(createGame, ctx) {
       }
     },
     replaceImage,
+    cinematic(dt, cine) {
+      if (!R) return;
+      try {
+        if (typeof R.game?.onCinematic === "function") R.game.onCinematic(dt, cine);
+        post(dt);
+        render();
+      } catch (e) {
+        console.warn("[forge] three cinematic", e);
+      }
+    },
   };
 }

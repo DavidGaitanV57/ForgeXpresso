@@ -109,12 +109,59 @@ export interface GameDesign {
   tuning: TuningParam[];
   /** In-game UI the programmer must implement (HUD + pause/settings). */
   ui: GameUiSpec;
-  cinematic: { style: string; lines: string[] };
+  cinematic: {
+    style: string;
+    lines: string[];
+    /**
+     * In-engine direction from the silent cinematic expert (not a loader stage).
+     * The programmer implements camera/stage motion from this plan — not a baked video file.
+     */
+    direction?: CinematicDirection;
+  };
   assets: {
     images: ImageAssetSpec[];
     audio: AudioAssetSpec[];
     models: ModelAssetSpec[];
   };
+}
+
+export type CinematicApproach =
+  | "camera_tour"
+  | "parallax_drift"
+  | "tableau_cuts"
+  | "character_focus"
+  | "topdown_sweep"
+  | "side_scroll_reveal"
+  | "orbit_showcase"
+  | "mood_montage";
+
+export interface CinematicShot {
+  /** 0-based index into cinematic.lines, or -1 for bridge/title beats */
+  lineIndex: number;
+  durationSec: number;
+  /** Short English direction for the programmer (camera / staging). */
+  staging: string;
+  /** Camera intent: relative hints the code maps to meters/pixels. */
+  camera: {
+    from?: [number, number, number];
+    to?: [number, number, number];
+    lookAt?: [number, number, number];
+    fov?: number;
+    ease?: "linear" | "smooth" | "easeIn" | "easeOut";
+  };
+  /** Optional FX cues: particles, light pulse, shake, focus subject id, etc. */
+  fx?: string[];
+}
+
+export interface CinematicDirection {
+  approach: CinematicApproach;
+  /** Why this approach fits THIS game (English, 1-2 sentences). */
+  rationale: string;
+  /** Mood / pacing note for the programmer. */
+  mood: string;
+  shots: CinematicShot[];
+  /** Extra implementation notes (English). */
+  notes: string;
 }
 
 export type AssetType = "image" | "audio" | "model";
