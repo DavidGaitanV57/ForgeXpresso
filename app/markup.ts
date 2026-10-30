@@ -67,6 +67,7 @@ export const MARKUP = `
       <button type="button" data-locale="fr" title="Français">FR</button>
     </div>
     <button class="iconbtn help" id="helpBtn" type="button" data-i18n-title="studio.help" data-i18n-aria="studio.help" title="Ver recorrido" aria-label="Ver recorrido de ayuda">?</button>
+    <button class="btn ghost" id="usageBtn" type="button" data-i18n="guide.usage" hidden>Consumo de APIs</button>
     <button class="btn ghost" id="proBtn" type="button" data-i18n="studio.pro">Abrir en Forge Pro</button>
     <span class="vsep" aria-hidden="true"></span>
     <button class="btn export" id="exportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span data-i18n="studio.export">Exportar</span></button>
@@ -87,9 +88,13 @@ export const MARKUP = `
       <div class="st-preview">
         <div class="viewport" id="vp" data-i18n-aria="studio.preview" aria-label="Vista previa jugable">
           <iframe id="game" title="Juego" sandbox="allow-scripts allow-pointer-lock" allow="autoplay; gamepad; fullscreen"></iframe>
-          <div class="vp-busy" id="vpBusy" hidden><span class="mascot" aria-hidden="true"></span><b id="vpBusyT" data-i18n="studio.busy">Forge está aplicando tus cambios…</b><small id="vpBusyS"></small></div>
           <div class="vp-err" id="vpErr" hidden></div>
           <button type="button" class="vp-expand" id="vpExpand" data-i18n-title="studio.fullscreen" data-i18n-aria="studio.fullscreen" title="Pantalla completa" aria-label="Jugar en pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+          <div class="studio-busy" id="studioBusy" hidden>
+            <span class="mascot" aria-hidden="true"></span>
+            <b id="studioBusyT" data-i18n="studio.busy">Forge está aplicando tus cambios…</b>
+            <small id="studioBusyS"></small>
+          </div>
         </div>
       </div>
       <div class="st-tools asm from-under" style="--asd:0s">
@@ -106,12 +111,24 @@ export const MARKUP = `
         <div class="dock-hint" id="dockHint" hidden></div>
         <form class="dock-in" id="dockForm" autocomplete="off"><span class="mascot" aria-hidden="true"></span><input id="dockIn" data-i18n-placeholder="studio.dockPh" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio a Forge con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
       </section>
-      <section class="st-assets asm from-under" style="--asd:.3s">
-        <div class="st-sec"><span class="ld-eyebrow"><i style="background:var(--violet);box-shadow:0 0 8px var(--violet)"></i><span data-i18n="studio.assetsTitle">Recursos del juego</span></span><span class="muted-s" data-i18n="studio.assetsSub">Marca lo que te gusta, regenéralo o sube el tuyo</span></div>
+      <section class="st-assets asm from-under" id="stAssets" style="--asd:.3s">
+        <button type="button" class="st-sec" id="assetsToggle" aria-expanded="true" aria-controls="assets">
+          <span class="ld-eyebrow"><i style="background:var(--violet);box-shadow:0 0 8px var(--violet)"></i><span data-i18n="studio.assetsTitle">Recursos del juego</span></span>
+          <span class="muted-s" data-i18n="studio.assetsSub">Marca lo que te gusta, regenéralo o sube el tuyo</span>
+          <svg class="chev-col" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
         <div class="assets" id="assets"></div>
       </section>
     </div>
     <aside class="flow asm from-left" id="flow" data-i18n-aria="studio.flow" aria-label="Panel de creación" style="--asd:.45s"></aside>
+  </div>
+</div>
+
+<div class="usage-pop" id="usagePop" hidden role="dialog" aria-modal="true" aria-labelledby="usagePopTitle">
+  <div class="usage-pop-card">
+    <button class="iconbtn x" id="usagePopX" type="button" data-i18n-aria="vp.close" aria-label="Cerrar">×</button>
+    <div class="eyebrow" id="usagePopTitle" data-i18n="guide.usage">Consumo de APIs</div>
+    <div id="usagePopBody"></div>
   </div>
 </div>
 
@@ -224,8 +241,8 @@ export const MARKUP = `
       <button class="iconbtn av-x" id="avClose" type="button" data-i18n-aria="asset.close" aria-label="Cerrar">${ICX}</button>
       <div class="eyebrow" id="avKind"></div>
       <h3 id="avName"></h3>
-      <div class="tg av-tags" id="avTags"></div>
       <div class="av-revs" id="avRevs" hidden></div>
+      <div class="tg av-tags" id="avTags"></div>
       <dl class="av-spec" id="avSpec"></dl>
       <div class="av-anim" id="avPromptBox">
         <div class="lbl" data-i18n="asset.prompt">Descripción para el generador</div>

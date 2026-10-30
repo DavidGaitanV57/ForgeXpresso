@@ -96,8 +96,8 @@ export async function codeAgent(input: CodeInput): Promise<string> {
   if (input.mode === "create") {
     const cine = input.design.cinematic?.direction;
     const cineHint = cine?.shots?.length
-      ? ` CRITICAL CINEMATIC: design.cinematic.direction is a unique in-engine intro for THIS game (approach=${cine.approach}). Implement createGame return value with onCinematic(dt, cine) that drives camera/parallax/staging from direction.shots while forge.cinematic.active — do NOT leave a static frame. Match mood/rationale/notes; sync beats to cine.lineIndex / shotIndex. After cinematic ends, restore the gameplay camera. Never rely on an external video file.`
-      : " CRITICAL CINEMATIC: if design.cinematic.lines exist, still implement onCinematic(dt, cine) with a short camera/parallax move that fits the genre (not a frozen title card).";
+      ? ` CRITICAL CINEMATIC: design.cinematic.direction is a unique in-engine intro for THIS game (approach=${cine.approach}). Implement onCinematic(dt, cine) that ONLY drives camera/parallax/staging from cine.shot / direction.shots while forge.cinematic.active — do NOT leave a static frame. Sync to cine.lineIndex / shotIndex / progress. After it ends, restore the gameplay camera. FORBIDDEN: DIY letterbox, subtitle meshes, skip tips, duplicate narration play, or an initial state==="cine" intro — the runtime already shows bars/subs/voice/skip.`
+      : " CRITICAL CINEMATIC: if design.cinematic.lines exist, implement onCinematic(dt, cine) with a short camera/parallax move only (no DIY subtitle/skip UI — runtime owns that).";
     task = `Write the complete game for this design. Implement every mechanic, the level outline, the objective and lose condition, juice and audio. Use the tuning keys via forge.tune.${
       forceMesh
         ? input.design.dimension === "3d"

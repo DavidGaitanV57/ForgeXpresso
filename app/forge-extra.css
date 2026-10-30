@@ -27,6 +27,9 @@
 .langsw button:hover{color:#fff}
 .langsw-fixed{position:fixed;top:max(14px, env(safe-area-inset-top, 0px));right:max(14px, env(safe-area-inset-right, 0px));z-index:80}
 #intro[hidden] .langsw-fixed{display:none !important}
+#studioLang,.langsw{position:relative;z-index:56;pointer-events:auto}
+body.is-playing #studio .top{position:relative;z-index:55}
+body.is-playing #studioLang{z-index:56}
 @media (max-width:720px){.langsw button{padding:7px 9px;font-size:10px}.langsw-fixed{top:10px;right:10px}}
 
 /* volume (studio chrome — master bus; music/SFX live in-game under Ajustes) */
@@ -80,13 +83,21 @@
 
 /* studio viewport with the game iframe */
 #game{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#05060a}
-.vp-busy{position:absolute;left:12px;top:12px;z-index:4;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);background:rgba(10,11,16,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,122,26,.45);border-radius:14px;padding:8px 12px 8px 8px;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:tipPop .35s cubic-bezier(.2,.9,.3,1.3)}
-.vp-busy .mascot{height:30px;animation:bob 1s ease-in-out infinite}
-.vp-busy b{font-size:12.5px;display:block}
-.vp-busy small{display:block;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vp-busy.full{inset:0;max-width:none;border-radius:0;border:0;flex-direction:column;justify-content:center;background:rgba(6,7,11,.82)}
-.vp-busy.full .mascot{height:64px}
-.vp-busy.full b{font-size:15px}
+.studio-busy{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;border-radius:inherit;background:rgba(4,5,8,.9);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:tipPop .3s cubic-bezier(.2,.9,.3,1.1)}
+.studio-busy[hidden]{display:none!important}
+.studio-busy .mascot{height:72px;animation:bob 1s ease-in-out infinite}
+.studio-busy b{font-size:16px;font-weight:800;max-width:22rem}
+.studio-busy small{font-size:12.5px;color:var(--muted);max-width:20rem;line-height:1.4}
+.av-revs{order:-1}
+.av-info{display:flex;flex-direction:column}
+.usage-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(4,5,8,.72);backdrop-filter:blur(8px)}
+.usage-pop[hidden]{display:none!important}
+.usage-pop-card{width:min(440px,100%);max-height:min(80vh,640px);overflow:auto;background:var(--surface);border:1px solid var(--line-2);border-radius:18px;padding:18px 16px 16px;box-shadow:0 30px 90px rgba(0,0,0,.55);position:relative}
+.usage-pop-card .x{position:absolute;top:12px;right:12px}
+.st-assets.collapsed .assets{display:none}
+.st-assets .st-sec{cursor:pointer;user-select:none}
+.st-assets .st-sec .chev-col{margin-left:auto;width:16px;height:16px;opacity:.7;transition:transform .2s}
+.st-assets:not(.collapsed) .st-sec .chev-col{transform:rotate(180deg)}
 .vp-err{position:absolute;left:12px;right:12px;bottom:12px;z-index:4;background:rgba(40,8,16,.9);border:1px solid rgba(244,63,94,.5);color:#fecdd3;border-radius:12px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:10px}
 .vp-err span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -107,7 +118,7 @@ body.is-playing .st-preview::after{display:none}
 .av-revs button.on{border-color:var(--forge);background:rgba(255,122,26,.9);color:#1a0d04}
 .av-revs button.active:not(.on){border-color:rgba(16,185,129,.65);color:var(--emerald)}
 .av-revs button:hover{border-color:var(--forge);color:var(--text)}
-.asset .rev-badge,.li .rev-badge{position:absolute;right:4px;top:4px;font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;background:rgba(10,11,16,.78);color:var(--spark);z-index:2}
+.asset .rev-badge,.li .rev-badge{position:absolute;left:4px;top:4px;font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;background:rgba(10,11,16,.78);color:var(--spark);z-index:2;pointer-events:none}
 .asset .st-badge{position:absolute;left:4px;bottom:4px;font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;background:rgba(10,11,16,.75);color:var(--muted)}
 .asset .st-badge.generating{color:var(--spark)}
 .asset .st-badge.error{color:var(--rose)}

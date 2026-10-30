@@ -270,7 +270,7 @@ button.brand:hover svg{animation:flick .8s ease-in-out infinite}
 .flow{position:sticky;top:calc(12px + env(safe-area-inset-top, 0px))}
 @media (max-width:900px){.flow{position:static}}
 .st-assets{display:flex;flex-direction:column;gap:10px}
-.st-sec{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.st-sec{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:0}
 .muted-s{color:var(--dim);font-size:12px}
 #studio .assets{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media (max-width:900px){#studio .assets{grid-template-columns:repeat(3,minmax(0,1fr))}}

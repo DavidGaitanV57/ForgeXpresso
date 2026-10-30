@@ -68,6 +68,7 @@ const S = {
   repairAsked: 0,
   sending: false,
   tourSeen: false,
+  assetsOpen: true,
 };
 const FILE = (a: AssetRecord) => (S.p && a.file ? `/api/files/${S.p.id}/${a.file}` : "");
 const assets = () => (S.p ? Object.values(S.p.assets) : []);
@@ -293,7 +294,10 @@ function onEvent(ev: ForgeEvent | { type: "busy"; busy: boolean }) {
       // Keep cumulative in sync when the server sends it.
       if (ev.cumulative) p.usage = ev.cumulative;
       if (S.screen === "loader") renderUsageReport();
-      if (S.screen === "studio" && S.ptab === "guia") renderFlow();
+      if (S.screen === "studio") {
+        renderUsageBtn();
+        if (!$("#usagePop").hidden) openUsagePop();
+      }
       break;
     }
     default:
@@ -774,6 +778,8 @@ function renderStudio() {
   renderFlow();
   renderChat();
   renderBusy();
+  renderUsageBtn();
+  syncAssetsCollapse();
 }
 function renderTop() {
   const p = S.p,
@@ -792,14 +798,52 @@ function renderTop() {
 }
 function renderBusy() {
   const job = S.p?.job;
-  const box = $("#vpBusy");
+  const box = $("#studioBusy");
   const running = !!job && !job.finishedAt && job.kind !== "create";
   box.hidden = !running;
+  document.body.classList.toggle("studio-job-busy", running);
   if (!running) return;
   const cur = job!.stages.find((s) => s.status === "run") || job!.stages.find((s) => s.status === "wait");
-  $("#vpBusyT").textContent = job!.kind === "repair" ? t("studio.busyRepair") : job!.kind === "asset" ? t("studio.busyAsset") : t("studio.busy");
-  $("#vpBusyS").textContent = cur ? `${cur.label}${cur.detail ? ` · ${cur.detail}` : ""}` : "";
-  box.classList.toggle("full", !S.p?.versions.length);
+  $("#studioBusyT").textContent = job!.kind === "repair" ? t("studio.busyRepair") : job!.kind === "asset" ? t("studio.busyAsset") : t("studio.busy");
+  $("#studioBusyS").textContent = cur
+    ? `${stageLabel(cur.id, cur.label)}${cur.detail ? ` · ${stageDetail(cur.detail, cur.status)}` : ""}`
+    : "";
+}
+function usageSummary() {
+  const p = S.p;
+  if (!p) return { primary: undefined as UsageReport | undefined, job: undefined as UsageReport | undefined, showJob: false };
+  const jobU = p.jobUsage;
+  const allU = p.usage;
+  const hasJob = !!jobU && (jobU.totals.calls > 0 || Object.keys(jobU.byProvider).length > 0);
+  const hasAll = !!allU && (allU.totals.calls > 0 || Object.keys(allU.byProvider).length > 0);
+  const primary = hasAll ? allU! : hasJob ? jobU! : undefined;
+  const showJob = hasJob && hasAll && jobU !== allU && (jobU!.totals.estimatedUsd > 0 || jobU!.totals.calls > 0);
+  return { primary, job: jobU, showJob };
+}
+function renderUsageBtn() {
+  const btn = $<HTMLButtonElement>("#usageBtn");
+  if (!btn) return;
+  const { primary } = usageSummary();
+  btn.hidden = S.screen !== "studio" || !S.p;
+  btn.textContent = primary ? `${t("guide.usage")} · ${formatUsd(primary.totals.estimatedUsd)}` : t("guide.usage");
+}
+function openUsagePop() {
+  const { primary, job, showJob } = usageSummary();
+  const body = $("#usagePopBody");
+  body.innerHTML = `<div class="usage-card">${usageHTML(primary, { title: t("guide.projectUsage") })}</div>
+    ${showJob && job ? `<div class="usage-card" style="margin-top:10px">${usageHTML(job, { title: t("guide.lastJob") })}</div>` : ""}
+    ${!primary ? `<p class="ur-note">${esc(t("guide.usageOld"))}</p>` : ""}`;
+  $("#usagePop").hidden = false;
+}
+function closeUsagePop() {
+  $("#usagePop").hidden = true;
+}
+function syncAssetsCollapse() {
+  const sec = $("#stAssets");
+  const btn = $<HTMLButtonElement>("#assetsToggle");
+  if (!sec || !btn) return;
+  sec.classList.toggle("collapsed", !S.assetsOpen);
+  btn.setAttribute("aria-expanded", S.assetsOpen ? "true" : "false");
 }
 
 /* ---------- Asset cards ---------- */
@@ -915,28 +959,12 @@ function guideHTML() {
   const p = S.p!,
     d = design();
   const sections: { name: string; detail: string; body: string }[] = [];
-  const jobU = p.jobUsage;
-  const allU = p.usage;
-  const hasJob = !!jobU && (jobU.totals.calls > 0 || Object.keys(jobU.byProvider).length > 0);
-  const hasAll = !!allU && (allU.totals.calls > 0 || Object.keys(allU.byProvider).length > 0);
-  // Prefer cumulative when last job is a tiny follow-up; still show last job if distinct.
-  const primaryU = hasAll ? allU! : hasJob ? jobU! : undefined;
-  const showJobExtra = hasJob && hasAll && jobU !== allU && (jobU!.totals.estimatedUsd > 0 || jobU!.totals.calls > 0);
   sections.push({
     name: t("guide.idea"),
     detail: `“${p.idea}”`,
     body: `<div class="dz"><p>${esc(p.idea)}</p><div class="dz-row"><span>${DIM_LABEL[p.dimension]}</span>${d ? `<span>${esc(d.camera)}</span>` : ""}</div>
       <div class="lbl">${esc(t("guide.provider"))}</div>
       <div class="presets">${(["openai", "minimax"] as ImageProvider[]).map((pv) => `<button type="button" class="preset ${p.imageProvider === pv ? "on" : ""}" data-prov="${pv}" ${S.caps && !S.caps.images[pv] ? `title="${esc(t("keys.missing"))}"` : ""}>${PROVIDER_LABEL[pv]}${S.caps && !S.caps.images[pv] ? esc(t("guide.nokey")) : ""}</button>`).join("")}</div></div>`,
-  });
-  sections.push({
-    name: t("guide.usage"),
-    detail: primaryU
-      ? `${formatUsd(primaryU.totals.estimatedUsd)} · ${formatDuration((primaryU.finishedAt ?? Date.now()) - primaryU.startedAt)}`
-      : t("guide.usageNone"),
-    body: `<div class="usage-card">${usageHTML(primaryU, { title: t("guide.projectUsage") })}</div>
-      ${showJobExtra ? `<div class="usage-card" style="margin-top:10px">${usageHTML(jobU, { title: t("guide.lastJob") })}</div>` : ""}
-      ${!primaryU ? `<p class="ur-note">${esc(t("guide.usageOld"))}</p>` : ""}`,
   });
   if (d) {
     sections.push({
@@ -1201,7 +1229,7 @@ function openPlay() {
   document.body.classList.add("is-playing");
   gameFrame().focus();
   postGame({ type: "focus" });
-  if (S.gameScreen === "start") postGame({ type: "start" });
+  // Don't auto-start: keep the in-game start menu (Jugar / Ajustes / cinemática) visible when maximizing.
   renderChat();
   setTimeout(() => chatHint(t("chat.hintPlay")), 1600);
   setTimeout(() => chatHint(t("chat.hintStyle")), 12000);
@@ -1849,6 +1877,13 @@ function renderLangSwitchers() {
     box.innerHTML = (["es", "en", "fr"] as Locale[])
       .map((idL) => `<button type="button" data-locale="${idL}" class="${loc === idL ? "on" : ""}" title="${idL.toUpperCase()}">${idL.toUpperCase()}</button>`)
       .join("");
+    box.querySelectorAll<HTMLButtonElement>("[data-locale]").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        applyLocale(btn.getAttribute("data-locale") as Locale | null);
+      });
+    });
   }
 }
 function refreshLocaleUI() {
@@ -1868,6 +1903,8 @@ function refreshLocaleUI() {
     renderAssets();
     renderFlow();
     renderBusy();
+    renderUsageBtn();
+    syncAssetsCollapse();
   }
   if (S.screen === "loader") {
     $("#ldEyebrow").textContent = t("loader.eyebrow");
@@ -1876,18 +1913,22 @@ function refreshLocaleUI() {
   }
   if (S.p && (S.screen === "studio" || S.playing)) renderChat();
 }
-function onLocaleClick(e: MouseEvent) {
-  const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-locale]");
-  if (!b) return;
-  const next = b.getAttribute("data-locale") as Locale | null;
+function applyLocale(next: Locale | null) {
   if (!next || (next !== "es" && next !== "en" && next !== "fr")) return;
-  e.preventDefault();
-  e.stopPropagation();
-  if (next === getLocale()) return;
+  const same = next === getLocale();
   setLocale(next);
   refreshLocaleUI();
   if (S.p?.versions.length && (S.screen === "studio" || S.playing)) loadGame(true);
-  toast(`🌐 ${next.toUpperCase()}`, 1200);
+  if (!same) toast(`🌐 ${next.toUpperCase()}`, 1200);
+}
+function onLocaleClick(e: MouseEvent) {
+  const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-locale]");
+  if (!b) return;
+  // Direct listeners on #introLang / #studioLang already handle those buttons.
+  if (b.closest("#introLang, #studioLang")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  applyLocale(b.getAttribute("data-locale") as Locale | null);
 }
 
 /* ================= Wiring ================= */
@@ -2244,6 +2285,24 @@ export function mount() {
     { capture: true, signal },
   );
 
+  $("#usageBtn")?.addEventListener("click", () => openUsagePop(), { signal });
+  $("#usagePopX")?.addEventListener("click", () => closeUsagePop(), { signal });
+  $("#usagePop")?.addEventListener(
+    "click",
+    (e) => {
+      if (e.target === $("#usagePop")) closeUsagePop();
+    },
+    { signal },
+  );
+  $("#assetsToggle")?.addEventListener(
+    "click",
+    () => {
+      S.assetsOpen = !S.assetsOpen;
+      syncAssetsCollapse();
+    },
+    { signal },
+  );
+
   // export modal
   $("#mClose").addEventListener("click", () => ($("#modal").hidden = true));
   $("#dlSrc").addEventListener("click", () => {
@@ -2297,6 +2356,7 @@ export function mount() {
     if (e.key !== "Escape") return;
     if (!$("#tour").hidden) return endTour();
     if (!$("#av").hidden) return closeViewer();
+    if (!$("#usagePop").hidden) return closeUsagePop();
     if (!$("#modal").hidden) return void ($("#modal").hidden = true);
     if (chatOpen()) return closeChat();
     if (S.playing) closePlay();

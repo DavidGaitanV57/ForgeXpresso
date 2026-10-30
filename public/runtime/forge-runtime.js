@@ -10,26 +10,29 @@ const ICPLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11
 const ICPAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 const RT_I18N = {
   es: {
-    pause: "Pausa", settings: "Ajustes", resume: "Continuar", restart: "Reiniciar", back: "Volver", play: "Jugar", cine: "Ver cinemática",
+    pause: "Pausa", settings: "Ajustes", resume: "Continuar", restart: "Reiniciar", back: "Volver", play: "Jugar", cine: "Ver cinemática", skipCine: "Saltar ›",
     audio: "Audio", audioHelp: "Música, efectos y volumen general del juego", volMaster: "Volumen general", volMusic: "Música", volSfx: "Efectos (SFX)",
     objective: "Objetivo", loading: "Cargando", game: "Juego",
     victory: "¡Victoria!", defeat: "Fin de la partida", levelComplete: "¡Nivel completado!", ohNo: "¡Oh no!", playAgain: "Jugar otra vez", retry: "Reintentar",
+    ctlMove: "Correr", ctlJump: "Saltar (mantener = más alto)", ctlDown: "Agachar / apuntar", ctlAction: "Acción",
     errEyebrow: "Error en el juego", errTitle: "Algo se rompió", errRepairing: "Forge está revisando el código para corregirlo.", errCheck: "Revisa el mensaje:",
     errUnknown: "Error desconocido", errBadModule: "El módulo del juego no exporta createGame por defecto",
   },
   en: {
-    pause: "Paused", settings: "Settings", resume: "Resume", restart: "Restart", back: "Back", play: "Play", cine: "Watch cinematic",
+    pause: "Paused", settings: "Settings", resume: "Resume", restart: "Restart", back: "Back", play: "Play", cine: "Watch cinematic", skipCine: "Skip ›",
     audio: "Audio", audioHelp: "Music, SFX, and master volume", volMaster: "Master volume", volMusic: "Music", volSfx: "Sound effects",
     objective: "Objective", loading: "Loading", game: "Game",
     victory: "Victory!", defeat: "Game over", levelComplete: "Level complete!", ohNo: "Oh no!", playAgain: "Play again", retry: "Retry",
+    ctlMove: "Run", ctlJump: "Jump (hold = higher)", ctlDown: "Crouch / aim", ctlAction: "Action",
     errEyebrow: "Game error", errTitle: "Something broke", errRepairing: "Forge is reviewing the code to fix it.", errCheck: "Check the message:",
     errUnknown: "Unknown error", errBadModule: "Game module does not export createGame as default",
   },
   fr: {
-    pause: "Pause", settings: "Réglages", resume: "Continuer", restart: "Recommencer", back: "Retour", play: "Jouer", cine: "Voir la cinématique",
+    pause: "Pause", settings: "Réglages", resume: "Continuer", restart: "Recommencer", back: "Retour", play: "Jouer", cine: "Voir la cinématique", skipCine: "Passer ›",
     audio: "Audio", audioHelp: "Musique, effets et volume général", volMaster: "Volume général", volMusic: "Musique", volSfx: "Effets (SFX)",
     objective: "Objectif", loading: "Chargement", game: "Jeu",
     victory: "Victoire !", defeat: "Partie terminée", levelComplete: "Niveau terminé !", ohNo: "Oh non !", playAgain: "Rejouer", retry: "Réessayer",
+    ctlMove: "Courir", ctlJump: "Sauter (maintenir = plus haut)", ctlDown: "S'accroupir / viser", ctlAction: "Action",
     errEyebrow: "Erreur du jeu", errTitle: "Quelque chose a planté", errRepairing: "Forge examine le code pour le corriger.", errCheck: "Vérifie le message :",
     errUnknown: "Erreur inconnue", errBadModule: "Le module du jeu n’exporte pas createGame par défaut",
   },
@@ -47,10 +50,17 @@ function rtLocale() {
   return "en";
 }
 const rt = (k) => (RT_I18N[rtLocale()] || RT_I18N.en)[k] || k;
-function pauseLabel(id, fallbackKey) {
-  const items = BOOT?.design?.ui?.pauseMenu || [];
-  const hit = items.find((i) => i.id === id || i.action === id || String(i.action || "").toLowerCase().includes(id));
-  return (hit && hit.label) || rt(fallbackKey);
+/** Menu chrome always follows the studio/play locale — never design.ui French/EN labels. */
+function pauseLabel(_id, fallbackKey) {
+  return rt(fallbackKey);
+}
+function controlActionLabel(input, fallback) {
+  const i = String(input || "").toLowerCase();
+  if (/←|→|⬅|➡|left|right|\ba\b.*\bd\b|\bq\b.*\bd\b|flech|arrow/.test(i)) return rt("ctlMove");
+  if (/space|espace|espacio|␣|jump|saut|saltar/.test(i)) return rt("ctlJump");
+  if (/↓|⬇|down|s\b|crouch|agach|accroup|viser|aim|↓/.test(i)) return rt("ctlDown");
+  if (/j\b|x\b|enter|action|attaque|attack/.test(i)) return rt("ctlAction");
+  return String(fallback || "").trim() || rt("ctlAction");
 }
 
 function post(msg) {
@@ -67,7 +77,7 @@ root.innerHTML = `
 <div id="fxFloats"></div>
 <button class="fx-pausebtn" id="fxPauseBtn" aria-label="${esc(rt("pause"))}">${ICPAUSE}</button>
 <div class="fx-touch"><div><button data-a="left">◀</button><button data-a="right">▶</button></div><div><button data-a="action2">✧</button><button data-a="action">✦</button><button data-a="jump">▲</button></div></div>
-<div class="fx-cine" id="fxCine" hidden><i class="bar t"></i><i class="bar b"></i><div class="sub" id="fxCineSub"></div><div class="ttl" id="fxCineTtl"></div><button class="skip" id="fxCineSkip">${esc(rt("back"))} ›</button></div>
+<div class="fx-cine" id="fxCine" hidden><i class="bar t"></i><i class="bar b"></i><div class="sub" id="fxCineSub"></div><div class="ttl" id="fxCineTtl"></div><button class="skip" id="fxCineSkip">${esc(rt("skipCine"))}</button></div>
 <div class="fx-ov" id="fxOv" hidden><div class="fx-card" id="fxCard"></div></div>
 <div class="fx-load" id="fxLoad"><b>${esc(rt("loading"))} ${esc(BOOT.design?.title || "…")}…</b><i><u id="fxLoadBar"></u></i></div>`;
 document.body.appendChild(root);
@@ -608,7 +618,7 @@ function controlsHtml() {
   if (!c.length) return "";
   return `<div class="fx-keys">${c
     .slice(0, 6)
-    .map((k) => `<span>${String(k.input).split(/\s+/).map((p) => `<kbd>${esc(p)}</kbd>`).join("")} ${esc(k.action)}</span>`)
+    .map((k) => `<span>${String(k.input).split(/\s+/).map((p) => `<kbd>${esc(p)}</kbd>`).join("")} ${esc(controlActionLabel(k.input, k.action))}</span>`)
     .join("")}</div>`;
 }
 function showStart() {
@@ -619,7 +629,7 @@ function showStart() {
     "start",
     `<em>${esc(d.genre || rt("game"))}</em><h1>${esc(d.title || "")}</h1><p>${esc(d.tagline || "")}</p>
     ${d.objective ? `<div class="fx-goal"><b>${esc(rt("objective"))}</b>${esc(d.objective)}</div>` : ""}${controlsHtml()}
-    <div class="fx-acts"><button class="fx-btn" id="fxStart">${ICPLAY}${esc((d.ui?.startActions?.[0] || "").trim() || rt("play"))}</button><button class="fx-btn ghost" id="fxStartSettings">${esc((d.ui?.startActions?.[1] || "").trim() || rt("settings"))}</button>${d.cinematic?.lines?.length ? `<button class="fx-btn ghost" id="fxCineBtn">${esc(rt("cine"))}</button>` : ""}</div>`,
+    <div class="fx-acts"><button class="fx-btn" id="fxStart">${ICPLAY}${esc(rt("play"))}</button><button class="fx-btn ghost" id="fxStartSettings">${esc(rt("settings"))}</button>${d.cinematic?.lines?.length ? `<button class="fx-btn ghost" id="fxCineBtn">${esc(rt("cine"))}</button>` : ""}</div>`,
   );
   $("#fxStart").onclick = () => startGame();
   $("#fxStartSettings").onclick = showSettingsMenu;
@@ -656,8 +666,7 @@ function showPauseMenu() {
       <button class="fx-btn ghost" id="fxSettings">${esc(pauseLabel("settings", "settings"))}</button>
       <button class="fx-btn ghost" id="fxRestart">${esc(pauseLabel("restart", "restart"))}</button>
       <button class="fx-btn ghost" id="fxQuit">${esc(pauseLabel("quit", "back"))}</button>
-    </div>
-    ${settingsSlidersHtml()}`,
+    </div>`,
   );
   $("#fxResume").onclick = resumeGame;
   $("#fxSettings").onclick = showSettingsMenu;
@@ -666,7 +675,6 @@ function showPauseMenu() {
     hideOverlay();
     showStart();
   };
-  wireVolumeSliders();
 }
 function showSettingsMenu() {
   if (state.screen !== "pause" && state.screen !== "start") return;
@@ -703,10 +711,7 @@ function endRun(kind, o) {
     root.classList.add("paused");
     const eyebrow = kind === "win" ? rt("victory") : rt("defeat");
     const title = o.title || (kind === "win" ? rt("levelComplete") : rt("ohNo"));
-    const actions = BOOT.design?.ui?.gameOverActions || [];
-    const again =
-      (typeof actions[0] === "string" && actions[0].trim()) ||
-      rt(kind === "win" ? "playAgain" : "retry");
+    const again = rt(kind === "win" ? "playAgain" : "retry");
     showOverlay(
       kind,
       `<em>${esc(eyebrow)}</em><h1>${esc(title)}</h1>${o.subtitle ? `<p>${esc(o.subtitle)}</p>` : ""}
@@ -798,7 +803,10 @@ function playCinematic(onEnd) {
   const voice = buffers.narration ? audio.play("narration", { volume: 1 }) : null;
   const direction = d.cinematic?.direction || null;
   const timeline = shotTimeline(direction, lines, 3, buffers.narration?.duration);
-  cine = { t: 0, lines, voice, prev, onEnd, timeline, direction };
+  const subEl = $("#fxCineSub");
+  subEl.textContent = "";
+  subEl.classList.remove("show", "fade");
+  cine = { t: 0, lines, voice, prev, onEnd, timeline, direction, lineShown: -1 };
   forge.cinematic = { active: true, t: 0, duration: timeline.dur, lineIndex: -1, shotIndex: -1, shot: null, direction, progress: 0 };
   post({ type: "screen", screen: "cine" });
 }
@@ -807,11 +815,35 @@ function cineTick(dt) {
   cine.t += dt;
   const beat = cine.timeline.at(cine.t);
   const sub = $("#fxCineSub");
-  if (beat.lineIndex >= 0 && beat.lineIndex < cine.lines.length && cine.t < cine.timeline.dur - 2) {
-    sub.textContent = cine.lines[beat.lineIndex].slice(0, Math.floor(beat.local * 34));
-  } else if (cine.t >= cine.timeline.dur - 2.2) {
-    sub.textContent = "";
-    $("#fxCine").classList.add("titled");
+  const wrapping = cine.t >= cine.timeline.dur - 2.2;
+  if (wrapping) {
+    if (cine.lineShown !== -2) {
+      cine.lineShown = -2;
+      sub.classList.remove("show");
+      sub.classList.add("fade");
+      setTimeout(() => {
+        if (!cine) return;
+        sub.textContent = "";
+        sub.classList.remove("fade", "show");
+        $("#fxCine").classList.add("titled");
+      }, 320);
+    }
+  } else if (beat.lineIndex >= 0 && beat.lineIndex < cine.lines.length) {
+    if (cine.lineShown !== beat.lineIndex) {
+      const next = cine.lines[beat.lineIndex];
+      const swap = () => {
+        if (!cine || cine.timeline.at(cine.t).lineIndex !== beat.lineIndex) return;
+        sub.textContent = next;
+        sub.classList.remove("fade");
+        requestAnimationFrame(() => sub.classList.add("show"));
+        cine.lineShown = beat.lineIndex;
+      };
+      if (cine.lineShown >= 0) {
+        sub.classList.remove("show");
+        sub.classList.add("fade");
+        setTimeout(swap, 280);
+      } else swap();
+    }
   }
   forge.cinematic = {
     active: true,
@@ -833,6 +865,9 @@ function endCinematic() {
   forge.cinematic = { active: false, t: 0, duration: 0, lineIndex: -1, shotIndex: -1, shot: null, direction: null, progress: 0 };
   if (c.voice) c.voice.stop();
   const el = $("#fxCine");
+  const sub = $("#fxCineSub");
+  sub.classList.remove("show", "fade");
+  sub.textContent = "";
   el.classList.remove("on", "titled");
   root.classList.remove("cine");
   setTimeout(() => {

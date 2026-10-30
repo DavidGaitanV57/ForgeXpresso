@@ -51,17 +51,20 @@ kbd{display:inline-block;min-width:22px;padding:2px 6px;border-radius:6px;backgr
 .fx-load i{display:block;width:220px;height:6px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}
 .fx-load i u{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff7a1a,#8b5cf6);transition:width .2s}
 
-.fx-cine{position:absolute;inset:0;z-index:12;pointer-events:none}
+.fx-cine{position:absolute;inset:0;z-index:12;pointer-events:none;--cine-cream:#f2ebd9}
 .fx-cine[hidden]{display:none}
 .fx-cine .bar{position:absolute;left:0;right:0;height:0;background:#000;transition:height .6s cubic-bezier(.2,.7,.2,1)}
 .fx-cine .bar.t{top:0}.fx-cine .bar.b{bottom:0}
 .fx-cine.on .bar{height:12%}
-.fx-cine .sub{position:absolute;left:10%;right:10%;bottom:16%;text-align:center;font-size:clamp(16px,2.6vw,26px);font-weight:700;text-shadow:0 2px 12px rgba(0,0,0,.8);min-height:1.4em}
-.fx-cine .ttl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transform:scale(.94);transition:opacity .8s,transform 1.2s cubic-bezier(.2,.7,.2,1)}
+.fx-cine .sub{position:absolute;left:8%;right:8%;bottom:15%;text-align:center;min-height:1.5em;margin:0;padding:0 4px;color:var(--cine-cream);font:italic 500 clamp(17px,2.8vw,28px)/1.35 "Cormorant Garamond",Georgia,"Times New Roman",serif;letter-spacing:.02em;text-shadow:0 2px 10px rgba(5,10,20,.95),0 0 28px rgba(5,10,20,.55);opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .55s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+.fx-cine .sub.show{opacity:.95;transform:none}
+.fx-cine .sub.fade{opacity:0;transform:translateY(4px);transition-duration:.35s}
+.fx-cine .ttl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transform:scale(.94);transition:opacity .8s,transform 1.2s cubic-bezier(.2,.7,.2,1);color:var(--cine-cream);font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif}
 .fx-cine.titled .ttl{opacity:1;transform:none}
-.fx-cine .ttl b{font-size:clamp(28px,6vw,64px);font-weight:800;letter-spacing:-.02em;text-shadow:0 6px 30px rgba(0,0,0,.7)}
-.fx-cine .ttl span{font-size:clamp(13px,1.8vw,18px);opacity:.85;margin-top:6px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-.fx-cine .skip{position:absolute;right:16px;bottom:calc(12% + 12px);pointer-events:auto;appearance:none;border:1px solid var(--fx-line);background:var(--fx-glass);color:#fff;border-radius:999px;padding:7px 14px;font:700 12px inherit;font-family:inherit;cursor:pointer}
+.fx-cine .ttl b{font-size:clamp(30px,6.2vw,68px);font-weight:600;font-style:italic;letter-spacing:.01em;text-shadow:0 4px 24px rgba(5,10,20,.9),0 0 40px rgba(5,10,20,.45)}
+.fx-cine .ttl span{font-size:clamp(14px,2vw,20px);font-style:italic;font-weight:500;opacity:.88;margin-top:8px;text-shadow:0 2px 14px rgba(5,10,20,.85)}
+.fx-cine .skip{position:absolute;right:16px;bottom:calc(12% + 12px);pointer-events:auto;appearance:none;border:1px solid rgba(242,235,217,.28);background:rgba(8,12,20,.45);color:var(--cine-cream);border-radius:999px;padding:7px 14px;font:italic 500 13px/1 "Cormorant Garamond",Georgia,serif;letter-spacing:.04em;cursor:pointer;text-shadow:0 1px 6px rgba(5,10,20,.8);backdrop-filter:blur(6px)}
+.fx-cine .skip:hover{border-color:rgba(242,235,217,.5);background:rgba(12,16,26,.6)}
 
 .fx-touch{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;padding:18px;z-index:8;pointer-events:none}
 .touch .fx-touch{display:flex}
@@ -75,3 +78,22 @@ kbd{display:inline-block;min-width:22px;padding:2px 6px;border-radius:6px;backgr
 .fx-set label span{opacity:.9}
 .fx-set label b{font-variant-numeric:tabular-nums;font-size:12px;opacity:.7;justify-self:end}
 .fx-set input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--fx-accent);cursor:pointer;height:22px}
+
+/* Compact pause/settings inside the small studio preview */
+@media (max-height:560px),(max-width:720px){
+  .fx-ov{padding:10px}
+  .fx-card{width:min(380px,100%);padding:14px 14px 12px;border-radius:16px}
+  .fx-card em{font-size:10px;margin-bottom:2px;letter-spacing:.1em}
+  .fx-card h1{font-size:18px;margin:0 0 4px}
+  .fx-card p{font-size:12px;margin:0 0 8px}
+  .fx-goal{margin:8px 0;padding:8px 10px;font-size:11px}
+  .fx-keys{margin:6px 0 10px;gap:4px 8px;font-size:11px}
+  .fx-acts{gap:6px}
+  .fx-btn{padding:8px 14px;font-size:12.5px;gap:6px}
+  .fx-btn svg{width:14px;height:14px}
+  .fx-set{margin:8px 0 10px;padding:8px 10px;gap:6px;border-radius:12px}
+  .fx-set label{font-size:12px;gap:2px 8px}
+  .fx-set input[type=range]{height:18px}
+  .fx-cine .sub{font-size:clamp(14px,2.4vw,20px);bottom:13%;left:5%;right:5%}
+  .fx-cine .skip{padding:5px 10px;font-size:12px;bottom:calc(12% + 6px);right:10px}
+}

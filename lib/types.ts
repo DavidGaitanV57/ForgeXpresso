@@ -286,6 +286,8 @@ export interface Project {
   repairs: number;
   /** Play the cinematic before the start screen. */
   cineAuto?: boolean;
+  /** Cached start-menu copy (genre/tagline/objective) per studio locale when it differs from the design language. */
+  playCopy?: Partial<Record<"es" | "en" | "fr", { sourceKey: string; genre: string; tagline: string; objective: string }>>;
 }
 
 export type ForgeEvent =

@@ -1,6 +1,7 @@
 import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
 import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
+import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const str = { type: "string" };
 const num = { type: "number" };
@@ -98,7 +99,7 @@ export async function runDirector(idea: string, dimension: Dimension, opts: { mo
 an image artist, a sound designer (ElevenLabs), ${opts.models3d ? "a 3D modeler (text-to-3D), " : ""}and a programmer who writes the whole game in a single JS module.
 Design something fun, focused and achievable as one polished vertical slice. Be specific and concrete.
 Write titles, names, labels, objective, mechanics, controls, cinematic lines, UI labels and usage notes in the SAME language as the idea (French idea → French UI; Spanish → Spanish; English → English). Never mix languages in pause/settings/HUD labels.
-Write image/audio/model prompts in English (better generation quality).`;
+Write image, music, sfx and model prompts in English (better generation quality). Exception — voice/narration: prompt is ONLY the spoken script (see audio rules).`;
 
   const meshChars = wantsMeshCharacters(idea, dimension);
   const prompt = `Idea: """${idea}"""
@@ -119,7 +120,7 @@ Rules:
   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
   Characters/objects for 2D or billboards must be "side view facing right" (2D side games) or "three-quarter front view" (top-down/3D).
 - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
-  and 1 voice (id "narration", kind voice) whose prompt is the narration text of the cinematic (the cinematic lines joined, in the idea's language).
+  and 1 voice (id "narration", kind voice). VOICE HARD RULE: prompt = the 3 cinematic.lines joined with a blank line between them, in the idea's language — NOTHING ELSE. ElevenLabs speaks the prompt verbatim. FORBIDDEN in voice prompt: English delivery notes, tone ("warm gentle storyteller"), language labels ("in French"), "reading exactly N lines", pause instructions, or any text that is not spoken aloud.
 - models: ${
     opts.models3d && dimension !== "2d"
       ? dimension === "3d" || meshChars
@@ -279,12 +280,22 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     const far = images.find((i) => i.role === "background");
     if (far && /star|nebula|cloud|sky|space dust|abstract/i.test(far.prompt)) far.seamless = true;
   }
-  const audio = (r.audio || []).slice(0, 10).map((a) => ({
-    ...a,
-    id: a.kind === "voice" ? slug("narration", used) : slug(a.id || a.name, used),
-    durationSec: Math.max(0.5, Math.min(a.kind === "music" ? 120 : 30, Number(a.durationSec) || (a.kind === "music" ? 60 : 1.5))),
-    loop: a.kind === "music" ? true : !!a.loop,
-  }));
+  const cineLines = (r.cinematic?.lines || []).map((l) => String(l || "").trim()).filter(Boolean).slice(0, 3);
+  const audio = (r.audio || []).slice(0, 10).map((a) => {
+    const kind = a.kind;
+    let prompt = String(a.prompt || "");
+    if (kind === "voice") {
+      prompt = cineLines.length ? voicePromptFromLines(cineLines) : sanitizeVoicePrompt(prompt);
+    }
+    return {
+      ...a,
+      kind,
+      prompt,
+      id: kind === "voice" ? slug("narration", used) : slug(a.id || a.name, used),
+      durationSec: Math.max(0.5, Math.min(kind === "music" ? 120 : 30, Number(a.durationSec) || (kind === "music" ? 60 : 1.5))),
+      loop: kind === "music" ? true : !!a.loop,
+    };
+  });
   const meshChars = wantsMeshCharacters(idea, dimension);
   let models =
     models3d && dimension !== "2d"

@@ -5,6 +5,7 @@ import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
 import { patchAsset, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec } from "../types";
+import { sanitizeVoicePrompt } from "./voice-prompt";
 
 export function newRecord(type: AssetRecord["type"], spec: ImageAssetSpec | AudioAssetSpec | ModelAssetSpec): AssetRecord {
   return { id: spec.id, type, name: spec.name, spec, status: "pending", rev: 0, liked: 0, updatedAt: Date.now() };
@@ -125,11 +126,20 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
   }
 }
 
-export async function generateAudioAsset(projectId: string, rec: AssetRecord): Promise<AssetUsage | null> {
+export async function generateAudioAsset(projectId: string, rec: AssetRecord, design?: GameDesign): Promise<AssetUsage | null> {
   const spec = rec.spec as AudioAssetSpec;
   if (!config.elevenlabs.key()) {
     await fail(projectId, rec, "Sin clave de ElevenLabs: el juego usa sonidos sintetizados.", "skipped");
     return null;
+  }
+  if (spec.kind === "voice") {
+    const cleaned = sanitizeVoicePrompt(spec.prompt, design?.cinematic?.lines);
+    if (cleaned && cleaned !== spec.prompt) {
+      spec.prompt = cleaned;
+      const dAudio = design?.assets.audio.find((a) => a.id === rec.id);
+      if (dAudio) dAudio.prompt = cleaned;
+      await patchAsset(projectId, rec.id, {});
+    }
   }
   await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
   try {
@@ -166,6 +176,6 @@ export async function generateModelAsset(projectId: string, rec: AssetRecord, de
 
 export function generateAsset(projectId: string, rec: AssetRecord, design: GameDesign, provider: ImageProvider) {
   if (rec.type === "image") return generateImageAsset(projectId, rec, design, provider);
-  if (rec.type === "audio") return generateAudioAsset(projectId, rec);
+  if (rec.type === "audio") return generateAudioAsset(projectId, rec, design);
   return generateModelAsset(projectId, rec, design);
 }

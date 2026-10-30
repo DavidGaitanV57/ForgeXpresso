@@ -25,10 +25,14 @@ Your module only contains the gameplay.
 - \`forge.rand()\`: seeded random in [0,1). \`forge.shake(intensity0to1)\`: screen shake handled by the runtime.
 - \`forge.paused\`: boolean; the runtime already stops your update while paused.
 - \`forge.cinematic\`: live intro state while the letterboxed cinematic plays:
-  \`{ active, t, duration, lineIndex, shotIndex, shot, direction }\`.
+  \`{ active, t, duration, lineIndex, shotIndex, shot, direction, progress }\`.
   \`direction\` is \`forge.design.cinematic.direction\` (approach, mood, shots[]) from the silent cinematic expert —
   unique per game. Implement \`onCinematic(dt, cine)\` on the object you return from createGame (Three) or next to \`scenes\` (Phaser)
-  to drive camera/parallax/staging. While \`forge.cinematic.active\`, skip normal gameplay input; restore the play camera when it ends.
+  to drive camera/parallax/staging ONLY. While \`forge.cinematic.active\`, skip normal gameplay input; restore the play camera when it ends.
+  CRITICAL — the runtime owns the letterbox bars, subtitles, title card, skip control and narration voice.
+  Do NOT draw your own cinematic UI, skip tip, subtitle planes, or play the narration clip again.
+  Do NOT boot the game in a DIY "cine" state that runs before/alongside the runtime intro — start in normal play;
+  the runtime plays the intro when cineAuto is on (or when the studio asks to watch it).
 `;
 
 const PHASER = `

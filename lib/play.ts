@@ -100,9 +100,17 @@ function ensureUi(design: Project["design"]) {
 
 export function buildPlayHtml(
   p: Project,
-  o: { base: string; gameUrl: string; version: number; fileUrl: (rel: string) => string; locale?: "es" | "en" | "fr" },
+  o: {
+    base: string;
+    gameUrl: string;
+    version: number;
+    fileUrl: (rel: string) => string;
+    locale?: "es" | "en" | "fr";
+    /** Optional design override (localized genre/tagline/objective for the start menu). */
+    design?: NonNullable<Project["design"]>;
+  },
 ) {
-  const design = ensureUi(p.design)!;
+  const design = ensureUi(o.design || p.design)!;
   const engine = design.engine;
   const locale = o.locale || detectDesignLocale(`${p.idea} ${design.title} ${design.objective} ${design.ui?.pauseMenu?.[0]?.label || ""}`);
   const boot = {
@@ -127,7 +135,7 @@ export function buildPlayHtml(
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>${escHtml(design.title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap">
 <link rel="stylesheet" href="${b}runtime/runtime.css">
 ${head}
 <script>window.FORGE_BOOT=${json(boot)};</script>
@@ -137,7 +145,7 @@ ${head}
 </html>`;
 }
 
-function detectDesignLocale(text: string): "es" | "en" | "fr" {
+export function detectDesignLocale(text: string): "es" | "en" | "fr" {
   if (/[àâäéèêëïîôùûüç]|forêt|jouer|vies|réglages|continuer/i.test(text)) return "fr";
   if (/[áéíóúñ¿¡]|puntos|vidas|jugar|continuar|ajustes/i.test(text)) return "es";
   return "en";

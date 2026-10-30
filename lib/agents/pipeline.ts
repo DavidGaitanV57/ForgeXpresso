@@ -4,12 +4,13 @@ import type { AnthropicUsage } from "../providers/anthropic";
 import { pool } from "../providers/http";
 import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
-import type { ApiProvider, AssetRecord, ChatMsg, GameDesign, Job, JobStage, Project, StageStatus, UsageEvent, UsageReport } from "../types";
+import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, Job, JobStage, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
 import { generateAsset, newRecord, recordsFromDesign } from "./assets";
 import { planChange } from "./chat";
 import { codeAgent } from "./code";
 import { runDirector } from "./director";
+import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const g = globalThis as unknown as { __forgeRunning?: Set<string> };
 const running = g.__forgeRunning ?? (g.__forgeRunning = new Set<string>());
@@ -287,7 +288,14 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
         }
         for (const t of plan.newTuning) if (!d.tuning.some((x) => x.key === t.key)) d.tuning.push(t);
         if (plan.title) d.title = plan.title;
-        if (plan.cinematicLines.length === 3) d.cinematic.lines = plan.cinematicLines;
+        if (plan.cinematicLines.length === 3) {
+          d.cinematic.lines = plan.cinematicLines;
+          const spoken = voicePromptFromLines(plan.cinematicLines);
+          const narrSpec = d.assets.audio.find((a) => a.kind === "voice" || a.id === "narration");
+          if (narrSpec && spoken) narrSpec.prompt = spoken;
+          const narrRec = Object.values(pp.assets).find((a) => a.type === "audio" && ((a.spec as AudioAssetSpec).kind === "voice" || a.id === "narration"));
+          if (narrRec && spoken) (narrRec.spec as AudioAssetSpec).prompt = spoken;
+        }
       });
       design = updated.design!;
       if (tuningTouched) emit(projectId, { type: "tuning", tuning: design.tuning });
@@ -301,7 +309,13 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       for (const r of plan.regenerate) {
         const a = pp.assets[r.id];
         if (!a || a.type === "model") continue;
-        if (r.prompt) (a.spec as { prompt: string }).prompt = r.prompt;
+        if (r.prompt) {
+          const spec = a.spec as { prompt: string; kind?: string };
+          spec.prompt =
+            a.type === "audio" && spec.kind === "voice"
+              ? sanitizeVoicePrompt(r.prompt, d.cinematic?.lines)
+              : r.prompt;
+        }
         a.liked = 0;
         toGenerate.push(a);
       }
@@ -313,6 +327,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       }
       for (const s of plan.newAudio) {
         if (pp.assets[s.id]) continue;
+        if (s.kind === "voice") s.prompt = sanitizeVoicePrompt(s.prompt, d.cinematic?.lines);
         d.assets.audio.push(s);
         pp.assets[s.id] = newRecord("audio", s);
         toGenerate.push(pp.assets[s.id]);
@@ -435,10 +450,16 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
     if (!p?.design || !rec) return;
     const ctl = await startJob(projectId, "asset", [{ id: "assets", label: rec.name }]);
     if (prompt) {
+      const cleaned =
+        rec.type === "audio" && (rec.spec as AudioAssetSpec).kind === "voice"
+          ? sanitizeVoicePrompt(prompt, p.design.cinematic?.lines)
+          : prompt;
       await updateProject(projectId, (pp) => {
-        (pp.assets[assetId].spec as { prompt: string }).prompt = prompt;
+        (pp.assets[assetId].spec as { prompt: string }).prompt = cleaned;
+        const dAudio = pp.design?.assets.audio.find((a) => a.id === assetId);
+        if (dAudio) dAudio.prompt = cleaned;
       });
-      (rec.spec as { prompt: string }).prompt = prompt;
+      (rec.spec as { prompt: string }).prompt = cleaned;
     }
     await ctl.stage("assets", "run", "Generando");
     const u = await generateAsset(projectId, rec, p.design, p.imageProvider);
