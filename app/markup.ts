@@ -11,7 +11,10 @@ export const MARKUP = `
 </div>
 <section class="intro" id="intro">
   <div class="intro-in" id="introIn">
-    <span class="mascot mark" aria-hidden="true"></span>
+    <div class="intro-mascot" id="introMascot" aria-hidden="true">
+      <span class="mascot mark" id="introMascot2d"></span>
+      <canvas class="mascot-3d" id="introMascot3d" hidden></canvas>
+    </div>
     <h1 data-i18n-html="intro.title">¿Qué juego quieres <span>forjar</span> hoy?</h1>
     <p class="sub" data-i18n="intro.sub">Descríbelo con tus palabras. Un equipo de agentes diseña el juego, dibuja el arte, compone la música y escribe el código para que lo juegues en minutos.</p>
     <form class="ask" id="askForm" autocomplete="off">
@@ -149,7 +152,7 @@ export const MARKUP = `
       <small class="pro-note mono" style="--d:.34" data-i18n="pro.note">Para estudios autorizados · acceso por invitación</small>
       <div class="pro-import" style="--d:.42">
         <span class="mascot" aria-hidden="true"></span>
-        <div><b><span data-i18n="pro.importLead">Tu prototipo</span> <span id="proProj"></span> <span data-i18n="pro.importTail">está listo para importar</span></b><span id="proMeta"></span></div>
+        <div><b><span data-i18n="pro.importLead">Tu juego</span> <span id="proProj"></span> <span data-i18n="pro.importTail">está listo para importar</span></b><span id="proMeta"></span></div>
         <button type="button" class="btn small" id="proImport" data-i18n="pro.import">Importar</button>
       </div>
     </div>
@@ -162,13 +165,13 @@ export const MARKUP = `
           <path d="M150 196 C 190 196, 200 262, 262 262"/>
         </svg>
         <div class="pw-stack"><div class="pc" style="--r:-14deg;--i:0"><div class="pc-img" data-pk="0"></div><span>concept_seeds #1</span></div><div class="pc" style="--r:-6deg;--i:1"><div class="pc-img" data-pk="1"></div><span>concept_seeds #2</span></div><div class="pc" style="--r:4deg;--i:2"><div class="pc-img" data-pk="2"></div><span>moodboard</span></div></div>
-        <div class="node on" style="left:5%;top:52%;--i:0"><div class="nh"><span>1.1</span><i></i></div><div class="nr"><em>—</em></div><div class="nf"><span>CREATIVE</span><b>✓</b></div></div>
-        <div class="node" style="left:49%;top:29%;--i:1"><div class="nh"><span>1.2</span><i></i></div><div class="nf"><span>ANALYSIS</span><b>2</b></div></div>
-        <div class="node" style="left:49%;top:73%;--i:2"><div class="nh"><span>1.3</span><i></i></div><div class="nf"><span>ANALYSIS</span><b>2</b></div></div>
-        <div class="node" style="left:73%;top:62%;--i:3"><div class="nh"><span>1.4</span><i></i></div><div class="nf"><span>DECISION</span><b>3</b></div></div>
+        <div class="node on" style="left:5%;top:52%;--i:0"><div class="nh"><span>1.1 <span data-i18n="pro.n1">Exploración de concepto</span></span><i></i></div><div class="nr"><em data-i18n="pro.n1r">3 imágenes generadas</em></div><div class="nf"><span>CREATIVE</span><b>✓</b></div></div>
+        <div class="node" style="left:49%;top:29%;--i:1"><div class="nh"><span>1.2 <span data-i18n="pro.n2">Mercado</span></span><i></i></div><div class="nf"><span>ANALYSIS</span><b>2</b></div></div>
+        <div class="node" style="left:49%;top:73%;--i:2"><div class="nh"><span>1.3 <span data-i18n="pro.n3">Audiencia</span></span><i></i></div><div class="nf"><span>ANALYSIS</span><b>2</b></div></div>
+        <div class="node" style="left:73%;top:62%;--i:3"><div class="nh"><span>1.4 <span data-i18n="pro.n4">Selección de concepto</span></span><i></i></div><div class="nf"><span>DECISION</span><b>3</b></div></div>
         <div class="pw-ai">
           <div class="ah"><span class="mascot" aria-hidden="true"></span><b>Forge Assistant</b><em class="mono">1.1</em></div>
-          <div class="ab you">Explore 3 concept directions.</div>
+          <div class="ab you" data-i18n="pro.ask">Explora 3 direcciones de concepto para el pitch.</div>
           <div class="ab bot" id="proBot"></div>
           <div class="ai-in"><span>…</span><i>→</i></div>
         </div>

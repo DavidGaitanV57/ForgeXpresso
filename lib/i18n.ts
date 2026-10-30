@@ -1,5 +1,7 @@
 /** Platform UI i18n: device default + ES / EN / FR. */
 
+import { LANDING } from "./i18n-landing";
+
 export type Locale = "es" | "en" | "fr";
 
 export const LOCALES: { id: Locale; label: string; native: string }[] = [
@@ -328,8 +330,8 @@ const es: Dict = {
   "pro.what2": "Ver qué hace Forge",
   "pro.home": "Volver a mi juego",
   "pro.import": "Importar",
-  "pro.importReady": "Tu prototipo {name} está listo para importar",
-  "pro.importLead": "Tu prototipo",
+  "pro.importReady": "Tu juego {name} está listo para importar",
+  "pro.importLead": "Tu juego",
   "pro.importTail": "está listo para importar",
   "pro.note": "Para estudios autorizados · acceso por invitación",
   "pro.pill": "FORGE PRO · PRODUCCIÓN DE JUEGOS CON IA",
@@ -339,6 +341,12 @@ const es: Dict = {
   "pro.featP": "Un solo pipeline que lleva un concepto más allá del prototipo: hacia un resultado documentado, con recursos y jugable.",
   "pro.foot": "Forge Pro es una vista previa dentro de Forge Xpresso · el acceso real es por invitación",
   "pro.toast": "Vista previa: el acceso a <b>Forge Pro</b> es por invitación para estudios",
+  "pro.ask": "Explora 3 direcciones de concepto para el pitch.",
+  "pro.n1": "Exploración de concepto",
+  "pro.n1r": "3 imágenes generadas",
+  "pro.n2": "Mercado",
+  "pro.n3": "Audiencia",
+  "pro.n4": "Selección de concepto",
 
   "runtime.pause": "Pausa",
   "runtime.settings": "Ajustes",
@@ -672,8 +680,8 @@ const en: Dict = {
   "pro.what2": "See what Forge does",
   "pro.home": "Back to my game",
   "pro.import": "Import",
-  "pro.importReady": "Your prototype {name} is ready to import",
-  "pro.importLead": "Your prototype",
+  "pro.importReady": "Your game {name} is ready to import",
+  "pro.importLead": "Your game",
   "pro.importTail": "is ready to import",
   "pro.note": "For authorized studios · invite-only access",
   "pro.pill": "FORGE PRO · AI GAME PRODUCTION",
@@ -683,6 +691,12 @@ const en: Dict = {
   "pro.featP": "One pipeline that takes a concept past the prototype: documented, asset-rich, and playable.",
   "pro.foot": "Forge Pro is a preview inside Forge Xpresso · real access is invite-only",
   "pro.toast": "Preview: <b>Forge Pro</b> access is invite-only for studios",
+  "pro.ask": "Explore 3 concept directions for the pitch.",
+  "pro.n1": "Concept exploration",
+  "pro.n1r": "3 images generated",
+  "pro.n2": "Market",
+  "pro.n3": "Audience",
+  "pro.n4": "Concept selection",
 
   "runtime.pause": "Paused",
   "runtime.settings": "Settings",
@@ -1016,8 +1030,8 @@ const fr: Dict = {
   "pro.what2": "Voir ce que fait Forge",
   "pro.home": "Retour à mon jeu",
   "pro.import": "Importer",
-  "pro.importReady": "Ton prototype {name} est prêt à importer",
-  "pro.importLead": "Ton prototype",
+  "pro.importReady": "Ton jeu {name} est prêt à importer",
+  "pro.importLead": "Ton jeu",
   "pro.importTail": "est prêt à importer",
   "pro.note": "Pour studios autorisés · accès sur invitation",
   "pro.pill": "FORGE PRO · PRODUCTION DE JEUX PAR IA",
@@ -1027,6 +1041,12 @@ const fr: Dict = {
   "pro.featP": "Un seul pipeline qui mène un concept au-delà du prototype : documenté, avec ressources, et jouable.",
   "pro.foot": "Forge Pro est un aperçu dans Forge Xpresso · l’accès réel est sur invitation",
   "pro.toast": "Aperçu : l’accès à <b>Forge Pro</b> est sur invitation pour les studios",
+  "pro.ask": "Explore 3 directions de concept pour le pitch.",
+  "pro.n1": "Exploration de concept",
+  "pro.n1r": "3 images générées",
+  "pro.n2": "Marché",
+  "pro.n3": "Audience",
+  "pro.n4": "Choix du concept",
 
   "runtime.pause": "Pause",
   "runtime.settings": "Réglages",
@@ -1044,7 +1064,11 @@ const fr: Dict = {
   "runtime.loading": "Chargement de {title}…",
 };
 
-const TABLES: Record<Locale, Dict> = { es, en, fr };
+const TABLES: Record<Locale, Dict> = {
+  es: { ...es, ...LANDING.es },
+  en: { ...en, ...LANDING.en },
+  fr: { ...fr, ...LANDING.fr },
+};
 
 let current: Locale = "es";
 
@@ -1085,7 +1109,7 @@ export function setLocale(locale: Locale) {
 
 export function t(key: string, vars?: Record<string, string | number>): string {
   const table = TABLES[current] || es;
-  let s = table[key] ?? es[key] ?? key;
+  let s = table[key] ?? TABLES.es[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   }

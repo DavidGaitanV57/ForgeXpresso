@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import "./forge.css";
-import "./forge-extra.css";
 
 export const metadata: Metadata = {
   title: "Forge Xpresso",
   description: "Genera juegos 2D, 2.5D y 3D con agentes de IA: diseño, arte, audio y código.",
+  icons: { icon: "/brand/forgy.png" },
 };
 
 export const viewport: Viewport = {

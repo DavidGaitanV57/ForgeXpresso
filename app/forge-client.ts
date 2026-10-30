@@ -373,7 +373,185 @@ async function initIntro() {
 function setIntroDim(d: Dimension) {
   S.dim = d;
   $$(".dimsw button[data-d]").forEach((x) => x.classList.toggle("on", x.dataset.d === d));
+  void syncIntroMascot();
 }
+
+/** Drop Forgy GLB at public/brand/forgy.glb — until then intro 3D uses an orange debug sphere. */
+const FORGY_GLB = "/brand/forgy.glb";
+const intro3d = {
+  ready: false,
+  usingPlaceholder: false,
+  loading: null as Promise<boolean> | null,
+  raf: 0,
+  root: null as { rotation: { y: number } } | null,
+  scene: null as { add: (o: unknown) => void; remove: (o: unknown) => void } | null,
+  placeholder: null as { parent?: unknown } | null,
+  render: null as null | (() => void),
+  dispose: null as null | (() => void),
+};
+function stopIntroMascot3d(full = false) {
+  if (intro3d.raf) cancelAnimationFrame(intro3d.raf);
+  intro3d.raf = 0;
+  if (!full) return;
+  intro3d.dispose?.();
+  intro3d.dispose = null;
+  intro3d.render = null;
+  intro3d.root = null;
+  intro3d.scene = null;
+  intro3d.placeholder = null;
+  intro3d.ready = false;
+  intro3d.usingPlaceholder = false;
+  intro3d.loading = null;
+}
+function startIntroMascotLoop() {
+  if (!intro3d.render || intro3d.raf) return;
+  const tick = () => {
+    if (intro3d.root) intro3d.root.rotation.y += 0.012;
+    intro3d.render?.();
+    intro3d.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+function showIntroMascot3dUi(on: boolean) {
+  const wrap = document.querySelector<HTMLElement>("#introMascot");
+  const cv = document.querySelector<HTMLCanvasElement>("#introMascot3d");
+  if (!wrap || !cv) return;
+  wrap.classList.toggle("is-3d", on);
+  cv.hidden = !on;
+}
+async function bootIntroMascotScene(): Promise<boolean> {
+  if (intro3d.render) return true;
+  const cv = document.querySelector<HTMLCanvasElement>("#introMascot3d");
+  if (!cv) return false;
+  const THREE = await import("three");
+  const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: "low-power" });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setSize(140, 140, false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  const scene = new THREE.Scene();
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.add(new THREE.HemisphereLight(0xffe6c8, 0x2a2030, 0.95));
+  const key = new THREE.DirectionalLight(0xfff2dd, 1.35);
+  key.position.set(2.2, 3.4, 1.6);
+  scene.add(key);
+  // Models are normalized to a bounding sphere of radius 0.5 at the origin; frame that sphere with a small margin.
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.01, 20);
+  const fitDist = (0.5 / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2))) * 1.06;
+  cam.position.set(0.55, 0.35, 1.55).setLength(fitDist);
+  cam.lookAt(0, 0, 0);
+  intro3d.scene = scene;
+  intro3d.render = () => renderer.render(scene, cam);
+  intro3d.dispose = () => {
+    if (intro3d.raf) cancelAnimationFrame(intro3d.raf);
+    intro3d.raf = 0;
+    renderer.dispose();
+    pm.dispose();
+    scene.environment = null;
+  };
+  return true;
+}
+async function tryLoadForgyGlb(): Promise<boolean> {
+  const head = await fetch(FORGY_GLB, { method: "HEAD", cache: "no-cache" }).catch(() => null);
+  if (!head?.ok) return false;
+  const THREE = await import("three");
+  const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+  const gltf = await new GLTFLoader().loadAsync(FORGY_GLB);
+  if (S.dim !== "3d" || S.screen !== "intro" || !intro3d.scene) return false;
+  const root = gltf.scene;
+  root.traverse((c: { isMesh?: boolean; material?: unknown; castShadow?: boolean }) => {
+    if (!c.isMesh) return;
+    c.castShadow = false;
+    const mats = Array.isArray(c.material) ? c.material : c.material ? [c.material] : [];
+    for (const m of mats as { side?: number; map?: unknown; transparent?: boolean; opacity?: number; alphaTest?: number; metalness?: number; roughness?: number; needsUpdate?: boolean }[]) {
+      if (!m) continue;
+      m.side = THREE.DoubleSide;
+      if (m.map && m.transparent && (m.opacity ?? 1) >= 0.99 && (m.alphaTest == null || m.alphaTest < 0.05)) {
+        m.alphaTest = 0.35;
+        m.transparent = false;
+      }
+      if (typeof m.metalness === "number" && m.metalness > 0.35) m.metalness = Math.min(m.metalness, 0.25);
+      if (typeof m.roughness === "number" && m.roughness < 0.4) m.roughness = 0.55;
+      m.needsUpdate = true;
+    }
+  });
+  const box = new THREE.Box3().setFromObject(root);
+  const center = box.getCenter(new THREE.Vector3());
+  const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.001);
+  root.position.sub(center);
+  const pivot = new THREE.Group();
+  pivot.add(root);
+  pivot.scale.setScalar(0.5 / radius);
+  if (intro3d.placeholder) {
+    intro3d.scene.remove(intro3d.placeholder);
+    intro3d.placeholder = null;
+  }
+  intro3d.scene.add(pivot);
+  intro3d.root = pivot;
+  intro3d.usingPlaceholder = false;
+  intro3d.ready = true;
+  return true;
+}
+async function ensureIntroMascot3d(): Promise<boolean> {
+  if (intro3d.ready) return true;
+  if (intro3d.loading) return intro3d.loading;
+  intro3d.loading = (async () => {
+    try {
+      if (!(await bootIntroMascotScene())) return false;
+      // Prefer real Forgy; otherwise keep orange sphere as the stand-in model.
+      const loaded = await tryLoadForgyGlb().catch((e) => {
+        console.warn("[forge] intro Forgy 3D", e);
+        return false;
+      });
+      if (!loaded) {
+        const THREE = await import("three");
+        if (!intro3d.placeholder && intro3d.scene) {
+          const placeholder = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 32, 24),
+            new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.45, metalness: 0.15, emissive: 0xff4f1a, emissiveIntensity: 0.22 }),
+          );
+          intro3d.scene.add(placeholder);
+          intro3d.placeholder = placeholder;
+          intro3d.root = placeholder;
+          intro3d.usingPlaceholder = true;
+        }
+      }
+      return true;
+    } catch (e) {
+      console.warn("[forge] intro mascot 3D", e);
+      return false;
+    } finally {
+      intro3d.loading = null;
+    }
+  })();
+  return intro3d.loading;
+}
+async function syncIntroMascot() {
+  const want3d = S.dim === "3d" && S.screen === "intro";
+  if (!want3d) {
+    stopIntroMascot3d(false);
+    showIntroMascot3dUi(false);
+    return;
+  }
+  // Placeholder mode: re-check for forgy.glb each time user picks 3D.
+  if (intro3d.usingPlaceholder && !intro3d.ready) {
+    const head = await fetch(FORGY_GLB, { method: "HEAD", cache: "no-cache" }).catch(() => null);
+    if (head?.ok) {
+      stopIntroMascot3d(true);
+    }
+  }
+  const ok = await ensureIntroMascot3d();
+  if (!ok || S.dim !== "3d" || S.screen !== "intro") {
+    showIntroMascot3dUi(false);
+    return;
+  }
+  showIntroMascot3dUi(true);
+  startIntroMascotLoop();
+}
+
 async function loadProjects() {
   try {
     const list = await api<ProjectSummary[]>("/api/projects");
@@ -417,15 +595,16 @@ async function openProjectById(id: string) {
     openProject(p);
   } catch (e) {
     toast(esc((e as Error).message));
-    history.replaceState(null, "", "/");
+    history.replaceState(null, "", "/studio");
   }
 }
 function openProject(p: Project) {
   S.p = p;
   S.gameVersion = 0;
   S.repairAsked = 0;
-  history.replaceState(null, "", `/?p=${encodeURIComponent(p.id)}`);
+  history.replaceState(null, "", `/studio?p=${encodeURIComponent(p.id)}`);
   connect(p.id);
+  stopIntroMascot3d(true);
   $("#intro").hidden = true;
   $("#intro").classList.remove("leaving");
   const creating = p.status !== "ready" || (p.job?.kind === "create" && !p.job.finishedAt);
@@ -1872,7 +2051,7 @@ function goLobby() {
     S.p = null;
     setScreen("intro");
     document.title = "Forge Xpresso";
-    history.replaceState(null, "", "/");
+    history.replaceState(null, "", "/studio");
     const it = $("#intro");
     it.classList.remove("leaving");
     it.classList.add("back");
@@ -1881,6 +2060,7 @@ function goLobby() {
     $<HTMLButtonElement>("#askSend").disabled = true;
     window.scrollTo(0, 0);
     setTimeout(() => it.classList.remove("back"), 600);
+    void syncIntroMascot();
     void loadProjects();
   }, 380);
 }
@@ -1979,6 +2159,7 @@ function onLocaleClick(e: MouseEvent) {
 let mountAbort: AbortController | null = null;
 export function mount() {
   mountAbort?.abort();
+  stopIntroMascot3d(true);
   mountAbort = new AbortController();
   const { signal } = mountAbort;
 
@@ -2405,6 +2586,9 @@ export function mount() {
   void initIntro().then(() => {
     const id = new URLSearchParams(location.search).get("p");
     if (id) void openProjectById(id);
-    else askIn.focus({ preventScroll: true });
+    else {
+      void syncIntroMascot();
+      askIn.focus({ preventScroll: true });
+    }
   });
 }

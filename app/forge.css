@@ -298,7 +298,11 @@ button.brand:hover svg{animation:flick .8s ease-in-out infinite}
 .brand .mascot{height:30px;filter:drop-shadow(0 0 10px rgba(255,122,26,.45))}
 button.brand:hover .mascot{animation:hop .6s ease}
 @keyframes hop{30%{transform:translateY(-5px) rotate(-6deg)}60%{transform:translateY(0) rotate(3deg)}}
+.intro-mascot{position:relative;width:140px;height:140px;display:grid;place-items:center;flex:none;margin:0 auto}
 .intro .mascot.mark{width:auto;height:118px;filter:drop-shadow(0 0 24px rgba(255,122,26,.5));animation:bob 2.6s ease-in-out infinite}
+.intro-mascot .mascot-3d{width:140px;height:140px;display:block;filter:drop-shadow(0 0 24px rgba(255,122,26,.5));touch-action:none}
+.intro-mascot.is-3d .mascot.mark{display:none}
+.intro-mascot.is-3d .mascot-3d{animation:bob 2.6s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
 .ld-mark .mascot{height:44px;filter:drop-shadow(0 0 12px rgba(255,122,26,.6));animation:bob 1.4s ease-in-out infinite}
 .loader .ld-mark{filter:grayscale(var(--gray,1)) brightness(var(--bri,.7));transition:filter .25s linear}
