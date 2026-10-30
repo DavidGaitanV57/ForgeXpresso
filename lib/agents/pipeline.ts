@@ -387,7 +387,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
     await updateProject(projectId, (pp) => {
       const d = pp.design!;
       for (const r of plan.regenerate) {
-        let a = pp.assets[r.id];
+        let a: AssetRecord | undefined = pp.assets[r.id];
         // Missing *_3d: create from text prompt (preferred) or legacy paired image.
         if (!a && models3d && r.id.endsWith("_3d")) {
           const imgId = r.id.slice(0, -3);

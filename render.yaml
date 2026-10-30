@@ -1,0 +1,38 @@
+# Render Blueprint: one Node web service with a persistent disk for the projects.
+# A disk needs a paid instance (Free has none and wipes data/ on every restart).
+services:
+  - type: web
+    name: forgexpresso
+    runtime: node
+    plan: starter
+    branch: despliegue-render
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    disk:
+      name: forge-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: FORGE_DATA_DIR
+        value: /var/data/projects
+      - key: FORGE_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL_CODE
+        value: claude-opus-5-5
+      - key: ANTHROPIC_MODEL_FAST
+        value: claude-sonnet-5-5
+      - key: IMAGE_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_IMAGE_MODEL
+        value: gpt-image-2.5-sunburst
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: TRIPO_API_KEY
+        sync: false
