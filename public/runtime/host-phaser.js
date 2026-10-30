@@ -6,7 +6,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export async function createHost(createGame, ctx) {
   const Phaser = window.Phaser;
-  if (!Phaser) throw new Error("Phaser no está cargado");
+  if (!Phaser) throw new Error("Phaser is not loaded");
   const { forge, stage, manifest, boot, input, onProgress } = ctx;
   let game = null;
   let debug = false;
@@ -56,7 +56,7 @@ export async function createHost(createGame, ctx) {
             this.textures.addCanvas("forge-dot", c);
           }
           const first = this.scene.manager.scenes.find((s) => s.sys.settings.key !== "__forge_boot");
-          if (!first) return reject(new Error("No hay escenas de juego"));
+          if (!first) return reject(new Error("No game scenes"));
           this.scene.start(first.sys.settings.key);
           resolve();
         }
@@ -112,6 +112,44 @@ export async function createHost(createGame, ctx) {
     });
   }
 
+  function replaceImage(id, url) {
+    if (!game) return Promise.resolve(false);
+    const bust = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now().toString(36);
+    return new Promise((resolve) => {
+      const scene = game.scene.getScenes(true)[0] || game.scene.scenes[0];
+      if (!scene) return resolve(false);
+      const key = id;
+      const onDone = () => {
+        try {
+          if (!game.textures.exists(key)) return resolve(false);
+          const tex = game.textures.get(key);
+          const meta = manifest.images.find((i) => i.id === id);
+          if (meta) {
+            meta.url = url;
+            const src = tex.getSourceImage();
+            meta.width = src.width;
+            meta.height = src.height;
+            meta.ready = true;
+          }
+          for (const sc of game.scene.getScenes(true)) {
+            sc.children?.list?.forEach((obj) => {
+              if (obj?.texture?.key === key && typeof obj.setTexture === "function") obj.setTexture(key);
+            });
+          }
+          resolve(true);
+        } catch (e) {
+          console.warn("[forge] replaceImage failed", id, e);
+          resolve(false);
+        }
+      };
+      scene.load.once(Phaser.Loader.Events.COMPLETE, onDone);
+      scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve(false));
+      if (game.textures.exists(key)) game.textures.remove(key);
+      scene.load.image(key, bust);
+      scene.load.start();
+    });
+  }
+
   return {
     start: () => build(),
     pause() {
@@ -124,6 +162,7 @@ export async function createHost(createGame, ctx) {
       await destroy();
       await build();
     },
+    replaceImage,
     setDebug(on) {
       debug = on;
       if (!game) return;
@@ -234,9 +273,34 @@ function helpers(Phaser, forge) {
       };
     },
     parallax(scene, id, factor = 0.5, o = {}) {
+      const meta = forge.assets.image(id);
+      const tile = o.tile != null ? !!o.tile : !!meta?.seamless;
       const src = scene.textures.get(id).getSourceImage();
       const h = o.height ?? H;
       const s = h / Math.max(1, src.height);
+      const cam = scene.cameras.main;
+      // Non-seamless scenic backdrops must NOT wrap — tiling/duplicating them creates a hard vertical seam.
+      if (!tile) {
+        const img = scene.add
+          .image(W / 2, o.y ?? 0, id)
+          .setOrigin(0.5, 0)
+          .setScrollFactor(0)
+          .setDepth(o.depth ?? -100)
+          .setDisplaySize(Math.max(W * 1.2, src.width * s), h);
+        if (o.alpha != null) img.setAlpha(o.alpha);
+        if (o.tint != null) img.setTint(toColor(o.tint));
+        const maxShift = Math.max(0, (img.displayWidth - W) / 2);
+        const upd = () => {
+          if (!img.active) return;
+          const shift = clamp(cam.scrollX * factor * 0.08, -maxShift, maxShift);
+          img.x = W / 2 - shift;
+          if (o.vertical) img.y = (o.y ?? 0) - cam.scrollY * factor * 0.05;
+        };
+        scene.events.on("update", upd);
+        img.once("destroy", () => scene.events.off("update", upd));
+        upd();
+        return img;
+      }
       const ts = scene.add
         .tileSprite(0, o.y ?? 0, W, h, id)
         .setOrigin(0, 0)
@@ -245,7 +309,6 @@ function helpers(Phaser, forge) {
       ts.setTileScale(s, s);
       if (o.alpha != null) ts.setAlpha(o.alpha);
       if (o.tint != null) ts.setTint(toColor(o.tint));
-      const cam = scene.cameras.main;
       const upd = () => {
         if (!ts.active) return;
         ts.tilePositionX = (cam.scrollX * factor) / s;
@@ -256,8 +319,31 @@ function helpers(Phaser, forge) {
       return ts;
     },
     tiles(scene, id, x, y, w, h) {
+      const meta = forge.assets.image(id);
       const src = scene.textures.get(id).getSourceImage();
       const s = h / Math.max(1, src.height);
+      // Scenic (non-seamless) assets must never wrap — TileSprite seams are the classic "vertical cut".
+      if (meta && meta.seamless === false) {
+        const dw = Math.max(w * 1.35, src.width * s);
+        const img = scene.add.image(x, y, id).setOrigin(0, 0).setDisplaySize(dw, h);
+        let tx = 0;
+        const max = Math.max(0, dw - w);
+        Object.defineProperty(img, "tilePositionX", {
+          get: () => tx,
+          set: (v) => {
+            tx = +v || 0;
+            img.x = x - clamp(tx * 0.12, 0, max);
+          },
+        });
+        Object.defineProperty(img, "tilePositionY", {
+          get: () => 0,
+          set: () => {},
+        });
+        Object.defineProperty(img, "tileScaleX", { get: () => s, set: () => {} });
+        Object.defineProperty(img, "tileScaleY", { get: () => s, set: () => {} });
+        img.setTileScale = () => img;
+        return img;
+      }
       const ts = scene.add.tileSprite(x, y, w, h, id).setOrigin(0, 0);
       ts.setTileScale(s, s);
       return ts;

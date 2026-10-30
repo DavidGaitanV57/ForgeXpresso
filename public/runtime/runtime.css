@@ -68,6 +68,10 @@ kbd{display:inline-block;min-width:22px;padding:2px 6px;border-radius:6px;backgr
 .fx-touch div{display:flex;gap:12px;pointer-events:auto}
 .fx-touch button{width:64px;height:64px;border-radius:50%;border:1px solid var(--fx-line);background:rgba(255,255,255,.1);color:#fff;font-size:22px;backdrop-filter:blur(6px);touch-action:none}
 .fx-touch button.on{background:rgba(255,122,26,.45)}
-.fx-pausebtn{position:absolute;right:12px;top:10px;z-index:9;width:36px;height:36px;border-radius:50%;border:1px solid var(--fx-line);background:var(--fx-glass);color:#fff;cursor:pointer;display:none;align-items:center;justify-content:center}
-.standalone .fx-pausebtn,.touch .fx-pausebtn{display:flex}
+.fx-pausebtn{position:absolute;right:12px;top:10px;z-index:9;width:36px;height:36px;border-radius:50%;border:1px solid var(--fx-line);background:var(--fx-glass);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .fx-pausebtn svg{width:14px;height:14px}
+.fx-set{margin:12px 0 16px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--fx-line);text-align:left;display:flex;flex-direction:column;gap:10px}
+.fx-set label{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;font-size:13px;font-weight:600}
+.fx-set label span{opacity:.9}
+.fx-set label b{font-variant-numeric:tabular-nums;font-size:12px;opacity:.7;justify-self:end}
+.fx-set input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--fx-accent);cursor:pointer;height:22px}

@@ -1,10 +1,11 @@
-/* Forge Light studio controller: wires the original UI to the generation API (SSE + REST) and the sandboxed game iframe. */
+/* Forge Xpresso studio controller: wires the original UI to the generation API (SSE + REST) and the sandboxed game iframe. */
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, Dimension, ForgeEvent, ImageAssetSpec, ImageProvider, Job, Project, TuningParam, UsageReport } from "@/lib/types";
 import { formatDuration, formatUsd, PROVIDER_LABEL as API_LABEL } from "@/lib/usage";
+import { applyDomI18n, getLocale, initLocale, setLocale, t, type Locale } from "@/lib/i18n";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
 type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null };
-type GameMsg = { source: "forge-game"; projectId: string; version: number; type: string; screen?: string; message?: string; stack?: string; phase?: string };
+type GameMsg = { source: "forge-game"; projectId: string; version: number; type: string; screen?: string; message?: string; stack?: string; phase?: string; reason?: string };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string, root: ParentNode = document) => Array.from(root.querySelectorAll(s)) as T[];
@@ -34,31 +35,17 @@ const IC_VOICE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const IC_SFX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 const IC_CUBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>';
 
-const ROLE_LABEL: Record<string, string> = {
-  hero: "Héroe", enemy: "Enemigo", npc: "Personaje", collectible: "Coleccionable", hazard: "Peligro", prop: "Objeto", platform: "Plataforma",
-  tile: "Bloque", goal: "Meta", background: "Fondo", texture: "Textura", ui: "Interfaz", portrait: "Retrato",
-};
-const AUDIO_LABEL: Record<string, string> = { music: "Música", sfx: "Efecto de sonido", voice: "Voz" };
+const ROLE_KEYS = ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait"] as const;
+const roleLabel = (role: string) => (ROLE_KEYS.includes(role as (typeof ROLE_KEYS)[number]) ? t(`role.${role}`) : t("role.image"));
+const audioLabel = (kind: string) => (kind === "music" || kind === "sfx" || kind === "voice" ? t(`audio.${kind}`) : kind);
 const ORDER = ["hero", "enemy", "npc", "collectible", "hazard", "goal", "platform", "tile", "prop", "background", "texture", "portrait", "ui", "model", "music", "voice", "sfx"];
 const COVER_ROLES = new Set(["background", "texture", "portrait"]);
 const DIM_LABEL: Record<Dimension, string> = { "2d": "2D", "2.5d": "2.5D", "3d": "3D" };
 const PROVIDER_LABEL: Record<ImageProvider, string> = { openai: "OpenAI", minimax: "MiniMax" };
 
-const IDEAS: [string, Dimension][] = [
-  ["Un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas", "2d"],
-  ["Un shoot'em up espacial con jefes gigantes y power-ups de colores", "2d"],
-  ["Un plataformero 2.5D en un bosque encantado con luciérnagas y setas que rebotan", "2.5d"],
-  ["Un juego de carreras 3D en un desierto con dunas, rampas y turbo", "3d"],
-  ["Un explorador 3D en tercera persona que recolecta cristales en ruinas flotantes", "3d"],
-];
-const TIPS = [
-  "El director escribe un documento de diseño antes de tocar una línea de código",
-  "Las imágenes, el audio y el código se generan en paralelo",
-  "Después podrás pedir cambios con tus palabras, incluso mientras juegas",
-  "Marca con “me gusta” los recursos que quieras conservar",
-  "Si algo falla al jugar, Forge lo detecta y lo repara solo",
-  "Cada cambio crea una versión nueva: puedes volver atrás cuando quieras",
-];
+const IDEA_DIMS: Dimension[] = ["2d", "2d", "2.5d", "3d", "3d"];
+const ideasList = (): [string, Dimension][] => IDEA_DIMS.map((d, i) => [t(`idea.${i + 1}`), d]);
+const tipsList = () => [1, 2, 3, 4, 5, 6].map((i) => t(`tip.${i}`));
 
 /* ================= State ================= */
 const S = {
@@ -73,6 +60,7 @@ const S = {
   open: 0,
   playing: false,
   sound: true,
+  volume: 0.9,
   debug: false,
   gameVersion: 0,
   gameReady: false,
@@ -84,7 +72,7 @@ const S = {
 const FILE = (a: AssetRecord) => (S.p && a.file ? `/api/files/${S.p.id}/${a.file}` : "");
 const assets = () => (S.p ? Object.values(S.p.assets) : []);
 const roleOf = (a: AssetRecord) => (a.type === "image" ? (a.spec as ImageAssetSpec).role : a.type === "audio" ? (a.spec as AudioAssetSpec).kind : "model");
-const kindOf = (a: AssetRecord) => (a.type === "image" ? ROLE_LABEL[roleOf(a)] || "Imagen" : a.type === "audio" ? AUDIO_LABEL[roleOf(a)] || "Audio" : "Modelo 3D");
+const kindOf = (a: AssetRecord) => (a.type === "image" ? roleLabel(roleOf(a)) : a.type === "audio" ? audioLabel(roleOf(a)) : t("kind.model"));
 const sorted = (list: AssetRecord[]) => list.slice().sort((a, b) => ORDER.indexOf(roleOf(a)) - ORDER.indexOf(roleOf(b)) || a.name.localeCompare(b.name));
 const jobRunning = () => !!S.p?.job && !S.p.job.finishedAt;
 const design = () => S.p?.design;
@@ -122,7 +110,7 @@ function loadGame(force = false) {
   if (!p || !fr) return;
   if (!p.versions.length) {
     fr.removeAttribute("src");
-    showVpErr("Este juego todavía no tiene código. Pide a Forge que lo intente de nuevo.", "retry");
+    showVpErr(t("vp.noCode"), "retry");
     return;
   }
   if (!force && S.gameVersion === p.currentVersion && fr.getAttribute("src")) return;
@@ -130,7 +118,7 @@ function loadGame(force = false) {
   S.gameReady = false;
   S.gameScreen = "";
   hideVpErr();
-  fr.src = `/play/${p.id}?v=${p.currentVersion}&t=${Date.now().toString(36)}`;
+  fr.src = `/play/${p.id}?v=${p.currentVersion}&lang=${encodeURIComponent(getLocale())}&t=${Date.now().toString(36)}`;
 }
 function reloadGameSoon() {
   clearTimeout(reloadT);
@@ -139,7 +127,7 @@ function reloadGameSoon() {
 function showVpErr(text: string, action?: "repair" | "retry") {
   const el = $("#vpErr");
   el.hidden = false;
-  el.innerHTML = `<span title="${esc(text)}">${esc(text)}</span>${action === "repair" ? '<button class="btn small" type="button" data-vperr="repair">Reparar</button>' : action === "retry" ? '<button class="btn small" type="button" data-vperr="retry">Reintentar</button>' : ""}<button class="iconbtn" type="button" data-vperr="x" aria-label="Cerrar" style="width:26px;height:26px">×</button>`;
+  el.innerHTML = `<span title="${esc(text)}">${esc(text)}</span>${action === "repair" ? `<button class="btn small" type="button" data-vperr="repair">${esc(t("vp.repair"))}</button>` : action === "retry" ? `<button class="btn small" type="button" data-vperr="retry">${esc(t("vp.retry"))}</button>` : ""}<button class="iconbtn" type="button" data-vperr="x" aria-label="${esc(t("vp.close"))}" style="width:26px;height:26px">×</button>`;
 }
 function hideVpErr() {
   $("#vpErr").hidden = true;
@@ -153,21 +141,24 @@ async function onGameMessage(e: MessageEvent) {
   if (m.type === "ready") {
     S.gameReady = true;
     postGame({ type: "mute", on: !S.sound });
+    postGame({ type: "volume", master: S.volume });
     if (S.debug) postGame({ type: "debug", on: true });
     if (design()?.tuning) postGame({ type: "tuning", tuning: design()!.tuning });
     if (S.playing) postGame({ type: "focus" });
   } else if (m.type === "screen") {
     S.gameScreen = m.screen || "";
   } else if (m.type === "win") {
-    chatHint("¡Lo lograste! Si quieres más reto, pídeme “haz el nivel más difícil”.");
+    chatHint(t("chat.hintWin"));
   } else if (m.type === "lose") {
-    chatHint("¿Muy difícil? Dime “más vidas” o “enemigos más lentos” y lo ajusto.");
+    chatHint(t("chat.hintLose"));
   } else if (m.type === "error") {
     lastError = { message: m.message || "Error", stack: m.stack || "", phase: m.phase || "runtime" };
     if (m.version !== S.p.currentVersion || jobRunning()) return;
     if (S.repairAsked === m.version) return;
     S.repairAsked = m.version;
     await requestRepair(false);
+  } else if (m.type === "needReload") {
+    reloadGameSoon();
   }
 }
 async function requestRepair(manual: boolean) {
@@ -179,14 +170,14 @@ async function requestRepair(manual: boolean) {
     });
     if (r.started) {
       hideVpErr();
-      dockHint("Encontré un error en el juego y lo estoy reparando…");
+      dockHint(t("chat.hintRepairing"));
     } else if (r.reason === "limit") {
-      showVpErr(`El juego tiene un error: ${lastError.message}`, "repair");
+      showVpErr(t("chat.errLimit", { msg: lastError.message }), "repair");
     } else if (r.reason === "busy") {
       S.repairAsked = 0;
     }
   } catch (err) {
-    showVpErr(`No pude reparar el juego: ${(err as Error).message}`, "repair");
+    showVpErr(t("chat.errRepair", { msg: (err as Error).message }), "repair");
   }
 }
 
@@ -327,14 +318,17 @@ async function initIntro() {
   const c = S.caps;
   if (c) {
     S.provider = c.images[c.defaultImageProvider] ? c.defaultImageProvider : c.images.openai ? "openai" : c.images.minimax ? "minimax" : c.defaultImageProvider;
-    const chip = (ok: boolean, label: string, req = false) => `<span class="${ok ? "ok" : ""} ${req ? "req" : ""}" title="${ok ? "Configurado" : "Falta la clave en .env.local"}"><i></i>${label}</span>`;
+    const chip = (ok: boolean, label: string, req = false) =>
+      `<span class="${ok ? "ok" : ""} ${req ? "req" : ""}" title="${ok ? t("keys.configured") : t("keys.missing")}"><i></i>${label}</span>`;
     $("#keysStatus").innerHTML =
-      chip(c.code, "Claude · código", true) + chip(c.images.openai, "OpenAI · imágenes") + chip(c.images.minimax, "MiniMax · imágenes") + chip(c.audio, "ElevenLabs · audio") + chip(c.models3d, "Tripo · 3D");
-    $("#agentTxt").textContent = c.code ? "Director de juego · listo" : "Falta ANTHROPIC_API_KEY en .env.local";
+      chip(c.code, "Claude", true) + chip(c.images.openai, "OpenAI") + chip(c.images.minimax, "MiniMax") + chip(c.audio, "ElevenLabs") + chip(c.models3d, "Tripo");
+    $("#agentTxt").textContent = c.code ? t("intro.agentReady") : t("intro.agentMissing");
     $("#agentDot").style.background = c.code ? "" : "var(--rose)";
   }
   renderProvider();
-  $("#sugs").innerHTML = IDEAS.map(([t, d], i) => `<button type="button" data-i="${i}">${DIM_LABEL[d]} · ${esc(t.split(" ").slice(0, 5).join(" "))}…</button>`).join("");
+  $("#sugs").innerHTML = ideasList()
+    .map(([txt, d], i) => `<button type="button" data-i="${i}">${DIM_LABEL[d]} · ${esc(txt.split(" ").slice(0, 5).join(" "))}…</button>`)
+    .join("");
   void loadProjects();
 }
 function renderProvider() {
@@ -342,7 +336,7 @@ function renderProvider() {
     const pv = b.dataset.p as ImageProvider;
     b.classList.toggle("on", pv === S.provider);
     b.classList.toggle("na", !!S.caps && !S.caps.images[pv]);
-    b.title = S.caps && !S.caps.images[pv] ? "Sin clave configurada: las imágenes se omitirán" : `Imágenes con ${PROVIDER_LABEL[pv]}`;
+    b.title = S.caps && !S.caps.images[pv] ? t("keys.noProviderTitle") : t("keys.withProvider", { name: PROVIDER_LABEL[pv] });
   });
 }
 function setIntroDim(d: Dimension) {
@@ -353,21 +347,25 @@ async function loadProjects() {
   try {
     const list = await api<ProjectSummary[]>("/api/projects");
     const box = $("#projects");
+    if (!box || !$("#projGrid")) return;
     box.hidden = !list.length;
     $("#projGrid").innerHTML = list
       .slice(0, 12)
       .map(
         (p, j) => `<div class="pj" role="button" tabindex="0" data-id="${esc(p.id)}" style="--j:${j}">
         <div class="th" style="${p.thumb ? `background-image:url('${esc(p.thumb)}');background-size:contain` : ""}">${p.thumb ? "" : DIM_LABEL[p.dimension]}</div>
-        <b title="${esc(p.idea)}">${esc(p.title)}</b><small>${DIM_LABEL[p.dimension]} · ${p.status === "generating" ? "Generando…" : p.status === "error" ? "Con error" : new Date(p.updatedAt).toLocaleDateString()}</small>
-        <button type="button" class="del" data-del="${esc(p.id)}" title="Eliminar" aria-label="Eliminar juego">×</button></div>`,
+        <b title="${esc(p.idea)}">${esc(p.title)}</b><small>${DIM_LABEL[p.dimension]} · ${p.status === "generating" ? t("intro.generating") : p.status === "error" ? t("intro.error") : new Date(p.updatedAt).toLocaleDateString(getLocale())}</small>
+        <button type="button" class="del" data-del="${esc(p.id)}" title="${esc(t("intro.delete"))}" aria-label="${esc(t("intro.delete"))}">×</button></div>`,
       )
       .join("");
-  } catch {}
+  } catch (e) {
+    console.warn("[forge] loadProjects", e);
+    toast(esc((e as Error).message || t("intro.loadFail")), 4000);
+  }
 }
 async function createGame(idea: string) {
   if (S.caps && !S.caps.code) {
-    toast("Configura <b>ANTHROPIC_API_KEY</b> en <b>.env.local</b> y reinicia el servidor", 5000);
+    toast(t("keys.anthropic"), 5000);
     return;
   }
   const btn = $<HTMLButtonElement>("#askSend");
@@ -427,9 +425,12 @@ function runLoader() {
     ur.hidden = true;
     ur.innerHTML = "";
   }
-  $("#ldEyebrow").textContent = "Los agentes están forjando tu juego";
-  let tipI = Math.floor(Math.random() * TIPS.length);
-  const showTip = () => ($("#ldTip").innerHTML = `<span>Consejo · ${esc(TIPS[tipI++ % TIPS.length])}</span>`);
+  $("#ldEyebrow").textContent = t("loader.eyebrow");
+  let tipI = Math.floor(Math.random() * 6);
+  const showTip = () => {
+    const tips = tipsList();
+    $("#ldTip").innerHTML = `<span>${esc(t("loader.tip", { tip: tips[tipI++ % tips.length] }))}</span>`;
+  };
   showTip();
   clearInterval(LD.tipTimer);
   LD.tipTimer = setInterval(showTip, 4200);
@@ -459,6 +460,36 @@ function setLoaderTitle(title: string) {
     .map((w, wi) => `<span style="display:inline-block;white-space:nowrap">${[...w].map((ch) => `<span style="--i:${i++}" class="${wi > 0 ? "hl" : ""}">${esc(ch)}</span>`).join("")}</span>`)
     .join(" ");
 }
+function stageLabel(id: string, fallback: string) {
+  const key = `stage.${id}`;
+  const v = t(key);
+  return v === key ? fallback : v;
+}
+function stageDetail(detail: string | undefined, status: string) {
+  if (!detail) return status === "skip" ? t("stage.skipped") : "";
+  const exact: Record<string, string> = {
+    "Leyendo tu idea": "stage.detail.reading",
+    "Escribiendo el código": "stage.detail.writing",
+    "Corrigiendo el error": "stage.detail.fixing",
+    "Editando el código": "stage.detail.editing",
+    "Analizando el error": "stage.detail.analyzing",
+    "Validando": "stage.detail.validating",
+    "Listo para jugar": "stage.detail.ready",
+    "Sin cambios": "stage.detail.noChanges",
+    "Nueva versión": "stage.detail.newVersion",
+    "Error corregido": "stage.detail.fixed",
+    "Entendiendo el cambio": "stage.detail.understanding",
+    Generando: "stage.detail.generating",
+  };
+  if (exact[detail]) return t(exact[detail]);
+  const lines = /^(\d+)\s*líneas$/i.exec(detail);
+  if (lines) return t("stage.detail.lines", { n: lines[1] });
+  const fixAttempt = /^Corrigiendo validación \(intento (\d+)\)$/i.exec(detail);
+  if (fixAttempt) return t("stage.detail.fixAttempt", { n: fixAttempt[1] });
+  const updated = /^(\d+)\s*actualizados$/i.exec(detail);
+  if (updated) return t("stage.detail.updated", { n: updated[1] });
+  return detail;
+}
 function jobProgress(job: Job | undefined) {
   if (!job) return 0.02;
   const now = performance.now();
@@ -477,20 +508,22 @@ function jobProgress(job: Job | undefined) {
 function renderLoader() {
   const p = S.p;
   if (!p || S.screen !== "loader") return;
-  setLoaderTitle(p.design ? `Forjando ${p.design.title}` : "Forjando tu juego");
+  setLoaderTitle(p.design ? t("loader.forgingNamed", { title: p.design.title }) : t("loader.forging"));
   const job = p.job?.kind === "create" ? p.job : undefined;
-  const stages = job?.stages || [{ id: "director", label: "Director de juego", status: "run" as const, detail: "Leyendo tu idea" }];
+  const stages = job?.stages || [{ id: "director", label: t("stage.director"), status: "run" as const, detail: t("stage.detail.reading") }];
   const ol = $("#ldSteps");
   if (ol.children.length !== stages.length) {
     ol.innerHTML = stages
-      .map((s, j) => `<li style="--i:${j}" data-id="${s.id}"><span class="ic"></span><div style="min-width:0"><b>${esc(s.label)}</b><small></small></div><em></em></li>`)
+      .map((s, j) => `<li style="--i:${j}" data-id="${s.id}"><span class="ic"></span><div style="min-width:0"><b></b><small></small></div><em></em></li>`)
       .join("");
   }
   stages.forEach((s, j) => {
     const li = ol.children[j] as HTMLElement;
     const cls = s.status === "wait" ? "" : s.status;
     if (li.className !== cls) li.className = cls;
-    li.querySelector("small")!.textContent = s.detail || (s.status === "skip" ? "Omitido (sin clave)" : "");
+    const label = stageLabel(s.id, s.label);
+    li.querySelector("b")!.textContent = label;
+    li.querySelector("small")!.textContent = stageDetail(s.detail, s.status);
     const t0 = LD.stageT[s.id];
     if (s.status === "run" && !t0) LD.stageT[s.id] = performance.now();
     if ((s.status === "ok" || s.status === "error") && t0 && !li.dataset.done) {
@@ -499,21 +532,23 @@ function renderLoader() {
     }
   });
   const cur = stages.find((s) => s.status === "run");
-  $("#ldTag").querySelector("span")!.textContent = p.status === "ready" ? "Listo para jugar" : cur ? `${cur.label}…` : p.status === "error" ? "Detenido" : "Preparando…";
+  const curLabel = cur ? stageLabel(cur.id, cur.label) : "";
+  $("#ldTag").querySelector("span")!.textContent =
+    p.status === "ready" ? t("studio.ready") : cur ? `${curLabel}…` : p.status === "error" ? t("loader.stopped") : `${t("loader.preparing")}…`;
   $("#ldTag").classList.toggle("ok", p.status === "ready");
   LD.target = p.status === "ready" ? 1 : jobProgress(job);
   const errBox = $("#ldError");
   if (p.status === "error" && !jobRunning()) {
     errBox.hidden = false;
-    errBox.innerHTML = `<p><b>No se pudo terminar el juego.</b> ${esc(p.job?.error || "Error desconocido")}</p><button class="btn small primary-s" type="button" id="ldRetry">Reintentar</button>`;
-    $("#ldEyebrow").textContent = "La forja se detuvo";
+    errBox.innerHTML = `<p><b>${esc(t("loader.failTitle"))}</b> ${esc(p.job?.error || "—")}</p><button class="btn small primary-s" type="button" id="ldRetry">${esc(t("loader.retry"))}</button>`;
+    $("#ldEyebrow").textContent = t("loader.failTitle");
   } else errBox.hidden = true;
   renderUsageReport();
   renderLoaderAssets();
 }
 function usageHTML(report: UsageReport | undefined, opts?: { title?: string; live?: boolean }) {
   if (!report || (!report.totals.calls && !Object.keys(report.byProvider).length)) {
-    return `<div class="ur-head"><b>${esc(opts?.title || "Consumo de APIs")}</b><span>—</span></div><p class="ur-note">Aún no hay mediciones. El reporte se llena en vivo en generados nuevos.</p>`;
+    return `<div class="ur-head"><b>${esc(opts?.title || t("usage.title"))}</b><span>—</span></div><p class="ur-note">${esc(t("usage.empty"))}</p>`;
   }
   const wall = (report.finishedAt ?? Date.now()) - report.startedAt;
   const rows = (Object.keys(report.byProvider) as ApiProvider[])
@@ -528,15 +563,14 @@ function usageHTML(report: UsageReport | undefined, opts?: { title?: string; liv
     parts.push(`${u.calls} llamada${u.calls === 1 ? "" : "s"} · ${formatDuration(u.ms)}`);
     return parts.join(" · ");
   };
-  return `<div class="ur-head"><b>${esc(opts?.title || "Consumo de APIs")}</b><span>${opts?.live && !report.finishedAt ? "en vivo · " : ""}${formatDuration(wall)}</span></div>
+  return `<div class="ur-head"><b>${esc(opts?.title || t("usage.title"))}</b><span>${opts?.live && !report.finishedAt ? `${t("usage.live")} · ` : ""}${formatDuration(wall)}</span></div>
     <div class="ur-grid">${rows
       .map(
         (u) =>
           `<div class="ur-row"><strong>${esc(API_LABEL[u.provider])}</strong><em>${formatUsd(u.estimatedUsd)}</em><small>${esc(bits(u))}</small></div>`,
       )
       .join("")}</div>
-    <div class="ur-total"><span>Total estimado</span><b>${formatUsd(report.totals.estimatedUsd)}</b>
-      <p class="ur-note">Costos estimados a partir de tarifas públicas (tokens reales de Claude; imágenes/audio/3D aproximados). Revisa la factura de cada proveedor para el monto exacto.</p></div>`;
+    <div class="ur-total"><span>${esc(t("usage.total"))}</span><b>${formatUsd(report.totals.estimatedUsd)}</b></div>`;
 }
 function renderUsageReport() {
   const box = $("#ldReport");
@@ -548,7 +582,7 @@ function renderUsageReport() {
     return;
   }
   box.hidden = false;
-  box.innerHTML = usageHTML(report, { title: "Consumo de esta forja", live: true });
+  box.innerHTML = usageHTML(report, { title: t("usage.thisForge"), live: true });
 }
 function thumbHTML(a: AssetRecord, extra = "") {
   const url = FILE(a);
@@ -580,7 +614,7 @@ function renderLoaderAssets() {
     if (el.dataset.key === key) continue;
     el.dataset.key = key;
     el.className = `la ${a.status === "ready" ? "ready" : a.status === "error" ? "err" : a.status === "skipped" ? "skip" : ""}`;
-    el.innerHTML = `<div class="la-in"><div class="thumb">${thumbHTML(a)}</div><div class="k">${esc(kindOf(a))}${a.status === "generating" ? " · …" : a.status === "error" ? " · error" : a.status === "skipped" ? " · omitido" : ""}</div><div class="nm" title="${esc(a.error || a.name)}">${esc(a.name)}</div></div>`;
+    el.innerHTML = `<div class="la-in"><div class="thumb">${thumbHTML(a)}</div><div class="k">${esc(kindOf(a))}${a.status === "generating" ? " · …" : a.status === "error" ? ` · ${esc(t("lib.error"))}` : a.status === "skipped" ? ` · ${esc(t("asset.skipped"))}` : ""}</div><div class="nm" title="${esc(a.error || a.name)}">${esc(a.name)}</div></div>`;
     if (a.type === "image" && a.status === "ready" && !LD.gallery.includes(a.id)) {
       LD.gallery.push(a.id);
       const img = document.createElement("img");
@@ -610,7 +644,7 @@ function startEmbers() {
     if (ld.hidden) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    const t = (now - LD.t0) / 1000;
+    const elapsed = (now - LD.t0) / 1000;
     if (ec.width !== ld.clientWidth * dpr || ec.height !== ld.clientHeight * dpr) {
       ec.width = ld.clientWidth * dpr;
       ec.height = ld.clientHeight * dpr;
@@ -628,8 +662,13 @@ function startEmbers() {
     const sp = 1.6 + 4.4 * c,
       amp = 1 + 7 * c,
       rot = 1.5 + 9 * c;
-    mas.style.transform = `translateY(${(-Math.abs(Math.sin(t * sp)) * amp).toFixed(1)}px) rotate(${(Math.sin(t * sp * 0.5) * rot).toFixed(1)}deg)`;
+    mas.style.transform = `translateY(${(-Math.abs(Math.sin(elapsed * sp)) * amp).toFixed(1)}px) rotate(${(Math.sin(elapsed * sp * 0.5) * rot).toFixed(1)}deg)`;
     if (LD.gallery.length > 1 && now - LD.galT > 3200) showGallery((LD.galI + 1) % LD.gallery.length);
+    const liveReport = S.p?.jobUsage || S.p?.usage;
+    const liveSpan = $("#ldReport")?.querySelector<HTMLElement>(".ur-head span");
+    if (liveSpan && liveReport && !liveReport.finishedAt && (liveReport.totals.calls || Object.keys(liveReport.byProvider).length)) {
+      liveSpan.textContent = `${t("usage.live")} · ${formatDuration(Date.now() - liveReport.startedAt)}`;
+    }
     ectx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ectx.clearRect(0, 0, ec.width, ec.height);
     const ew = ld.clientWidth,
@@ -639,7 +678,7 @@ function startEmbers() {
       const m = embers[k];
       m.l += dt;
       m.y -= m.vy * dt;
-      m.x += m.vx * dt + Math.sin(t * 2 + m.ph) * 0.3;
+      m.x += m.vx * dt + Math.sin(elapsed * 2 + m.ph) * 0.3;
       const a = Math.sin(Math.PI * clamp(m.l / m.ml, 0, 1));
       if (m.l > m.ml || m.y < -10) {
         embers.splice(k, 1);
@@ -661,7 +700,7 @@ async function finishLoader() {
   // Pull the saved version list before entering the studio (SSE "version" alone is not enough).
   await refreshProject();
   renderLoader();
-  $("#ldEyebrow").textContent = "Tu juego está listo";
+  $("#ldEyebrow").textContent = t("studio.ready");
   $$("#ldTitle .hl").forEach((x) => {
     x.style.color = "var(--emerald)";
     x.style.transition = "color .4s";
@@ -686,7 +725,7 @@ function leaveLoader() {
 function enterStudio(from: DOMRect | null) {
   S.screen = "studio";
   S.ptab = "guia";
-  S.open = -1;
+  S.open = 1; // Consumo de APIs (segunda sección de la guía)
   S.playing = false;
   const st = $("#studio");
   st.classList.add("assemble");
@@ -707,7 +746,7 @@ function enterStudio(from: DOMRect | null) {
       st.classList.add("assembled");
       pv.classList.remove("landing");
       if (!S.tourSeen) startTour();
-      else dockHint("Tu juego está listo. Juega en el visor o pídeme cambios aquí.");
+      else dockHint(t("chat.hintReady"));
     }, 1500);
   };
   if (from && from.width) {
@@ -741,15 +780,15 @@ function renderTop() {
     d = design();
   if (!p) return;
   const title = d?.title || p.idea.slice(0, 40);
-  $("#bnEyebrow").textContent = d ? `${d.genre} · ${DIM_LABEL[d.dimension]} · ${d.engine === "phaser" ? "Phaser" : "Three.js + Rapier"}` : DIM_LABEL[p.dimension];
+  $("#bnEyebrow").textContent = d ? `${d.genre} · ${DIM_LABEL[d.dimension]}` : DIM_LABEL[p.dimension];
   $("#stHero").textContent = title;
   $("#stIdea").textContent = d?.tagline || `“${p.idea}”`;
   $("#stIdea").title = p.idea;
   $("#projName").textContent = title;
   $("#playTitle").textContent = title;
-  $("#loopPill").textContent = d?.genre || "Juego";
-  $("#verPill").textContent = `Versión ${p.currentVersion || 0}`;
-  document.title = `${title} · Forge`;
+  $("#loopPill").textContent = d?.genre || t("guide.game");
+  $("#verPill").textContent = t("guide.versionN", { n: p.currentVersion || 0 });
+  document.title = `${title} · Forge Xpresso`;
 }
 function renderBusy() {
   const job = S.p?.job;
@@ -758,7 +797,7 @@ function renderBusy() {
   box.hidden = !running;
   if (!running) return;
   const cur = job!.stages.find((s) => s.status === "run") || job!.stages.find((s) => s.status === "wait");
-  $("#vpBusyT").textContent = job!.kind === "repair" ? "Forge está reparando un error…" : job!.kind === "asset" ? "Regenerando un recurso…" : "Forge está aplicando tus cambios…";
+  $("#vpBusyT").textContent = job!.kind === "repair" ? t("studio.busyRepair") : job!.kind === "asset" ? t("studio.busyAsset") : t("studio.busy");
   $("#vpBusyS").textContent = cur ? `${cur.label}${cur.detail ? ` · ${cur.detail}` : ""}` : "";
   box.classList.toggle("full", !S.p?.versions.length);
 }
@@ -768,17 +807,18 @@ function cardHTML(a: AssetRecord, i: number) {
   const v = a.liked || 0;
   const url = FILE(a);
   const st = a.status;
-  const badge = st === "generating" ? "Generando…" : st === "error" ? "Error" : st === "skipped" ? "Sin clave" : st === "pending" ? "En cola" : "";
+  const badge =
+    st === "generating" ? t("intro.generating") : st === "error" ? t("lib.error") : st === "skipped" ? t("lib.nokey") : st === "pending" ? t("lib.generating") : "";
   return `<div class="asset ${v > 0 ? "liked" : v < 0 ? "disliked" : ""} ${st}" data-id="${esc(a.id)}" style="--ai:${i}">
-    <div class="tw"><button type="button" class="tv" data-a="view" aria-label="Ver ${esc(a.name)} en grande">${thumbHTML(a)}${badge ? `<span class="st-badge ${st}">${badge}</span>` : ""}</button>
-    <div class="tb"><button type="button" data-a="upload" title="Subir tu propio archivo" aria-label="Subir archivo">${ICUP}</button>${url ? `<a href="${esc(url)}" download="${esc(a.id)}.${esc((a.file || "").split(".").pop())}" title="Descargar" aria-label="Descargar">${ICDN}</a>` : ""}</div></div>
-    <div><div class="k">${esc(kindOf(a))}${a.custom ? '<span class="upl">· Tuyo</span>' : ""}${v > 0 ? ' · <span class="likebadge">Favorito</span>' : ""}</div><div class="nm" title="${esc(a.error || a.name)}">${esc(a.name)}</div></div>
+    <div class="tw"><button type="button" class="tv" data-a="view" aria-label="${esc(t("lib.view"))} ${esc(a.name)}">${thumbHTML(a)}${badge ? `<span class="st-badge ${st}">${badge}</span>` : ""}${a.rev > 1 ? `<span class="rev-badge">r${a.rev}</span>` : ""}</button>
+    <div class="tb"><button type="button" data-a="upload" title="${esc(t("asset.upload"))}" aria-label="${esc(t("asset.upload"))}">${ICUP}</button>${url ? `<a href="${esc(url)}" download="${esc(a.id)}.${esc((a.file || "").split(".").pop())}" title="${esc(t("asset.download"))}" aria-label="${esc(t("asset.download"))}">${ICDN}</a>` : ""}</div></div>
+    <div><div class="k">${esc(kindOf(a))}${a.custom ? `<span class="upl">${esc(t("asset.yours"))}</span>` : ""}${v > 0 ? ` · <span class="likebadge">${esc(t("asset.fav"))}</span>` : ""}</div><div class="nm" title="${esc(a.error || a.name)}">${esc(a.name)}</div></div>
     <div class="tg">${a.provider ? `<span>${esc(a.provider)}</span>` : ""}${a.type === "audio" ? `<span>${(a.spec as AudioAssetSpec).durationSec}s</span>` : ""}</div>
-    <div class="acts"><button type="button" data-a="regen" title="Generar otra versión" aria-label="Regenerar">${ICON.swap}<span class="tx">Regenerar</span></button><button type="button" class="up" data-a="like" title="Me gusta" aria-label="Me gusta">${ICON.up}</button><button type="button" data-a="dislike" title="No me gusta: generar otro" aria-label="No me gusta">${ICON.down}</button></div></div>`;
+    <div class="acts"><button type="button" data-a="regen" title="${esc(t("asset.regen"))}" aria-label="${esc(t("asset.regen"))}">${ICON.swap}<span class="tx">${esc(t("asset.regen"))}</span></button><button type="button" class="up" data-a="like" title="${esc(t("asset.like"))}" aria-label="${esc(t("asset.like"))}">${ICON.up}</button><button type="button" data-a="dislike" title="${esc(t("asset.dislike"))}" aria-label="${esc(t("asset.dislike"))}">${ICON.down}</button></div></div>`;
 }
 function renderAssets() {
   const list = sorted(assets());
-  $("#assets").innerHTML = list.length ? list.map((a, i) => cardHTML(a, i)).join("") : '<div class="empty-n">Aún no hay recursos.</div>';
+  $("#assets").innerHTML = list.length ? list.map((a, i) => cardHTML(a, i)).join("") : `<div class="empty-n">${esc(t("asset.empty"))}</div>`;
 }
 function updateAssetCard(a: AssetRecord) {
   const el = $("#assets").querySelector<HTMLElement>(`.asset[data-id="${CSS.escape(a.id)}"]`);
@@ -806,7 +846,7 @@ async function assetAction(id: string, action: string) {
     const v = a.liked === 1 ? 0 : 1;
     a.liked = v;
     updateAssetCard(a);
-    if (v) toast(`<b>${esc(a.name)}</b> guardado como favorito`);
+    if (v) toast(t("asset.favorited", { name: esc(a.name) }));
     await api(`/api/projects/${p.id}/assets/${id}`, { method: "POST", json: { action: "like", value: v } }).catch(() => {});
     return;
   }
@@ -820,12 +860,12 @@ async function regenerate(id: string, prompt?: string) {
   const p = S.p;
   const a = p?.assets[id];
   if (!p || !a) return;
-  if (a.type === "image" && S.caps && !S.caps.images[p.imageProvider] && !S.caps.images.openai && !S.caps.images.minimax) return toast("No hay clave de <b>OpenAI</b> ni de <b>MiniMax</b> configurada");
-  if (a.type === "audio" && S.caps && !S.caps.audio) return toast("Falta <b>ELEVENLABS_API_KEY</b> para generar audio");
-  if (a.type === "model" && S.caps && !S.caps.models3d) return toast("Falta <b>TRIPO_API_KEY</b> para generar modelos 3D");
+  if (a.type === "image" && S.caps && !S.caps.images[p.imageProvider] && !S.caps.images.openai && !S.caps.images.minimax) return toast(t("keys.images"));
+  if (a.type === "audio" && S.caps && !S.caps.audio) return toast(t("keys.elevenlabs"));
+  if (a.type === "model" && S.caps && !S.caps.models3d) return toast(t("keys.tripo"));
   try {
     await api(`/api/projects/${p.id}/assets/${id}`, { method: "POST", json: { action: "regenerate", prompt } });
-    toast(`Regenerando <b>${esc(a.name)}</b>…`);
+    toast(t("asset.regenerating", { name: esc(a.name) }));
   } catch (e) {
     toast(esc((e as Error).message), 4000);
   }
@@ -845,87 +885,92 @@ async function onUploadChosen() {
   const f = inp.files?.[0];
   const id = upId;
   if (!f || !id || !S.p) return;
-  if (f.size > 25 * 1024 * 1024) return toast("Ese archivo pesa más de 25 MB. Prueba con uno más liviano.");
+  if (f.size > 25 * 1024 * 1024) return toast(t("asset.fileTooBig"));
   const fd = new FormData();
   fd.append("file", f);
-  toast(`Subiendo <b>${esc(f.name)}</b>…`);
+  toast(t("asset.uploading", { name: esc(f.name) }));
   try {
     await api(`/api/projects/${S.p.id}/assets/${id}`, { method: "PUT", body: fd });
-    toast(`<b>${esc(f.name)}</b> ya está en el juego`);
+    toast(t("asset.uploadedInGame", { name: esc(f.name) }));
   } catch (e) {
     toast(esc((e as Error).message), 4000);
   }
 }
 
 /* ---------- Flow panel ---------- */
-const PTABS: [typeof S.ptab, string][] = [
-  ["guia", "Guía"],
-  ["recursos", "Recursos"],
-  ["cine", "Cinemática"],
+const PTABS = (): [typeof S.ptab, string][] => [
+  ["guia", t("tab.guide")],
+  ["recursos", t("tab.assets")],
+  ["cine", t("tab.cine")],
 ];
-const LIBTABS: [string, string, (a: AssetRecord) => boolean][] = [
-  ["chars", "Personajes", (a) => a.type === "image" && ["hero", "enemy", "npc", "portrait"].includes(roleOf(a))],
-  ["objs", "Objetos", (a) => a.type === "image" && ["collectible", "hazard", "prop", "goal", "platform", "tile", "ui"].includes(roleOf(a))],
-  ["bgs", "Fondos", (a) => a.type === "image" && ["background", "texture"].includes(roleOf(a))],
-  ["m3d", "3D", (a) => a.type === "model"],
-  ["audio", "Audio", (a) => a.type === "audio"],
+const LIBTABS = (): [string, string, (a: AssetRecord) => boolean][] => [
+  ["chars", t("lib.chars"), (a) => a.type === "image" && ["hero", "enemy", "npc", "portrait"].includes(roleOf(a))],
+  ["objs", t("lib.objs"), (a) => a.type === "image" && ["collectible", "hazard", "prop", "goal", "platform", "tile", "ui"].includes(roleOf(a))],
+  ["bgs", t("lib.bgs"), (a) => a.type === "image" && ["background", "texture"].includes(roleOf(a))],
+  ["m3d", t("lib.m3d"), (a) => a.type === "model"],
+  ["audio", t("lib.audio"), (a) => a.type === "audio"],
 ];
 let tabAnim = false;
 function guideHTML() {
   const p = S.p!,
     d = design();
   const sections: { name: string; detail: string; body: string }[] = [];
+  const jobU = p.jobUsage;
+  const allU = p.usage;
+  const hasJob = !!jobU && (jobU.totals.calls > 0 || Object.keys(jobU.byProvider).length > 0);
+  const hasAll = !!allU && (allU.totals.calls > 0 || Object.keys(allU.byProvider).length > 0);
+  // Prefer cumulative when last job is a tiny follow-up; still show last job if distinct.
+  const primaryU = hasAll ? allU! : hasJob ? jobU! : undefined;
+  const showJobExtra = hasJob && hasAll && jobU !== allU && (jobU!.totals.estimatedUsd > 0 || jobU!.totals.calls > 0);
   sections.push({
-    name: "Tu idea",
+    name: t("guide.idea"),
     detail: `“${p.idea}”`,
-    body: `<div class="dz"><p>${esc(p.idea)}</p><div class="dz-row"><span>${DIM_LABEL[p.dimension]}</span><span>${d?.engine === "phaser" ? "Phaser 3" : "Three.js + Rapier"}</span>${d ? `<span>${esc(d.camera)}</span>` : ""}</div>
-      <div class="lbl">Proveedor de imágenes para nuevos recursos</div>
-      <div class="presets">${(["openai", "minimax"] as ImageProvider[]).map((pv) => `<button type="button" class="preset ${p.imageProvider === pv ? "on" : ""}" data-prov="${pv}" ${S.caps && !S.caps.images[pv] ? 'title="Sin clave configurada"' : ""}>${PROVIDER_LABEL[pv]}${S.caps && !S.caps.images[pv] ? " · sin clave" : ""}</button>`).join("")}</div></div>`,
+    body: `<div class="dz"><p>${esc(p.idea)}</p><div class="dz-row"><span>${DIM_LABEL[p.dimension]}</span>${d ? `<span>${esc(d.camera)}</span>` : ""}</div>
+      <div class="lbl">${esc(t("guide.provider"))}</div>
+      <div class="presets">${(["openai", "minimax"] as ImageProvider[]).map((pv) => `<button type="button" class="preset ${p.imageProvider === pv ? "on" : ""}" data-prov="${pv}" ${S.caps && !S.caps.images[pv] ? `title="${esc(t("keys.missing"))}"` : ""}>${PROVIDER_LABEL[pv]}${S.caps && !S.caps.images[pv] ? esc(t("guide.nokey")) : ""}</button>`).join("")}</div></div>`,
+  });
+  sections.push({
+    name: t("guide.usage"),
+    detail: primaryU
+      ? `${formatUsd(primaryU.totals.estimatedUsd)} · ${formatDuration((primaryU.finishedAt ?? Date.now()) - primaryU.startedAt)}`
+      : t("guide.usageNone"),
+    body: `<div class="usage-card">${usageHTML(primaryU, { title: t("guide.projectUsage") })}</div>
+      ${showJobExtra ? `<div class="usage-card" style="margin-top:10px">${usageHTML(jobU, { title: t("guide.lastJob") })}</div>` : ""}
+      ${!primaryU ? `<p class="ur-note">${esc(t("guide.usageOld"))}</p>` : ""}`,
   });
   if (d) {
     sections.push({
-      name: "Diseño del juego",
+      name: t("guide.design"),
       detail: d.genre,
       body: `<div class="dz"><p><b>${esc(d.title)}</b> — ${esc(d.tagline)}</p>
-        <div class="lbl">Objetivo</div><div class="goal">${esc(d.objective)}</div>
-        <div class="lbl">Mecánicas</div><ul>${d.mechanics.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>
-        <div class="lbl">Controles</div><div class="keys">${d.controls.map((c) => `<div><kbd>${esc(c.input)}</kbd>${esc(c.action)}</div>`).join("")}</div>
-        <div class="lbl">Nivel</div><p>${esc(d.levelOutline)}</p>
-        <div class="lbl">Estilo visual</div><p>${esc(d.artStyle)}</p><div class="dz-row">${d.palette.map((c) => `<span style="background:${esc(c)};color:transparent;width:22px" title="${esc(c)}">.</span>`).join("")}</div></div>`,
+        <div class="lbl">${esc(t("guide.objective"))}</div><div class="goal">${esc(d.objective)}</div>
+        <div class="lbl">${esc(t("guide.mechanics"))}</div><ul>${d.mechanics.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>
+        <div class="lbl">${esc(t("guide.controls"))}</div><div class="keys">${d.controls.map((c) => `<div><kbd>${esc(c.input)}</kbd>${esc(c.action)}</div>`).join("")}</div>
+        <div class="lbl">${esc(t("guide.level"))}</div><p>${esc(d.levelOutline)}</p>
+        <div class="lbl">${esc(t("guide.style"))}</div><p>${esc(d.artStyle)}</p><div class="dz-row">${d.palette.map((c) => `<span style="background:${esc(c)};color:transparent;width:22px" title="${esc(c)}">.</span>`).join("")}</div></div>`,
     });
     sections.push({
-      name: "Ajustes en vivo",
-      detail: `${d.tuning.length} parámetros`,
-      body: `<p>Cambia la jugabilidad sin recargar el juego. También puedes pedirlo en el chat: “salta más alto”.</p><div class="tune">${d.tuning
-        .map((t) => {
-          const step = t.max - t.min > 20 ? 1 : (t.max - t.min) / 100;
-          return `<div class="tune-r"><label for="tn-${esc(t.key)}" title="${esc(t.key)}">${esc(t.label)}</label><output id="tno-${esc(t.key)}">${fmt(t.value)}</output><input type="range" id="tn-${esc(t.key)}" data-tune="${esc(t.key)}" min="${t.min}" max="${t.max}" step="${step}" value="${t.value}"></div>`;
+      name: t("guide.live"),
+      detail: t("guide.liveDetail", { n: d.tuning.length }),
+      body: `<p>${esc(t("guide.liveHelp"))}</p><div class="tune">${d.tuning
+        .map((tp) => {
+          const step = tp.max - tp.min > 20 ? 1 : (tp.max - tp.min) / 100;
+          return `<div class="tune-r"><label for="tn-${esc(tp.key)}" title="${esc(tp.key)}">${esc(tp.label)}</label><output id="tno-${esc(tp.key)}">${fmt(tp.value)}</output><input type="range" id="tn-${esc(tp.key)}" data-tune="${esc(tp.key)}" min="${tp.min}" max="${tp.max}" step="${step}" value="${tp.value}"></div>`;
         })
         .join("")}</div>`,
     });
   }
   sections.push({
-    name: "Versiones",
-    detail: `${p.versions.length} guardadas · actual v${p.currentVersion}`,
+    name: t("guide.versions"),
+    detail: t("guide.versionsDetail", { n: p.versions.length, v: p.currentVersion }),
     body: `<div class="vers">${p.versions
       .slice()
       .reverse()
       .map(
         (v) =>
-          `<div class="ver ${v.n === p.currentVersion ? "on" : ""}"><b>v${v.n}</b><span title="${esc(v.note)}">${esc(v.note)} · ${new Date(v.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>${v.n === p.currentVersion ? '<em class="likebadge">En uso</em>' : `<button type="button" data-ver="${v.n}">Usar</button>`}</div>`,
+          `<div class="ver ${v.n === p.currentVersion ? "on" : ""}"><b>v${v.n}</b><span title="${esc(v.note)}">${esc(v.note)} · ${new Date(v.createdAt).toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</span>${v.n === p.currentVersion ? `<em class="likebadge">${esc(t("guide.inUse"))}</em>` : `<button type="button" data-ver="${v.n}">${esc(t("guide.use"))}</button>`}</div>`,
       )
       .join("")}</div>`,
-  });
-  const jobU = p.jobUsage;
-  const allU = p.usage;
-  const hasJob = !!jobU && (jobU.totals.calls > 0 || Object.keys(jobU.byProvider).length > 0);
-  const hasAll = !!allU && (allU.totals.calls > 0 || Object.keys(allU.byProvider).length > 0);
-  sections.push({
-    name: "Consumo de APIs",
-    detail: hasAll ? `${formatUsd(allU!.totals.estimatedUsd)} · ${formatDuration((allU!.finishedAt ?? Date.now()) - allU!.startedAt)}` : hasJob ? formatUsd(jobU!.totals.estimatedUsd) : "sin datos aún",
-    body: `<div class="usage-card">${usageHTML(hasJob ? jobU : allU, { title: hasJob ? "Último trabajo" : "Consumo del proyecto" })}</div>
-      ${hasJob && hasAll && allU !== jobU ? `<div class="usage-card" style="margin-top:10px">${usageHTML(allU, { title: "Acumulado del proyecto" })}</div>` : ""}
-      ${!hasJob && !hasAll ? `<p class="ur-note">Esta partida se generó antes del medidor. Los próximos trabajos mostrarán tokens, costo estimado y tiempos por API.</p>` : ""}`,
   });
   return sections
     .map(
@@ -937,44 +982,48 @@ function guideHTML() {
 }
 const fmt = (v: number) => (Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 100) / 100));
 function libHTML() {
-  const tab = LIBTABS.find((t) => t[0] === S.lib) || LIBTABS[0];
+  const tabs = LIBTABS();
+  const tab = tabs.find((x) => x[0] === S.lib) || tabs[0];
   const items = sorted(assets().filter(tab[2]));
   let note = "";
-  if (S.lib === "m3d" && !S.caps?.models3d)
-    note = `<div class="lockn">${LOCK}Añade TRIPO_API_KEY para generar modelos 3D con IA. Mientras tanto, los juegos 2.5D/3D usan geometría procedural con texturas generadas.</div>`;
-  if (S.lib === "audio" && !S.caps?.audio) note = `<div class="lockn">${LOCK}Añade ELEVENLABS_API_KEY para generar música, efectos y voz. Sin ella el juego usa sonidos sintetizados.</div>`;
-  return `<div class="lib-h"><div class="ctabs" role="tablist">${LIBTABS.map(([id, n]) => `<button type="button" class="${S.lib === id ? "on" : ""}" data-lib="${id}">${n}</button>`).join("")}</div>
-    <div class="lib-meta"><span>${items.length} recurso${items.length === 1 ? "" : "s"}</span></div></div>
+  if (S.lib === "m3d" && !S.caps?.models3d) note = `<div class="lockn">${LOCK}TRIPO_API_KEY</div>`;
+  if (S.lib === "audio" && !S.caps?.audio) note = `<div class="lockn">${LOCK}ELEVENLABS_API_KEY</div>`;
+  const countKey = items.length === 1 ? "lib.count" : "lib.count_plural";
+  const stLabel = (a: AssetRecord) =>
+    a.status === "ready" ? a.provider || t("lib.ready") : a.status === "skipped" ? t("lib.nokey") : a.status === "error" ? t("lib.error") : t("lib.generating");
+  return `<div class="lib-h"><div class="ctabs" role="tablist">${tabs.map(([id, n]) => `<button type="button" class="${S.lib === id ? "on" : ""}" data-lib="${id}">${n}</button>`).join("")}</div>
+    <div class="lib-meta"><span>${esc(t(countKey, { n: items.length }))}</span></div></div>
     ${items.length ? `<div class="lib-grid">${items
       .map(
-        (a, j) => `<div class="li ${a.liked === 1 ? "on" : ""}" style="--j:${j}" data-id="${esc(a.id)}"><div class="li-t"><button type="button" class="tv" data-view="${esc(a.id)}" aria-label="Ver ${esc(a.name)}">${thumbHTML(a)}</button>${a.type === "model" ? '<span class="li-3d">3D</span>' : ""}</div>
-        <b title="${esc(a.name)}">${esc(a.name)}</b><span>${esc(kindOf(a))} · ${a.status === "ready" ? esc(a.provider || "listo") : a.status === "skipped" ? "sin clave" : a.status === "error" ? "error" : "generando"}</span>
-        ${a.type === "audio" && a.status === "ready" ? `<button type="button" data-listen="${esc(a.id)}">${ICPLAY}Escuchar</button>` : `<button type="button" data-view="${esc(a.id)}">Ver</button>`}</div>`,
+        (a, j) => `<div class="li ${a.liked === 1 ? "on" : ""}" style="--j:${j}" data-id="${esc(a.id)}"><div class="li-t"><button type="button" class="tv" data-view="${esc(a.id)}" aria-label="${esc(t("lib.view"))} ${esc(a.name)}">${thumbHTML(a)}${a.rev > 1 ? `<span class="rev-badge">r${a.rev}</span>` : ""}</button>${a.type === "model" ? '<span class="li-3d">3D</span>' : ""}</div>
+        <b title="${esc(a.name)}">${esc(a.name)}</b><span>${esc(kindOf(a))} · ${esc(stLabel(a))}</span>
+        ${a.type === "audio" && a.status === "ready" ? `<button type="button" data-listen="${esc(a.id)}">${ICPLAY}${esc(t("lib.listen"))}</button>` : `<button type="button" data-view="${esc(a.id)}">${esc(t("lib.view"))}</button>`}</div>`,
       )
-      .join("")}</div>` : '<div class="empty-n">No hay recursos en esta categoría.</div>'}${note}`;
+      .join("")}</div>` : `<div class="empty-n">${esc(t("lib.empty"))}</div>`}${note}`;
 }
-const CSTY: [string, string][] = [
-  ["epica", "Épica"],
-  ["misteriosa", "Misteriosa"],
-  ["comica", "Cómica"],
+const CSTY = (): [string, string][] => [
+  ["epica", t("cine.epica")],
+  ["misteriosa", t("cine.misteriosa")],
+  ["comica", t("cine.comica")],
 ];
 function cineHTML() {
   const d = design();
-  if (!d) return "<p>La cinemática estará disponible cuando el juego esté listo.</p>";
+  if (!d) return `<p>${esc(t("cine.unavailable"))}</p>`;
   const lines = [0, 1, 2].map((i) => d.cinematic.lines[i] || "");
   const voice = assets().find((a) => a.type === "audio" && a.id === "narration");
-  return `<div class="cine-h"><span class="mascot" aria-hidden="true"></span><p>Una escena antes de jugar: aparecen los subtítulos${voice?.status === "ready" ? " con la narración generada" : ""} y cierra con el título de tu juego.</p></div>
-    <div class="lbl">Estilo</div><div class="presets">${CSTY.map(([id, n]) => `<button type="button" class="preset ${d.cinematic.style === id ? "on" : ""}" data-cs="${id}">${n}</button>`).join("")}</div>
-    <div class="lbl">Guion</div><div class="shots">${lines.map((l, i) => `<label class="shot"><em class="mono">Toma ${i + 1}</em><input class="field" data-line="${i}" value="${esc(l)}" maxlength="90"></label>`).join("")}</div>
-    ${voice ? `<div class="note">La voz de narración se generó con el guion original. Si cambias el texto, pídele a Forge “regenera la narración”.</div>` : ""}
-    <label class="tog"><input type="checkbox" id="cineAuto" ${S.p?.cineAuto ? "checked" : ""}><span class="sw"></span>Mostrar al empezar a jugar</label>
-    <button type="button" class="btn primary-s" id="cinePlay">${ICPLAY}Reproducir cinemática</button>`;
+  return `<div class="cine-h"><span class="mascot" aria-hidden="true"></span><p>${esc(t("cine.blurb", { voice: voice?.status === "ready" ? t("cine.withVoice") : "" }))}</p></div>
+    <div class="lbl">${esc(t("cine.style"))}</div><div class="presets">${CSTY().map(([id, n]) => `<button type="button" class="preset ${d.cinematic.style === id ? "on" : ""}" data-cs="${id}">${n}</button>`).join("")}</div>
+    <div class="lbl">${esc(t("cine.script"))}</div><div class="shots">${lines.map((l, i) => `<label class="shot"><em class="mono">${esc(t("cine.shot", { n: i + 1 }))}</em><input class="field" data-line="${i}" value="${esc(l)}" maxlength="90"></label>`).join("")}</div>
+    ${voice ? `<div class="note">${esc(t("cine.voiceNote"))}</div>` : ""}
+    <label class="tog"><input type="checkbox" id="cineAuto" ${S.p?.cineAuto ? "checked" : ""}><span class="sw"></span>${esc(t("cine.auto"))}</label>
+    <button type="button" class="btn primary-s" id="cinePlay">${ICPLAY}${esc(t("studio.cine"))}</button>`;
 }
 function renderFlow() {
   const f = $("#flow");
   if (!S.p) return;
+  const tabs = PTABS();
   const body = S.ptab === "recursos" ? libHTML() : S.ptab === "cine" ? cineHTML() : guideHTML();
-  f.innerHTML = `<div class="flowbox"><div class="ptabs" role="tablist">${PTABS.map(([id, n]) => `<button type="button" role="tab" class="${S.ptab === id ? "on" : ""}" aria-selected="${S.ptab === id}" data-ptab="${id}">${n}</button>`).join("")}<i class="ptab-ink" style="--x:${PTABS.findIndex((t) => t[0] === S.ptab)}"></i></div><div class="tabc ${tabAnim ? "anim" : ""}">${body}</div></div>`;
+  f.innerHTML = `<div class="flowbox"><div class="ptabs" role="tablist">${tabs.map(([id, n]) => `<button type="button" role="tab" class="${S.ptab === id ? "on" : ""}" aria-selected="${S.ptab === id}" data-ptab="${id}">${n}</button>`).join("")}<i class="ptab-ink" style="--x:${tabs.findIndex((x) => x[0] === S.ptab)}"></i></div><div class="tabc ${tabAnim ? "anim" : ""}">${body}</div></div>`;
   tabAnim = false;
   $$(".fs-pad", f).forEach((pad) => Array.from(pad.children).forEach((c, j) => (c as HTMLElement).style.setProperty("--c", String(j))));
 }
@@ -1026,14 +1075,23 @@ async function patchProject(body: Record<string, unknown>) {
 function playCine() {
   const d = design();
   if (!d) return;
-  if (!S.gameReady) return toast("Espera a que el juego termine de cargar");
+  if (!S.gameReady) return toast(t("play.waitLoad"));
   postGame({ type: "cinematic", lines: d.cinematic.lines, title: d.title });
 }
 
 /* ---------- Chat ---------- */
 const chatOpen = () => !$("#chatWin").hidden;
+function chatText(l: Pick<ChatMsg, "who" | "text" | "tags">) {
+  if (l.tags?.includes("sys:ready")) return t("chat.ready", { title: l.text });
+  // Legacy Spanish ready blurb from older forges.
+  const legacy = /^¡(.+?) está listo!/.exec(l.text);
+  if (legacy) return t("chat.ready", { title: legacy[1] });
+  return l.text;
+}
 function msgHTML(l: Pick<ChatMsg, "who" | "text" | "tags">, thinking = false) {
-  return `<div class="msg ${l.who}">${l.who === "forge" ? '<span class="mascot ava" aria-hidden="true"></span>' : ""}<div class="mb ${thinking ? "thinking" : ""}">${esc(l.text)}${l.tags?.length ? `<div class="tagrow">${l.tags.map((x) => `<span class="tag">${esc(x)}</span>`).join("")}</div>` : ""}</div></div>`;
+  const body = thinking ? l.text : chatText(l);
+  const tags = (l.tags || []).filter((x) => !x.startsWith("sys:"));
+  return `<div class="msg ${l.who}">${l.who === "forge" ? '<span class="mascot ava" aria-hidden="true"></span>' : ""}<div class="mb ${thinking ? "thinking" : ""}">${esc(body)}${tags.length ? `<div class="tagrow">${tags.map((x) => `<span class="tag">${esc(x)}</span>`).join("")}</div>` : ""}</div></div>`;
 }
 function renderChat() {
   const p = S.p;
@@ -1041,10 +1099,13 @@ function renderChat() {
   const job = p.job;
   const thinking = !!job && !job.finishedAt && job.kind === "chat";
   const cur = thinking ? job!.stages.find((s) => s.status === "run") : null;
+  const thinkLabel = cur
+    ? `${stageLabel(cur.id, cur.label)}${cur.detail ? ` · ${stageDetail(cur.detail, cur.status)}` : ""}`
+    : t("chat.thinking");
   const html =
-    p.chat.map((l) => msgHTML(l)).join("") + (thinking ? msgHTML({ who: "forge", text: cur ? `${cur.label}${cur.detail ? ` · ${cur.detail}` : ""}` : "Pensando…" }, true) : "");
+    p.chat.map((l) => msgHTML(l)).join("") + (thinking ? msgHTML({ who: "forge", text: thinkLabel }, true) : "");
   const d = $("#dockLog");
-  d.innerHTML = html || msgHTML({ who: "forge", text: "Hola, soy Forge. Pídeme cambios con tus palabras y los aplico al juego." });
+  d.innerHTML = html || msgHTML({ who: "forge", text: t("chat.hello") });
   d.scrollTop = d.scrollHeight;
   railUpdate();
   setTimeout(railUpdate, 350);
@@ -1052,13 +1113,13 @@ function renderChat() {
   lg.innerHTML = d.innerHTML;
   lg.scrollTop = lg.scrollHeight;
   $("#chatCtx").innerHTML = S.playing
-    ? `<span class="ctx-chip">En partida</span>Los ajustes se aplican al instante; los cambios de código recargan el juego.`
+    ? `<span class="ctx-chip">${esc(t("chat.inGame"))}</span>${esc(t("chat.inGameHint"))}`
     : `<span class="ctx-chip">${esc(design()?.title || "")}</span>${esc(design()?.genre || "")}`;
 }
 async function sendChat(text: string) {
   text = text.trim();
   if (!text || !S.p) return;
-  if (jobRunning()) return toast("Forge sigue trabajando en el cambio anterior. Espera un momento.");
+  if (jobRunning()) return toast(t("chat.busy"));
   try {
     await api(`/api/projects/${S.p.id}/chat`, { method: "POST", json: { message: text, playing: S.playing } });
   } catch (e) {
@@ -1142,7 +1203,8 @@ function openPlay() {
   postGame({ type: "focus" });
   if (S.gameScreen === "start") postGame({ type: "start" });
   renderChat();
-  setTimeout(() => chatHint("¿Muy difícil o muy fácil? Dime “salta más alto” o “más lento” y lo ajusto en vivo."), 1600);
+  setTimeout(() => chatHint(t("chat.hintPlay")), 1600);
+  setTimeout(() => chatHint(t("chat.hintStyle")), 12000);
 }
 function closePlay(instant = false) {
   if (!S.playing) return;
@@ -1167,19 +1229,77 @@ function setSound(on: boolean) {
   S.sound = on;
   for (const id of ["#sndBtn", "#sndBtn2"]) {
     const b = $(id);
+    if (!b) continue;
     b.classList.toggle("on", on);
     const w = b.querySelector<SVGElement>("#sndWave, .sndWave2");
     if (w) w.style.display = on ? "" : "none";
   }
   postGame({ type: "mute", on: !on });
+  if (on && S.volume <= 0.01) setVolume(0.5);
+}
+function setVolume(v: number) {
+  S.volume = clamp(v, 0, 1);
+  for (const id of ["#volSlider", "#volSlider2"]) {
+    const el = $<HTMLInputElement>(id);
+    if (el && Math.abs(Number(el.value) - S.volume) > 0.001) el.value = String(S.volume);
+  }
+  if (S.volume <= 0.01) {
+    if (S.sound) setSound(false);
+  } else if (!S.sound) {
+    S.sound = true;
+    for (const id of ["#sndBtn", "#sndBtn2"]) $(id)?.classList.add("on");
+  }
+  postGame({ type: "mute", on: !S.sound });
+  postGame({ type: "volume", master: S.volume });
 }
 
 /* ---------- Asset viewer ---------- */
-const AV = { id: "" as string, audio: null as HTMLAudioElement | null, three: null as null | { dispose: () => void } };
+const AV = { id: "" as string, viewRev: 0, audio: null as HTMLAudioElement | null, three: null as null | { dispose: () => void } };
+function assetRevList(a: AssetRecord): { rev: number; file: string }[] {
+  if (!a.file || !a.rev) return a.file ? [{ rev: Math.max(1, a.rev), file: a.file }] : [];
+  const m = /^(assets\/.+)\.r(\d+)\.([^.]+)$/.exec(a.file);
+  if (!m) return [{ rev: a.rev, file: a.file }];
+  const [, stem, curRev, ext] = m;
+  const max = Math.max(a.rev, Number(curRev) || 1);
+  return Array.from({ length: max }, (_, i) => ({ rev: i + 1, file: `${stem}.r${i + 1}.${ext}` }));
+}
+function assetActiveRev(a: AssetRecord) {
+  const m = a.file ? /\.r(\d+)\.[^.]+$/.exec(a.file) : null;
+  return m ? Number(m[1]) : a.rev || 1;
+}
+function assetFileUrl(file: string) {
+  return S.p ? `/api/files/${S.p.id}/${file}` : "";
+}
+async function useAssetRev(rev: number) {
+  const a = S.p?.assets[AV.id];
+  if (!S.p || !a) return;
+  if (rev === assetActiveRev(a)) {
+    toast(t("asset.revAlready"));
+    return;
+  }
+  try {
+    const out = await api<AssetRecord>(`/api/projects/${S.p.id}/assets/${a.id}`, { method: "POST", json: { action: "useRev", rev } });
+    S.p.assets[a.id] = out;
+    AV.viewRev = rev;
+    fillViewer();
+    updateAssetCard(out);
+    if (S.ptab === "recursos") renderFlow();
+    const url = FILE(out);
+    if ((out.type === "image" || out.type === "audio") && url && S.gameReady) {
+      postGame({ type: "swapAsset", id: out.id, url, assetType: out.type });
+    } else if (S.p?.versions.length) {
+      reloadGameSoon();
+    }
+    toast(t("asset.revApplied", { n: rev }));
+  } catch (e) {
+    toast(esc((e as Error).message), 4000);
+  }
+}
 function openViewer(id: string) {
   const a = S.p?.assets[id];
   if (!a) return;
   AV.id = id;
+  AV.viewRev = assetActiveRev(a);
   const av = $("#av");
   av.hidden = false;
   av.classList.remove("closing");
@@ -1189,22 +1309,63 @@ function openViewer(id: string) {
 function fillViewer() {
   const a = S.p?.assets[AV.id];
   if (!a) return;
-  const url = FILE(a);
+  const revs = assetRevList(a);
+  const active = assetActiveRev(a);
+  if (!AV.viewRev || AV.viewRev > Math.max(a.rev || 1, active)) AV.viewRev = active;
+  const cur = revs.find((r) => r.rev === AV.viewRev) || revs.at(-1);
+  const url = cur ? assetFileUrl(cur.file) : FILE(a);
+  const viewingActive = AV.viewRev === active;
   $("#avKind").textContent = kindOf(a);
   $("#avName").textContent = a.name;
   const spec = a.spec as ImageAssetSpec & AudioAssetSpec;
-  const tags = [a.provider, a.custom ? "Subido por ti" : "", a.liked === 1 ? "Favorito" : "", `rev ${a.rev}`].filter(Boolean) as string[];
-  $("#avTags").innerHTML = tags.map((t) => `<span>${esc(t)}</span>`).join("");
-  const rows: [string, string][] = [["Estado", { ready: "Listo", generating: "Generando…", pending: "En cola", error: "Error", skipped: "Omitido (sin clave)" }[a.status]]];
-  if (a.type === "image") rows.push(["Rol", ROLE_LABEL[spec.role] || spec.role], ["Formato", `${spec.aspect}${spec.transparent ? " · transparente" : ""}`]);
-  if (a.type === "audio") rows.push(["Tipo", AUDIO_LABEL[spec.kind]], ["Duración", `${spec.durationSec} s${spec.loop ? " · bucle" : ""}`]);
-  if (a.mime) rows.push(["Archivo", a.mime]);
-  $("#avSpec").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + (a.spec.usage ? `<dt>Uso</dt><dd style="text-align:left;font-family:inherit">${esc(a.spec.usage)}</dd>` : "");
+  const tags = [
+    a.provider,
+    a.custom ? t("asset.uploaded") : "",
+    a.liked === 1 ? t("asset.favorite") : "",
+    a.rev > 1 ? t("asset.revN", { n: AV.viewRev, total: a.rev }) : a.rev ? t("asset.revOne", { n: a.rev }) : "",
+    viewingActive && a.rev > 1 ? t("asset.inGame") : "",
+  ].filter(Boolean) as string[];
+  $("#avTags").innerHTML = tags.map((x) => `<span>${esc(x)}</span>`).join("");
+  const rows: [string, string][] = [
+    [
+      t("asset.status"),
+      { ready: t("lib.ready"), generating: t("lib.generating"), pending: t("lib.generating"), error: t("lib.error"), skipped: t("lib.nokey") }[a.status],
+    ],
+  ];
+  if (a.type === "image") rows.push([t("asset.role"), roleLabel(spec.role)], [t("asset.format"), `${spec.aspect}${spec.transparent ? ` · ${t("asset.transparent")}` : ""}`]);
+  if (a.type === "audio") rows.push([t("asset.type"), audioLabel(spec.kind)], [t("asset.duration"), `${spec.durationSec} s${spec.loop ? ` · ${t("asset.loop")}` : ""}`]);
+  if (a.mime) rows.push([t("asset.file"), a.mime]);
+  $("#avSpec").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + (a.spec.usage ? `<dt>${esc(t("asset.usage"))}</dt><dd style="text-align:left;font-family:inherit">${esc(a.spec.usage)}</dd>` : "");
   const pr = $<HTMLTextAreaElement>("#avPrompt");
   if (document.activeElement !== pr) pr.value = a.spec.prompt || "";
-  $("#avNote").textContent = a.error ? `Último error: ${a.error}` : a.status === "generating" ? "Generando una nueva versión…" : "Edita la descripción y regenera; el juego se recargará con el nuevo recurso.";
+  $("#avNote").textContent = a.error
+    ? `${t("asset.lastError")}: ${a.error}`
+    : a.status === "generating"
+      ? t("asset.generatingNew")
+      : revs.length > 1 && !viewingActive
+        ? t("asset.revHint")
+        : t("asset.editHint");
   $<HTMLButtonElement>("#avRegen").disabled = a.status === "generating";
-  $("#avActs").innerHTML = `<button type="button" class="btn small" data-ava="like">${ICON.up}${a.liked === 1 ? "Quitar favorito" : "Me gusta"}</button><button type="button" class="btn small" data-ava="up">${ICUP}Subir el mío</button>${url ? `<a class="btn small" href="${esc(url)}" download="${esc(a.id)}.${esc((a.file || "").split(".").pop())}">${ICDN}Descargar</a>` : ""}`;
+  const useBtn =
+    revs.length > 1 && !viewingActive
+      ? `<button type="button" class="btn small primary-s" data-ava="useRev">${t("asset.useRev", { n: AV.viewRev })}</button>`
+      : "";
+  $("#avActs").innerHTML = `${useBtn}<button type="button" class="btn small" data-ava="like">${ICON.up}${a.liked === 1 ? t("asset.unlike") : t("asset.like")}</button><button type="button" class="btn small" data-ava="up">${ICUP}${t("asset.upload")}</button>${url ? `<a class="btn small" href="${esc(url)}" download="${esc(a.id)}.${esc((cur?.file || a.file || "").split(".").pop() || "bin")}">${ICDN}${t("asset.download")}</a>` : ""}`;
+  const revBox = $("#avRevs");
+  if (revs.length > 1) {
+    revBox.hidden = false;
+    revBox.innerHTML = revs
+      .map(
+        (r) =>
+          `<button type="button" data-arev="${r.rev}" class="${r.rev === AV.viewRev ? "on" : ""}${r.rev === active ? " active" : ""}" title="${esc(
+            r.rev === active ? t("asset.inGame") : t("asset.showRev", { n: r.rev }),
+          )}">r${r.rev}${r.rev === active ? " ✓" : ""}</button>`,
+      )
+      .join("");
+  } else {
+    revBox.hidden = true;
+    revBox.innerHTML = "";
+  }
   // stage
   const img = $<HTMLImageElement>("#avImg"),
     wave = $<HTMLCanvasElement>("#avWave"),
@@ -1216,7 +1377,8 @@ function fillViewer() {
   stopViewerMedia();
   if (a.status !== "ready" || !url) {
     $("#avLoad").hidden = false;
-    $("#avLoadT").textContent = a.status === "generating" || a.status === "pending" ? "Generando…" : a.status === "skipped" ? "Sin clave de API: se usa un marcador" : "No disponible";
+    $("#avLoadT").textContent =
+      a.status === "generating" || a.status === "pending" ? t("lib.generating") : a.status === "skipped" ? t("asset.noKey") : t("asset.unavailable");
     return;
   }
   if (a.type === "image") {
@@ -1234,13 +1396,13 @@ function fillViewer() {
   } else {
     c3.hidden = false;
     $("#avHint").hidden = false;
-    $("#avHint").textContent = "Arrastra para girar · rueda para acercar";
+    $("#avHint").textContent = t("asset.orbitHint");
     void viewModel(url, c3);
   }
 }
 function avPlayBtn() {
   const playing = !!AV.audio && !AV.audio.paused;
-  $("#avPlayBtn").innerHTML = `${playing ? ICSTOP : ICPLAY}${playing ? "Detener" : "Escuchar"}`;
+  $("#avPlayBtn").innerHTML = `${playing ? ICSTOP : ICPLAY}${playing ? t("asset.stop") : t("lib.listen")}`;
 }
 async function drawWave(url: string, cv: HTMLCanvasElement) {
   const r = cv.getBoundingClientRect();
@@ -1278,7 +1440,7 @@ async function drawWave(url: string, cv: HTMLCanvasElement) {
 }
 async function viewModel(url: string, cv: HTMLCanvasElement) {
   $("#avLoad").hidden = false;
-  $("#avLoadT").textContent = "Cargando modelo…";
+  $("#avLoadT").textContent = t("asset.loadingModel");
   const id = AV.id;
   try {
     const THREE = await import("three");
@@ -1324,7 +1486,7 @@ async function viewModel(url: string, cv: HTMLCanvasElement) {
       },
     };
   } catch (e) {
-    $("#avLoadT").textContent = `No pude cargar el modelo: ${(e as Error).message}`;
+    $("#avLoadT").textContent = t("asset.modelFail", { msg: (e as Error).message });
   }
 }
 function stopViewerMedia() {
@@ -1348,18 +1510,20 @@ let libAudio: HTMLAudioElement | null = null;
 function listen(id: string, btn: HTMLElement) {
   const a = S.p?.assets[id];
   if (!a) return;
+  const labelListen = () => `${ICPLAY}${esc(t("lib.listen"))}`;
+  const labelStop = () => `${ICSTOP}${esc(t("asset.stop"))}`;
   if (libAudio && !libAudio.paused && libAudio.dataset.id === id) {
     libAudio.pause();
-    btn.innerHTML = `${ICPLAY}Escuchar`;
+    btn.innerHTML = labelListen();
     return;
   }
   libAudio?.pause();
-  $$("[data-listen]").forEach((b) => (b.innerHTML = `${ICPLAY}Escuchar`));
+  $$("[data-listen]").forEach((b) => (b.innerHTML = labelListen()));
   libAudio = new Audio(FILE(a));
   libAudio.dataset.id = id;
   libAudio.play().catch(() => {});
-  libAudio.addEventListener("ended", () => (btn.innerHTML = `${ICPLAY}Escuchar`));
-  btn.innerHTML = `${ICSTOP}Detener`;
+  libAudio.addEventListener("ended", () => (btn.innerHTML = labelListen()));
+  btn.innerHTML = labelStop();
 }
 
 /* ---------- Export ---------- */
@@ -1369,9 +1533,9 @@ async function openExport() {
   if (S.playing) closePlay(true);
   const m = $("#modal");
   m.hidden = false;
-  const st = ["Reuniendo código y recursos", "Empaquetando motor y runtime", "Comprimiendo el paquete"];
+  const st = [t("export.stageGather"), t("export.stagePack"), t("export.stageZip")];
   $("#mStages").innerHTML = st.map((s) => `<div class="stg"><i></i>${s}</div>`).join("");
-  $("#mTitle").textContent = "Empaquetando tu juego";
+  $("#mTitle").textContent = t("export.title");
   $$<HTMLButtonElement>(".dl button").forEach((b) => (b.disabled = true));
   const bar = $("#mProg");
   bar.style.width = "0%";
@@ -1397,12 +1561,12 @@ async function openExport() {
     clearInterval(tick);
     rows.forEach((r) => (r.className = "stg ok"));
     bar.style.width = "100%";
-    $("#mTitle").textContent = `Listo · ${(blob.size / 1024 / 1024).toFixed(1)} MB`;
+    $("#mTitle").textContent = t("export.ready", { size: (blob.size / 1024 / 1024).toFixed(1) });
     $<HTMLButtonElement>("#dlSrc").disabled = false;
     $<HTMLButtonElement>("#dlWeb").disabled = false;
   } catch (e) {
     clearInterval(tick);
-    $("#mTitle").textContent = "No se pudo exportar";
+    $("#mTitle").textContent = t("export.fail");
     toast(esc((e as Error).message), 4000);
   }
 }
@@ -1423,7 +1587,7 @@ function openPro() {
     pro.classList.remove("leaving");
     const d = design();
     $("#proProj").textContent = d?.title || "";
-    $("#proMeta").textContent = `${d?.genre || ""} · ${S.p?.versions.length || 0} versiones · ${assets().filter((a) => a.status === "ready").length} recursos`;
+    $("#proMeta").textContent = `${d?.genre || ""} · ${t("pro.meta", { versions: S.p?.versions.length || 0, assets: assets().filter((a) => a.status === "ready").length })}`;
     const imgs = sorted(assets().filter((a) => a.type === "image" && a.status === "ready"));
     const pick = [imgs.find((a) => roleOf(a) === "hero"), imgs.find((a) => roleOf(a) === "background"), imgs.find((a) => !["hero", "background"].includes(roleOf(a)))];
     $$<HTMLElement>(".pc-img").forEach((el, i) => {
@@ -1434,7 +1598,7 @@ function openPro() {
     window.scrollTo(0, 0);
     const bot = $("#proBot") as HTMLElement & { _t?: ReturnType<typeof setInterval> };
     bot.textContent = "";
-    const msg = "Listo: 3 conceptos generados. Apruébalos para conectarlos al resto del pipeline.";
+    const msg = t("pro.botReady");
     let i = 0;
     clearInterval(bot._t);
     setTimeout(() => {
@@ -1521,55 +1685,49 @@ function startSky() {
 }
 
 /* ---------- Tour ---------- */
-const TOUR = [
-  { sel: null, t: "Bienvenido a tu estudio", d: "Tu juego ya está creado por el equipo de agentes. En un minuto te muestro dónde está cada cosa. Puedes saltar el recorrido y volver a verlo con el botón de ayuda (?)." },
-  { sel: "#vp", t: "El visor: tu juego en vivo", d: "Haz clic en el visor para jugar aquí mismo. Esc pone pausa. El botón ⤢ de la esquina lo abre en pantalla completa." },
-  { sel: "#playBtn", t: "Jugar en pantalla completa", d: "Primera jugada sin distracciones, con el chat flotante a mano para pedir ajustes mientras juegas." },
-  { sel: "#dock", t: "Chat con Forge", d: "Escribe cambios con tus palabras: “salta más alto”, “añade un jefe final”, “música más épica”. El director decide qué agentes intervienen: ajustes en vivo, nuevo arte, nuevo audio o nuevo código." },
-  { sel: ".st-assets", t: "Recursos del juego", d: "Todo lo que generaron los agentes de imagen, audio y 3D. Toca un recurso para verlo, editar su descripción y regenerarlo, marcar si te gusta, subir el tuyo o descargarlo." },
-  { sel: "#flow", t: "Panel de creación", d: "Guía: el diseño, los ajustes en vivo y el historial de versiones. Recursos: la biblioteca por categorías. Cinemática: la escena de presentación." },
-  { sel: "#exportBtn", t: "Exportar", d: "Descarga el juego completo como paquete HTML5 listo para publicar. A su lado, Abrir en Forge Pro lleva tu proyecto a la versión para estudios." },
-  { sel: "#homeBtn", t: "Volver al inicio", d: "Toca el logo para volver al lobby, ver tus juegos guardados y crear otro." },
-];
+const TOUR_SELS = [null, "#vp", "#playBtn", "#dock", ".st-assets", "#flow", "#exportBtn", "#homeBtn"] as const;
+const tourSteps = () => TOUR_SELS.map((sel, i) => ({ sel, t: t(`tour.${i + 1}.t`), d: t(`tour.${i + 1}.d`) }));
 let tourI = 0;
 function startTour() {
   tourI = 0;
-  const t = $("#tour");
-  t.hidden = false;
-  t.classList.remove("closing");
-  $("#tourDots").innerHTML = TOUR.map((_, i) => `<i data-i="${i}"></i>`).join("");
+  const el = $("#tour");
+  el.hidden = false;
+  el.classList.remove("closing");
+  $("#tourDots").innerHTML = tourSteps().map((_, i) => `<i data-i="${i}"></i>`).join("");
   showTourStep(true);
 }
 function endTour() {
-  const t = $("#tour");
-  if (t.hidden) return;
-  t.classList.add("closing");
+  const tourEl = $("#tour");
+  if (tourEl.hidden) return;
+  tourEl.classList.add("closing");
   setTimeout(() => {
-    t.hidden = true;
-    t.classList.remove("closing");
+    tourEl.hidden = true;
+    tourEl.classList.remove("closing");
   }, 280);
   S.tourSeen = true;
   try {
     localStorage.setItem("forge.tourSeen", "1");
   } catch {}
-  dockHint("Cuando quieras, pídeme cambios aquí.");
+  dockHint(t("chat.hintAsk"));
 }
 function tourGo(d: number) {
+  const steps = tourSteps();
   const n = tourI + d;
   if (n < 0) return;
-  if (n >= TOUR.length) return endTour();
+  if (n >= steps.length) return endTour();
   tourI = n;
   showTourStep();
 }
 function showTourStep(first = false) {
-  const st = TOUR[tourI];
+  const steps = tourSteps();
+  const st = steps[tourI];
   const card = $("#tourCard"),
     spot = $("#tourSpot");
-  $("#tourStep").textContent = `${tourI + 1} de ${TOUR.length}`;
+  $("#tourStep").textContent = t("tour.step", { n: tourI + 1, total: steps.length });
   $("#tourT").textContent = st.t;
   $("#tourD").textContent = st.d;
   $<HTMLButtonElement>("#tourBack").disabled = tourI === 0;
-  $("#tourNext").textContent = tourI === TOUR.length - 1 ? "Empezar a crear" : "Siguiente";
+  $("#tourNext").textContent = tourI === steps.length - 1 ? t("tour.start") : t("tour.next");
   $$("#tourDots i").forEach((d, i) => d.classList.toggle("on", i === tourI));
   card.classList.remove("swap");
   void card.offsetWidth;
@@ -1645,7 +1803,7 @@ function goLobby() {
     gameFrame().removeAttribute("src");
     S.p = null;
     S.screen = "intro";
-    document.title = "Forge Light";
+    document.title = "Forge Xpresso";
     history.replaceState(null, "", "/");
     const it = $("#intro");
     it.classList.remove("leaving");
@@ -1659,75 +1817,186 @@ function goLobby() {
   }, 380);
 }
 
+/* ================= i18n ================= */
+function ensureLangSwitcherHosts() {
+  let intro = $("#introLang");
+  if (!intro) {
+    intro = document.createElement("div");
+    intro.id = "introLang";
+    intro.className = "langsw langsw-fixed";
+    intro.setAttribute("role", "group");
+    (document.getElementById("intro") || document.body).appendChild(intro);
+  }
+  let studio = $("#studioLang");
+  if (!studio) {
+    const top = document.querySelector(".top .spacer");
+    studio = document.createElement("div");
+    studio.id = "studioLang";
+    studio.className = "langsw";
+    studio.setAttribute("role", "group");
+    if (top?.parentElement) top.parentElement.insertBefore(studio, top.nextSibling);
+    else document.body.appendChild(studio);
+  }
+}
+function renderLangSwitchers() {
+  ensureLangSwitcherHosts();
+  const loc = getLocale();
+  for (const id of ["#introLang", "#studioLang"]) {
+    const box = $(id);
+    if (!box) continue;
+    box.className = id === "#introLang" ? "langsw langsw-fixed" : "langsw";
+    box.setAttribute("aria-label", t("intro.lang"));
+    box.innerHTML = (["es", "en", "fr"] as Locale[])
+      .map((idL) => `<button type="button" data-locale="${idL}" class="${loc === idL ? "on" : ""}" title="${idL.toUpperCase()}">${idL.toUpperCase()}</button>`)
+      .join("");
+  }
+}
+function refreshLocaleUI() {
+  applyDomI18n(document);
+  renderLangSwitchers();
+  document.documentElement.style.setProperty("--vol-label", `"${t("studio.volume")}"`);
+  document.documentElement.lang = getLocale();
+  // Force the most visible lobby strings (in case attributes were stripped).
+  const h1 = document.querySelector<HTMLElement>("#introIn h1");
+  if (h1) h1.innerHTML = t("intro.title");
+  const sub = document.querySelector<HTMLElement>("#introIn .sub");
+  if (sub) sub.textContent = t("intro.sub");
+  const yourGames = document.querySelector<HTMLElement>("#projects .lbl");
+  if (yourGames) yourGames.textContent = t("intro.yourGames");
+  void initIntro();
+  if (S.p && S.screen === "studio") {
+    renderAssets();
+    renderFlow();
+    renderBusy();
+  }
+  if (S.screen === "loader") {
+    $("#ldEyebrow").textContent = t("loader.eyebrow");
+    LD.typed = "";
+    renderLoader();
+  }
+  if (S.p && (S.screen === "studio" || S.playing)) renderChat();
+}
+function onLocaleClick(e: MouseEvent) {
+  const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-locale]");
+  if (!b) return;
+  const next = b.getAttribute("data-locale") as Locale | null;
+  if (!next || (next !== "es" && next !== "en" && next !== "fr")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (next === getLocale()) return;
+  setLocale(next);
+  refreshLocaleUI();
+  if (S.p?.versions.length && (S.screen === "studio" || S.playing)) loadGame(true);
+  toast(`🌐 ${next.toUpperCase()}`, 1200);
+}
+
 /* ================= Wiring ================= */
-let mounted = false;
+/** Abort previous mount listeners when React Strict Mode remounts. */
+let mountAbort: AbortController | null = null;
 export function mount() {
-  if (mounted) return;
-  mounted = true;
+  mountAbort?.abort();
+  mountAbort = new AbortController();
+  const { signal } = mountAbort;
+
+  initLocale();
+  setLocale(getLocale());
+  applyDomI18n(document);
+  renderLangSwitchers();
+  document.documentElement.style.setProperty("--vol-label", `"${t("studio.volume")}"`);
   try {
     S.tourSeen = localStorage.getItem("forge.tourSeen") === "1";
   } catch {}
+
+  document.addEventListener("click", onLocaleClick, { capture: true, signal });
   const askIn = $<HTMLTextAreaElement>("#askIn"),
     askSend = $<HTMLButtonElement>("#askSend");
-  askIn.addEventListener("input", () => (askSend.disabled = !askIn.value.trim()));
-  askIn.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (askIn.value.trim()) $<HTMLFormElement>("#askForm").requestSubmit();
-    }
-  });
-  $("#askForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const t = askIn.value.trim();
-    if (t) void createGame(t);
-  });
-  $$(".dimsw:not(.prov) button").forEach((b) => b.addEventListener("click", () => setIntroDim(b.dataset.d as Dimension)));
-  $$("#provSw button").forEach((b) =>
-    b.addEventListener("click", () => {
-      S.provider = b.dataset.p as ImageProvider;
-      renderProvider();
-      if (S.caps && !S.caps.images[S.provider]) toast(`No hay clave de <b>${PROVIDER_LABEL[S.provider]}</b>: las imágenes se omitirán`);
-    }),
-  );
-  $("#sugs").addEventListener("click", (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>("button");
-    if (!b) return;
-    const [t, d] = IDEAS[Number(b.dataset.i)];
-    askIn.value = t;
-    askSend.disabled = false;
-    setIntroDim(d);
-    askIn.focus();
-  });
-  $("#projGrid").addEventListener("click", async (e) => {
-    const t = e.target as HTMLElement;
-    const del = t.closest<HTMLElement>("[data-del]");
-    if (del) {
-      e.stopPropagation();
-      if (!confirm("¿Eliminar este juego y todos sus recursos?")) return;
-      try {
-        await api(`/api/projects/${del.dataset.del}`, { method: "DELETE" });
-        void loadProjects();
-      } catch (err) {
-        toast(esc((err as Error).message));
+  askIn.addEventListener("input", () => (askSend.disabled = !askIn.value.trim()), { signal });
+  askIn.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (askIn.value.trim()) $<HTMLFormElement>("#askForm").requestSubmit();
       }
-      return;
-    }
-    const card = t.closest<HTMLElement>(".pj");
-    if (card) {
-      $("#intro").classList.add("leaving");
-      await sleep(380);
-      await openProjectById(card.dataset.id!);
-    }
-  });
-  $("#projGrid").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") (e.target as HTMLElement).closest<HTMLElement>(".pj")?.click();
-  });
+    },
+    { signal },
+  );
+  $("#askForm").addEventListener(
+    "submit",
+    (e) => {
+      e.preventDefault();
+      const idea = askIn.value.trim();
+      if (idea) void createGame(idea);
+    },
+    { signal },
+  );
+  $$(".dimsw:not(.prov) button").forEach((b) => b.addEventListener("click", () => setIntroDim(b.dataset.d as Dimension), { signal }));
+  $$("#provSw button").forEach((b) =>
+    b.addEventListener(
+      "click",
+      () => {
+        S.provider = b.dataset.p as ImageProvider;
+        renderProvider();
+        if (S.caps && !S.caps.images[S.provider]) toast(t("keys.provider", { name: PROVIDER_LABEL[S.provider] }));
+      },
+      { signal },
+    ),
+  );
+  $("#sugs").addEventListener(
+    "click",
+    (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>("button");
+      if (!b) return;
+      const [idea, d] = ideasList()[Number(b.dataset.i)];
+      askIn.value = idea;
+      askSend.disabled = false;
+      setIntroDim(d);
+      askIn.focus();
+    },
+    { signal },
+  );
+  $("#projGrid").addEventListener(
+    "click",
+    async (e) => {
+      const el = e.target as HTMLElement;
+      const del = el.closest<HTMLElement>("[data-del]");
+      if (del) {
+        e.stopPropagation();
+        if (!confirm(t("intro.deleteConfirm"))) return;
+        try {
+          await api(`/api/projects/${del.dataset.del}`, { method: "DELETE" });
+          void loadProjects();
+        } catch (err) {
+          toast(esc((err as Error).message));
+        }
+        return;
+      }
+      const card = el.closest<HTMLElement>(".pj");
+      if (card) {
+        $("#intro").classList.add("leaving");
+        await sleep(380);
+        await openProjectById(card.dataset.id!);
+      }
+    },
+    { signal },
+  );
+  $("#projGrid").addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Enter") (e.target as HTMLElement).closest<HTMLElement>(".pj")?.click();
+    },
+    { signal },
+  );
 
   // loader
-  $("#ldBack").addEventListener("click", () => {
-    toast("La forja sigue en segundo plano. Encontrarás el juego en <b>Tus juegos</b>.");
-    goLobby();
-  });
+  $("#ldBack").addEventListener(
+    "click",
+    () => {
+      toast(t("loader.bgToast"));
+      goLobby();
+    },
+    { signal },
+  );
   $("#ldError").addEventListener("click", async (e) => {
     if (!(e.target as HTMLElement).closest("#ldRetry") || !S.p) return;
     try {
@@ -1755,11 +2024,14 @@ export function mount() {
   $("#reloadBtn").addEventListener("click", () => loadGame(true));
   $("#sndBtn").addEventListener("click", () => setSound(!S.sound));
   $("#sndBtn2").addEventListener("click", () => setSound(!S.sound));
+  for (const id of ["#volSlider", "#volSlider2"]) {
+    $(id)?.addEventListener("input", (e) => setVolume(Number((e.target as HTMLInputElement).value)));
+  }
   $("#dbgBtn").addEventListener("click", () => {
     S.debug = !S.debug;
     $("#dbgBtn").classList.toggle("on", S.debug);
     postGame({ type: "debug", on: S.debug });
-    toast(S.debug ? "Depuración: colisiones visibles" : "Depuración desactivada");
+    toast(S.debug ? t("play.debugOn") : t("play.debugOff"));
   });
   $("#rstBtn").addEventListener("click", () => {
     postGame({ type: "restart" });
@@ -1770,7 +2042,7 @@ export function mount() {
     if (!b) return;
     if (b.dataset.vperr === "x") hideVpErr();
     else if (b.dataset.vperr === "repair") void requestRepair(true);
-    else if (b.dataset.vperr === "retry") void sendChat("El juego no tiene código todavía o falló al generarse. Por favor vuelve a programarlo completo.");
+    else if (b.dataset.vperr === "retry") void sendChat(t("chat.retryCode"));
   });
 
   // assets
@@ -1785,8 +2057,8 @@ export function mount() {
   // flow panel (delegated)
   const flow = $("#flow");
   flow.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement;
-    const tab = t.closest<HTMLElement>("[data-ptab]");
+    const el = e.target as HTMLElement;
+    const tab = el.closest<HTMLElement>("[data-ptab]");
     if (tab) {
       if (S.ptab !== tab.dataset.ptab) {
         S.ptab = tab.dataset.ptab as typeof S.ptab;
@@ -1795,51 +2067,51 @@ export function mount() {
       }
       return;
     }
-    const row = t.closest<HTMLElement>(".fs-row");
+    const row = el.closest<HTMLElement>(".fs-row");
     if (row) {
       const i = Number(row.parentElement!.dataset.i);
       S.open = S.open === i ? -1 : i;
       setOpen();
       return;
     }
-    const lib = t.closest<HTMLElement>("[data-lib]");
+    const lib = el.closest<HTMLElement>("[data-lib]");
     if (lib) {
       S.lib = lib.dataset.lib!;
       tabAnim = true;
       renderFlow();
       return;
     }
-    const view = t.closest<HTMLElement>("[data-view]");
+    const view = el.closest<HTMLElement>("[data-view]");
     if (view) return openViewer(view.dataset.view!);
-    const li = t.closest<HTMLElement>("[data-listen]");
+    const li = el.closest<HTMLElement>("[data-listen]");
     if (li) return listen(li.dataset.listen!, li);
-    const ver = t.closest<HTMLElement>("[data-ver]");
+    const ver = el.closest<HTMLElement>("[data-ver]");
     if (ver) {
-      void patchProject({ currentVersion: Number(ver.dataset.ver) }).then((p) => p && toast(`Volviste a la <b>versión ${ver.dataset.ver}</b>`));
+      void patchProject({ currentVersion: Number(ver.dataset.ver) }).then((p) => p && toast(t("guide.versionRestored", { n: ver.dataset.ver! })));
       return;
     }
-    const prov = t.closest<HTMLElement>("[data-prov]");
+    const prov = el.closest<HTMLElement>("[data-prov]");
     if (prov) {
       void patchProject({ imageProvider: prov.dataset.prov }).then(() => renderFlow());
       return;
     }
-    const cs = t.closest<HTMLElement>("[data-cs]");
+    const cs = el.closest<HTMLElement>("[data-cs]");
     if (cs) {
       void patchProject({ cinematicStyle: cs.dataset.cs }).then(() => renderFlow());
       return;
     }
-    if (t.closest("#cinePlay")) playCine();
+    if (el.closest("#cinePlay")) playCine();
   });
   flow.addEventListener("input", (e) => {
-    const t = e.target as HTMLInputElement;
-    if (t.dataset.tune) onTune(t);
+    const inp = e.target as HTMLInputElement;
+    if (inp.dataset.tune) onTune(inp);
   });
   flow.addEventListener("change", (e) => {
-    const t = e.target as HTMLInputElement;
-    if (t.id === "cineAuto") {
-      void patchProject({ cineAuto: t.checked });
-      toast(t.checked ? "La cinemática se verá al empezar a jugar" : "Cinemática al inicio desactivada");
-    } else if (t.dataset.line !== undefined) {
+    const inp = e.target as HTMLInputElement;
+    if (inp.id === "cineAuto") {
+      void patchProject({ cineAuto: inp.checked });
+      toast(inp.checked ? t("cine.on") : t("cine.off"));
+    } else if (inp.dataset.line !== undefined) {
       const lines = $$<HTMLInputElement>("[data-line]", flow).map((x) => x.value.trim());
       void patchProject({ cinematicLines: lines });
     }
@@ -1905,26 +2177,72 @@ export function mount() {
   }
 
   // viewer
-  $("#avClose").addEventListener("click", closeViewer);
-  $("#av").addEventListener("click", (e) => {
-    if (e.target === $("#av")) closeViewer();
-  });
-  $("#avPlayBtn").addEventListener("click", () => {
-    if (!AV.audio) return;
-    if (AV.audio.paused) void AV.audio.play().catch(() => {});
-    else AV.audio.pause();
-    setTimeout(avPlayBtn, 30);
-  });
-  $("#avRegen").addEventListener("click", () => {
-    const v = $<HTMLTextAreaElement>("#avPrompt").value.trim();
-    if (AV.id) void regenerate(AV.id, v || undefined);
-  });
-  $("#avActs").addEventListener("click", (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-ava]");
-    if (!b || !AV.id) return;
-    if (b.dataset.ava === "like") void assetAction(AV.id, "like").then(fillViewer);
-    else if (b.dataset.ava === "up") startUpload(AV.id);
-  });
+  $("#avClose").addEventListener("click", closeViewer, { signal });
+  $("#av").addEventListener(
+    "click",
+    (e) => {
+      if (e.target === $("#av")) closeViewer();
+    },
+    { signal },
+  );
+  $("#avPlayBtn").addEventListener(
+    "click",
+    () => {
+      if (!AV.audio) return;
+      if (AV.audio.paused) void AV.audio.play().catch(() => {});
+      else AV.audio.pause();
+      setTimeout(avPlayBtn, 30);
+    },
+    { signal },
+  );
+  $("#avRegen").addEventListener(
+    "click",
+    () => {
+      const v = $<HTMLTextAreaElement>("#avPrompt").value.trim();
+      if (AV.id) void regenerate(AV.id, v || undefined);
+    },
+    { signal },
+  );
+  $("#avActs").addEventListener(
+    "click",
+    (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>("[data-ava]");
+      if (!b || !AV.id) return;
+      if (b.dataset.ava === "like") void assetAction(AV.id, "like").then(fillViewer);
+      else if (b.dataset.ava === "up") startUpload(AV.id);
+      else if (b.dataset.ava === "useRev") void useAssetRev(AV.viewRev);
+    },
+    { signal },
+  );
+  // Delegate on the dialog so clicks survive remounts / innerHTML refreshes of #avRevs.
+  $("#av").addEventListener(
+    "click",
+    (e) => {
+      const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-arev]");
+      if (!b || !AV.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const n = Number(b.getAttribute("data-arev"));
+      if (!Number.isFinite(n) || n < 1 || n === AV.viewRev) return;
+      AV.viewRev = n;
+      fillViewer();
+    },
+    { capture: true, signal },
+  );
+  $("#av").addEventListener(
+    "dblclick",
+    (e) => {
+      const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-arev]");
+      if (!b || !AV.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const n = Number(b.getAttribute("data-arev"));
+      if (!Number.isFinite(n) || n < 1) return;
+      AV.viewRev = n;
+      void useAssetRev(n);
+    },
+    { capture: true, signal },
+  );
 
   // export modal
   $("#mClose").addEventListener("click", () => ($("#modal").hidden = true));
@@ -1943,10 +2261,10 @@ export function mount() {
   const goFeat = () => $("#proFeat").scrollIntoView({ behavior: "smooth", block: "start" });
   $("#proWhat").addEventListener("click", goFeat);
   $("#proWhat2").addEventListener("click", goFeat);
-  const proSign = () => toast("Vista previa: el acceso a <b>Forge Pro</b> es por invitación para estudios");
+  const proSign = () => toast(t("pro.toast"));
   $("#proSign").addEventListener("click", proSign);
   $("#proSign2").addEventListener("click", proSign);
-  $("#proImport").addEventListener("click", () => toast(`<b>${esc(design()?.title || "Tu juego")}</b> quedará listo para importar cuando tengas acceso a Forge Pro`));
+  $("#proImport").addEventListener("click", () => toast(t("pro.importToast", { title: esc(design()?.title || t("guide.yourGame")) })));
 
   // tour
   $("#tourNext").addEventListener("click", () => tourGo(1));
@@ -1967,8 +2285,8 @@ export function mount() {
     "scroll",
     () => {
       if ($("#tour").hidden) return;
-      const st = TOUR[tourI];
-      const el = st.sel ? document.querySelector<HTMLElement>(st.sel) : null;
+      const st = tourSteps()[tourI];
+      const el = st?.sel ? document.querySelector<HTMLElement>(st.sel) : null;
       if (el) positionTour(el);
     },
     { passive: true },

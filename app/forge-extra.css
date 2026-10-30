@@ -20,6 +20,22 @@
 .pj:hover .del{display:grid}
 .pj .del:hover{color:var(--rose)}
 
+/* language switcher — fixed so it never hides behind intro overflow/centering */
+.langsw{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(18,20,28,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.langsw button{appearance:none;border:0;background:transparent;color:var(--muted);font:800 11px/1 Manrope,system-ui,sans-serif;letter-spacing:.06em;padding:8px 11px;border-radius:999px;cursor:pointer}
+.langsw button.on{background:linear-gradient(135deg,rgba(255,122,26,.35),rgba(255,79,139,.25));color:#fff}
+.langsw button:hover{color:#fff}
+.langsw-fixed{position:fixed;top:max(14px, env(safe-area-inset-top, 0px));right:max(14px, env(safe-area-inset-right, 0px));z-index:80}
+#intro[hidden] .langsw-fixed{display:none !important}
+@media (max-width:720px){.langsw button{padding:7px 9px;font-size:10px}.langsw-fixed{top:10px;right:10px}}
+
+/* volume (studio chrome — master bus; music/SFX live in-game under Ajustes) */
+.vol{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 2px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.vol::after{content:var(--vol-label,"Vol");font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.vol .iconbtn{border:0;background:transparent;width:30px;height:30px}
+.vol input[type=range]{width:110px;accent-color:var(--forge);cursor:pointer}
+@media (max-width:720px){.vol input[type=range]{width:72px}.vol::after{display:none}}
+
 /* loader */
 .ld-gallery{position:absolute;inset:0;background:#0b0d13;background-image:linear-gradient(rgba(99,102,241,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.08) 1px,transparent 1px);background-size:32px 32px}
 .ld-gallery img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1s ease,transform 6s ease;transform:scale(1.08)}
@@ -76,7 +92,7 @@
 
 /* play mode: the viewport stays in the DOM (moving an iframe reloads it) and is pinned over the stage */
 body.is-playing .st-preview{z-index:47}
-body.is-playing #vp{position:fixed;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(1280px,calc(100vw - 32px),calc((100dvh - 110px) * 16 / 9));z-index:47;border-radius:18px;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(16,185,129,.25);animation:vpIn .45s cubic-bezier(.2,.9,.3,1.1)}
+body.is-playing #vp{position:fixed;left:50%;top:calc(50% + 18px);transform:translate(-50%,-50%);width:min(1680px,96vw,calc((100dvh - 72px) * 16 / 9));z-index:47;border-radius:14px;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(16,185,129,.25);animation:vpIn .45s cubic-bezier(.2,.9,.3,1.1)}
 @keyframes vpIn{from{opacity:0;transform:translate(-50%,-48%) scale(.94)}}
 body.is-playing .vp-expand{display:none}
 body.is-playing .st-preview::after{display:none}
@@ -86,6 +102,12 @@ body.is-playing .st-preview::after{display:none}
 .asset .tb a{width:24px;height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.14);background:rgba(10,11,16,.62);display:grid;place-items:center;color:var(--text);opacity:.8;transition:opacity .2s,transform .2s,background .2s}
 .asset .tb a:hover{opacity:1;transform:scale(1.08);background:rgba(255,122,26,.85);color:var(--forge-ink)}
 .av-acts a.btn{text-decoration:none;color:inherit}
+.av-revs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;position:relative;z-index:2}
+.av-revs button{height:30px;min-width:40px;padding:0 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--muted);font:700 11px var(--font-mono);cursor:pointer}
+.av-revs button.on{border-color:var(--forge);background:rgba(255,122,26,.9);color:#1a0d04}
+.av-revs button.active:not(.on){border-color:rgba(16,185,129,.65);color:var(--emerald)}
+.av-revs button:hover{border-color:var(--forge);color:var(--text)}
+.asset .rev-badge,.li .rev-badge{position:absolute;right:4px;top:4px;font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;background:rgba(10,11,16,.78);color:var(--spark);z-index:2}
 .asset .st-badge{position:absolute;left:4px;bottom:4px;font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;background:rgba(10,11,16,.75);color:var(--muted)}
 .asset .st-badge.generating{color:var(--spark)}
 .asset .st-badge.error{color:var(--rose)}
@@ -120,7 +142,7 @@ body.is-playing .st-preview::after{display:none}
 .empty-n{font-size:12px;color:var(--dim);border:1px dashed var(--line-2);border-radius:10px;padding:10px;text-align:center}
 
 /* asset viewer */
-#avImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4%}
+#avImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4%;pointer-events:none}
 #avImg.cover{object-fit:cover;padding:0}
 #avPrompt{font-size:12.5px;min-height:90px}
 

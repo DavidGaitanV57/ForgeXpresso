@@ -8,6 +8,50 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ICPLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICPAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+const RT_I18N = {
+  es: {
+    pause: "Pausa", settings: "Ajustes", resume: "Continuar", restart: "Reiniciar", back: "Volver", play: "Jugar", cine: "Ver cinemática",
+    audio: "Audio", audioHelp: "Música, efectos y volumen general del juego", volMaster: "Volumen general", volMusic: "Música", volSfx: "Efectos (SFX)",
+    objective: "Objetivo", loading: "Cargando", game: "Juego",
+    victory: "¡Victoria!", defeat: "Fin de la partida", levelComplete: "¡Nivel completado!", ohNo: "¡Oh no!", playAgain: "Jugar otra vez", retry: "Reintentar",
+    errEyebrow: "Error en el juego", errTitle: "Algo se rompió", errRepairing: "Forge está revisando el código para corregirlo.", errCheck: "Revisa el mensaje:",
+    errUnknown: "Error desconocido", errBadModule: "El módulo del juego no exporta createGame por defecto",
+  },
+  en: {
+    pause: "Paused", settings: "Settings", resume: "Resume", restart: "Restart", back: "Back", play: "Play", cine: "Watch cinematic",
+    audio: "Audio", audioHelp: "Music, SFX, and master volume", volMaster: "Master volume", volMusic: "Music", volSfx: "Sound effects",
+    objective: "Objective", loading: "Loading", game: "Game",
+    victory: "Victory!", defeat: "Game over", levelComplete: "Level complete!", ohNo: "Oh no!", playAgain: "Play again", retry: "Retry",
+    errEyebrow: "Game error", errTitle: "Something broke", errRepairing: "Forge is reviewing the code to fix it.", errCheck: "Check the message:",
+    errUnknown: "Unknown error", errBadModule: "Game module does not export createGame as default",
+  },
+  fr: {
+    pause: "Pause", settings: "Réglages", resume: "Continuer", restart: "Recommencer", back: "Retour", play: "Jouer", cine: "Voir la cinématique",
+    audio: "Audio", audioHelp: "Musique, effets et volume général", volMaster: "Volume général", volMusic: "Musique", volSfx: "Effets (SFX)",
+    objective: "Objectif", loading: "Chargement", game: "Jeu",
+    victory: "Victoire !", defeat: "Partie terminée", levelComplete: "Niveau terminé !", ohNo: "Oh non !", playAgain: "Rejouer", retry: "Réessayer",
+    errEyebrow: "Erreur du jeu", errTitle: "Quelque chose a planté", errRepairing: "Forge examine le code pour le corriger.", errCheck: "Vérifie le message :",
+    errUnknown: "Erreur inconnue", errBadModule: "Le module du jeu n’exporte pas createGame par défaut",
+  },
+};
+function rtLocale() {
+  const bootLang = BOOT?.locale;
+  if (bootLang === "es" || bootLang === "en" || bootLang === "fr") return bootLang;
+  try {
+    const v = localStorage.getItem("forge.locale");
+    if (v === "es" || v === "en" || v === "fr") return v;
+  } catch {}
+  const nav = (navigator.language || "en").toLowerCase();
+  if (nav.startsWith("fr")) return "fr";
+  if (nav.startsWith("es")) return "es";
+  return "en";
+}
+const rt = (k) => (RT_I18N[rtLocale()] || RT_I18N.en)[k] || k;
+function pauseLabel(id, fallbackKey) {
+  const items = BOOT?.design?.ui?.pauseMenu || [];
+  const hit = items.find((i) => i.id === id || i.action === id || String(i.action || "").toLowerCase().includes(id));
+  return (hit && hit.label) || rt(fallbackKey);
+}
 
 function post(msg) {
   if (embedded) parent.postMessage({ source: "forge-game", projectId: BOOT.projectId, version: BOOT.version, ...msg }, "*");
@@ -21,11 +65,11 @@ root.innerHTML = `
 <div class="fx-hud" id="fxHud"></div>
 <div class="fx-msg" id="fxMsg"></div>
 <div id="fxFloats"></div>
-<button class="fx-pausebtn" id="fxPauseBtn" aria-label="Pausa">${ICPAUSE}</button>
+<button class="fx-pausebtn" id="fxPauseBtn" aria-label="${esc(rt("pause"))}">${ICPAUSE}</button>
 <div class="fx-touch"><div><button data-a="left">◀</button><button data-a="right">▶</button></div><div><button data-a="action2">✧</button><button data-a="action">✦</button><button data-a="jump">▲</button></div></div>
-<div class="fx-cine" id="fxCine" hidden><i class="bar t"></i><i class="bar b"></i><div class="sub" id="fxCineSub"></div><div class="ttl" id="fxCineTtl"></div><button class="skip" id="fxCineSkip">Saltar ›</button></div>
+<div class="fx-cine" id="fxCine" hidden><i class="bar t"></i><i class="bar b"></i><div class="sub" id="fxCineSub"></div><div class="ttl" id="fxCineTtl"></div><button class="skip" id="fxCineSkip">${esc(rt("back"))} ›</button></div>
 <div class="fx-ov" id="fxOv" hidden><div class="fx-card" id="fxCard"></div></div>
-<div class="fx-load" id="fxLoad"><b>Cargando ${esc(BOOT.design?.title || "juego")}…</b><i><u id="fxLoadBar"></u></i></div>`;
+<div class="fx-load" id="fxLoad"><b>${esc(rt("loading"))} ${esc(BOOT.design?.title || "…")}…</b><i><u id="fxLoadBar"></u></i></div>`;
 document.body.appendChild(root);
 if (!embedded) root.classList.add("standalone");
 if (matchMedia("(pointer: coarse)").matches) root.classList.add("touch");
@@ -36,7 +80,7 @@ const setLoad = (r) => ($("#fxLoadBar").style.width = `${Math.round(clamp(r, 0, 
 let phase = "boot";
 let reported = false;
 function errText(e) {
-  if (!e) return "Error desconocido";
+  if (!e) return rt("errUnknown");
   if (typeof e === "string") return e;
   return `${e.name ? e.name + ": " : ""}${e.message || String(e)}`;
 }
@@ -53,7 +97,7 @@ function reportError(e, where) {
   $("#fxLoad").hidden = true;
   showOverlay(
     "err",
-    `<em>Error en el juego</em><h1>Algo se rompió</h1><p>${embedded ? "Forge está revisando el código para corregirlo." : "Revisa el mensaje:"}</p><pre>${esc(message)}\n${esc(String(stack).split("\n").slice(0, 6).join("\n"))}</pre>`,
+    `<em>${esc(rt("errEyebrow"))}</em><h1>${esc(rt("errTitle"))}</h1><p>${esc(embedded ? rt("errRepairing") : rt("errCheck"))}</p><pre>${esc(message)}\n${esc(String(stack).split("\n").slice(0, 6).join("\n"))}</pre>`,
   );
 }
 addEventListener("error", (e) => reportError(e.error || e.message));
@@ -173,8 +217,31 @@ musicBus.connect(master);
 sfxBus.connect(master);
 master.connect(AC.destination);
 master.gain.value = 0.9;
+musicBus.gain.value = 0.7;
+sfxBus.gain.value = 1;
 const buffers = {};
 let muted = false;
+let masterVol = 0.9;
+let musicVol = 0.7;
+let sfxVol = 1;
+try {
+  const saved = JSON.parse(localStorage.getItem(`forge-vol:${BOOT.projectId}`) || "null");
+  if (saved && typeof saved === "object") {
+    if (typeof saved.master === "number") masterVol = clamp(saved.master, 0, 1);
+    if (typeof saved.music === "number") musicVol = clamp(saved.music, 0, 1);
+    if (typeof saved.sfx === "number") sfxVol = clamp(saved.sfx, 0, 1);
+  } else {
+    const settings = BOOT.design?.ui?.settings || [];
+    const def = (key, fallback) => {
+      const s = settings.find((x) => x.key === key);
+      const v = Number(s?.defaultValue);
+      return Number.isFinite(v) ? clamp(v, 0, 1) : fallback;
+    };
+    masterVol = def("masterVolume", masterVol);
+    musicVol = def("musicVolume", musicVol);
+    sfxVol = def("sfxVolume", sfxVol);
+  }
+} catch {}
 let music = null;
 function unlockAudio() {
   if (AC.state === "suspended" && state.screen !== "pause") AC.resume().catch(() => {});
@@ -282,9 +349,56 @@ const audio = {
     } catch {}
   },
 };
+function applyVolumes() {
+  const m = muted ? 0 : masterVol;
+  master.gain.setTargetAtTime(Math.max(0.0001, m), AC.currentTime, 0.05);
+  musicBus.gain.setTargetAtTime(Math.max(0.0001, musicVol), AC.currentTime, 0.05);
+  sfxBus.gain.setTargetAtTime(Math.max(0.0001, sfxVol), AC.currentTime, 0.05);
+}
+applyVolumes();
 function setMuted(on) {
   muted = on;
-  master.gain.setTargetAtTime(on ? 0 : 0.9, AC.currentTime, 0.05);
+  applyVolumes();
+}
+function setVolume(o = {}) {
+  if (typeof o.master === "number") masterVol = clamp01(o.master);
+  if (typeof o.music === "number") musicVol = clamp01(o.music);
+  if (typeof o.sfx === "number") sfxVol = clamp01(o.sfx);
+  applyVolumes();
+  try {
+    localStorage.setItem(`forge-vol:${BOOT.projectId}`, JSON.stringify({ master: masterVol, music: musicVol, sfx: sfxVol }));
+  } catch {}
+  post({ type: "volume", master: masterVol, music: musicVol, sfx: sfxVol });
+}
+function clamp01(v) {
+  return Math.max(0, Math.min(1, Number(v) || 0));
+}
+function settingsSlidersHtml() {
+  const rows = [
+    { key: "master", label: rt("volMaster"), value: masterVol },
+    { key: "music", label: rt("volMusic"), value: musicVol },
+    { key: "sfx", label: rt("volSfx"), value: sfxVol },
+  ];
+  return `<div class="fx-set" id="fxVolSet">${rows
+    .map(
+      (r) =>
+        `<label><span>${esc(r.label)}</span><b data-v="${r.key}">${Math.round(r.value * 100)}%</b><input type="range" min="0" max="1" step="0.05" value="${r.value}" data-bus="${r.key}" aria-label="${esc(r.label)}"></label>`,
+    )
+    .join("")}</div>`;
+}
+function wireVolumeSliders(rootEl = document) {
+  const box = rootEl.querySelector?.("#fxVolSet") || $("#fxVolSet");
+  if (!box) return;
+  box.querySelectorAll("input[type=range][data-bus]").forEach((input) => {
+    const sync = () => {
+      const bus = input.getAttribute("data-bus");
+      const v = clamp01(Number(input.value));
+      setVolume({ [bus]: v });
+      const lbl = box.querySelector(`b[data-v="${bus}"]`);
+      if (lbl) lbl.textContent = `${Math.round(v * 100)}%`;
+    };
+    input.addEventListener("input", sync);
+  });
 }
 
 /* ---------------- HUD ---------------- */
@@ -501,11 +615,12 @@ function showStart() {
   const d = BOOT.design || {};
   showOverlay(
     "start",
-    `<em>${esc(d.genre || "Juego")}</em><h1>${esc(d.title || "")}</h1><p>${esc(d.tagline || "")}</p>
-    ${d.objective ? `<div class="fx-goal"><b>Objetivo</b>${esc(d.objective)}</div>` : ""}${controlsHtml()}
-    <div class="fx-acts"><button class="fx-btn" id="fxStart">${ICPLAY}Jugar</button>${d.cinematic?.lines?.length ? `<button class="fx-btn ghost" id="fxCineBtn">Ver cinemática</button>` : ""}</div>`,
+    `<em>${esc(d.genre || rt("game"))}</em><h1>${esc(d.title || "")}</h1><p>${esc(d.tagline || "")}</p>
+    ${d.objective ? `<div class="fx-goal"><b>${esc(rt("objective"))}</b>${esc(d.objective)}</div>` : ""}${controlsHtml()}
+    <div class="fx-acts"><button class="fx-btn" id="fxStart">${ICPLAY}${esc((d.ui?.startActions?.[0] || "").trim() || rt("play"))}</button><button class="fx-btn ghost" id="fxStartSettings">${esc((d.ui?.startActions?.[1] || "").trim() || rt("settings"))}</button>${d.cinematic?.lines?.length ? `<button class="fx-btn ghost" id="fxCineBtn">${esc(rt("cine"))}</button>` : ""}</div>`,
   );
   $("#fxStart").onclick = () => startGame();
+  $("#fxStartSettings").onclick = showSettingsMenu;
   const cb = $("#fxCineBtn");
   if (cb) cb.onclick = () => playCinematic();
   post({ type: "screen", screen: "start" });
@@ -533,10 +648,36 @@ function pauseGame(showMenu) {
 function showPauseMenu() {
   showOverlay(
     "pause",
-    `<em>Pausa</em><h1>${esc(BOOT.design?.title || "")}</h1>${controlsHtml()}<div class="fx-acts"><button class="fx-btn" id="fxResume">${ICPLAY}Continuar</button><button class="fx-btn ghost" id="fxRestart">Reiniciar</button></div>`,
+    `<em>${esc(rt("pause"))}</em><h1>${esc(BOOT.design?.title || "")}</h1>${controlsHtml()}
+    <div class="fx-acts">
+      <button class="fx-btn" id="fxResume">${ICPLAY}${esc(pauseLabel("resume", "resume"))}</button>
+      <button class="fx-btn ghost" id="fxSettings">${esc(pauseLabel("settings", "settings"))}</button>
+      <button class="fx-btn ghost" id="fxRestart">${esc(pauseLabel("restart", "restart"))}</button>
+      <button class="fx-btn ghost" id="fxQuit">${esc(pauseLabel("quit", "back"))}</button>
+    </div>
+    ${settingsSlidersHtml()}`,
   );
   $("#fxResume").onclick = resumeGame;
+  $("#fxSettings").onclick = showSettingsMenu;
   $("#fxRestart").onclick = restart;
+  $("#fxQuit").onclick = () => {
+    hideOverlay();
+    showStart();
+  };
+  wireVolumeSliders();
+}
+function showSettingsMenu() {
+  if (state.screen !== "pause" && state.screen !== "start") return;
+  const back = state.screen === "start" ? showStart : showPauseMenu;
+  showOverlay(
+    state.screen === "start" ? "start" : "pause",
+    `<em>${esc(rt("settings"))}</em><h1>${esc(rt("audio"))}</h1>
+    <p style="margin:0 0 4px;font-size:13px;opacity:.75">${esc(rt("audioHelp"))}</p>
+    ${settingsSlidersHtml()}
+    <div class="fx-acts"><button class="fx-btn" id="fxSetBack">${esc(rt("back"))}</button></div>`,
+  );
+  wireVolumeSliders();
+  $("#fxSetBack").onclick = back;
 }
 function resumeGame() {
   if (state.screen !== "pause") return;
@@ -558,11 +699,17 @@ function endRun(kind, o) {
     host.pause();
     input._clear();
     root.classList.add("paused");
+    const eyebrow = kind === "win" ? rt("victory") : rt("defeat");
+    const title = o.title || (kind === "win" ? rt("levelComplete") : rt("ohNo"));
+    const actions = BOOT.design?.ui?.gameOverActions || [];
+    const again =
+      (typeof actions[0] === "string" && actions[0].trim()) ||
+      rt(kind === "win" ? "playAgain" : "retry");
     showOverlay(
       kind,
-      `<em>${kind === "win" ? "¡Victoria!" : "Fin de la partida"}</em><h1>${esc(o.title || (kind === "win" ? "¡Nivel completado!" : "¡Oh no!"))}</h1>${o.subtitle ? `<p>${esc(o.subtitle)}</p>` : ""}
+      `<em>${esc(eyebrow)}</em><h1>${esc(title)}</h1>${o.subtitle ? `<p>${esc(o.subtitle)}</p>` : ""}
       ${Object.keys(stats).length ? `<div class="fx-stats">${Object.entries(stats).map(([k, v]) => `<div><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("")}</div>` : ""}
-      <div class="fx-acts"><button class="fx-btn" id="fxAgain">${ICPLAY}${kind === "win" ? "Jugar otra vez" : "Reintentar"}</button></div>`,
+      <div class="fx-acts"><button class="fx-btn" id="fxAgain">${ICPLAY}${esc(again)}</button></div>`,
     );
     $("#fxAgain").onclick = restart;
   }, 700);
@@ -653,6 +800,7 @@ addEventListener("message", (e) => {
     for (const t of m.tuning || []) tuning[t.key] = t.value;
     if (BOOT.design) BOOT.design.tuning = m.tuning;
   } else if (m.type === "mute") setMuted(!!m.on);
+  else if (m.type === "volume") setVolume(m);
   else if (m.type === "start") {
     if (state.screen === "start") startGame();
     else if (state.screen === "pause") resumeGame();
@@ -666,7 +814,37 @@ addEventListener("message", (e) => {
     playCinematic();
   } else if (m.type === "debug") host && host.setDebug && host.setDebug(!!m.on);
   else if (m.type === "focus") window.focus();
+  else if (m.type === "swapAsset") void swapAsset(m);
 });
+
+async function swapAsset(m) {
+  if (!m || !m.id) return;
+  const id = String(m.id);
+  const url = m.url ? String(m.url) : null;
+  const kind = m.assetType || "image";
+  if (kind === "image" && url && host?.replaceImage) {
+    const ok = await host.replaceImage(id, url);
+    if (ok) {
+      const meta = M.images.find((i) => i.id === id);
+      if (meta) meta.url = url;
+      return;
+    }
+  }
+  if (kind === "audio" && url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(String(r.status));
+      buffers[id] = await AC.decodeAudioData(await r.arrayBuffer());
+      const meta = M.audio.find((i) => i.id === id);
+      if (meta) meta.url = url;
+      return;
+    } catch (e) {
+      console.warn("[forge] swap audio failed", id, e);
+    }
+  }
+  // Models (or failed image swap): ask the studio to hard-reload the play iframe.
+  post({ type: "needReload", reason: "asset-swap" });
+}
 
 /* ---------------- Frame hooks used by hosts ---------------- */
 let lastT = performance.now();
@@ -688,7 +866,7 @@ let host = null;
     const step = () => setLoad(++done / total);
     const audioP = loadAudio(M.audio, step);
     const mod = await import(new URL(BOOT.gameUrl, document.baseURI).href);
-    if (typeof mod.default !== "function") throw new Error("El módulo del juego no exporta createGame por defecto");
+    if (typeof mod.default !== "function") throw new Error(rt("errBadModule"));
     const ctx = { forge, stage, manifest: M, boot: BOOT, input, onProgress: step, reportError };
     host = BOOT.engine === "phaser" ? await (await import("./host-phaser.js")).createHost(mod.default, ctx) : await (await import("./host-three.js")).createHost(mod.default, ctx);
     await audioP;

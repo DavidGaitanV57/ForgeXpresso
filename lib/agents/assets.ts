@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { processImage } from "../imageproc";
+import { processImage, validateImageQa } from "../imageproc";
 import { availableImageProvider, generateImage } from "../providers/images";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
@@ -19,27 +19,44 @@ export function recordsFromDesign(design: GameDesign): Record<string, AssetRecor
 }
 
 const ROLE_FRAMING: Record<ImageRole, string> = {
-  hero: "Game character sprite of the playable hero, full body, clean readable silhouette, centered, no text, no frame, no ground, no cast shadow",
-  enemy: "Game enemy sprite, full body, clean readable silhouette, centered, no text, no frame, no ground, no cast shadow",
-  npc: "Game character sprite, full body, centered, no text, no frame, no ground",
-  collectible: "Game collectible item icon, glowing and appealing, centered, no text, no frame",
-  hazard: "Game hazard/obstacle sprite, clearly dangerous, centered, no text, no frame",
-  prop: "Game prop sprite, centered, no text, no frame",
-  platform: "Game platform piece seen from the side, flat walkable top surface, centered, no text, no frame",
-  tile: "Game ground/platform block sprite seen from the side, flat walkable top edge, designed to be tiled horizontally, no text",
-  goal: "Game level goal object (exit/portal/flag), inviting and visible, centered, no text, no frame",
-  background: "Wide video game background environment painting, no characters, no text, no UI, strong sense of depth, calm lower area suitable for gameplay",
-  texture: "Seamless tileable surface texture, orthographic top-down, flat even lighting, no perspective, no objects, no text, fills the entire image",
-  ui: "Flat game UI icon, centered, no text",
+  hero: "Game character sprite of the playable hero, full body, clean readable silhouette, centered, isolated subject only, flat solid chroma or transparent background, NO scenery, NO nebula, NO planets, NO ground plane, NO cast shadow, NO frame, NO text",
+  enemy:
+    "Game enemy/boss sprite, full body or full ship, clean readable silhouette, centered, ISOLATED subject only on flat solid pure magenta (#FF00FF) or transparent background, cutout ready. FORBIDDEN: nebula, galaxies, planets, stars as backdrop, ground plane, cast shadow plate, rectangular scenery frame, vignette, text. The pixels around the silhouette MUST be empty chroma — never paint space scenery behind the subject",
+  npc: "Game character sprite, full body, centered, isolated subject only, no scenery, no ground, no frame, no text",
+  collectible:
+    "Game collectible item icon, glowing and appealing, centered, ISOLATED cutout on flat solid pure magenta (#FF00FF) or transparent background. FORBIDDEN: white/colored rectangular plate, scenery backdrop, room wall, ground plane, cast shadow plate, vignette, frame, text. Pixels around the silhouette MUST be empty chroma — never a pasted sticker card",
+  hazard:
+    "Game hazard/obstacle sprite, clearly dangerous, centered, ISOLATED cutout on flat solid pure magenta (#FF00FF) or transparent background. FORBIDDEN: white/colored rectangular plate, scenery backdrop, ground plane, cast shadow plate, vignette, frame, text. Cutout-ready silhouette only",
+  prop:
+    "Game prop/object sprite (door, mushroom, crate, etc.), centered, ISOLATED cutout on flat solid pure magenta (#FF00FF) or transparent background, alpha-ready for compositing into a 3D/2.5D scene. FORBIDDEN: white or solid rectangular card behind the object, painted room/forest plate, ground shadow plate, vignette, frame, text. The subject alone — never a sticker-on-backdrop look",
+  platform:
+    "Game platform piece seen from the side, flat walkable top surface, centered, ISOLATED cutout on flat solid pure magenta (#FF00FF) or transparent background, no scenery plate, no text, no frame",
+  tile: "Game ground/platform block sprite seen from the side, flat walkable top edge, designed to be tiled horizontally, seamless left-right edges, no text",
+  goal:
+    "Game level goal object (exit/portal/flag/door), inviting and visible, centered, ISOLATED cutout on flat solid pure magenta (#FF00FF) or transparent background. FORBIDDEN: white rectangular plate, scenery backdrop, ground shadow plate, vignette, frame, text. Cutout-ready only",
+  background:
+    "Wide video game background environment painting, no characters, no text, no UI, strong sense of depth, calm lower area suitable for gameplay",
+  texture: "Seamless tileable surface texture, orthographic top-down, flat even lighting, no perspective, no objects, no text, fills the entire image, left edge matches right edge perfectly",
+  ui: "Flat game UI icon, centered, isolated, no text, no frame",
   portrait: "Character portrait illustration for a story cutscene, no text",
 };
 
-export function imagePrompt(spec: ImageAssetSpec, design: GameDesign) {
+export function imagePrompt(spec: ImageAssetSpec, design: GameDesign, retryNote = "") {
   const view =
     design.dimension === "2d" && ["hero", "enemy", "npc", "hazard", "prop", "goal"].includes(spec.role) && !/top[- ]?down/i.test(design.camera)
       ? " Side view, facing right."
       : "";
-  return `${ROLE_FRAMING[spec.role]}.${view} Subject: ${spec.prompt}. Art style: ${design.artStyle}. Color palette: ${design.palette.join(", ")}. High quality, professional game art.`;
+  let seamless = "";
+  if (spec.seamless) {
+    seamless =
+      spec.role === "background"
+        ? " CRITICAL: perfectly seamless horizontally tileable abstract layer (starfield/nebula/clouds only). Left edge must continue into the right edge. NO planets, NO ships, NO landmarks, NO unique silhouettes."
+        : " CRITICAL: seamless tileable — left edge matches right edge exactly.";
+  } else if (spec.role === "background") {
+    seamless = " Single non-tiling cinematic backdrop (unique landmarks OK). Do NOT make it wrap/tile.";
+  }
+  const retry = retryNote ? ` QA RETRY: ${retryNote}` : "";
+  return `${ROLE_FRAMING[spec.role]}.${view}${seamless}${retry} Subject: ${spec.prompt}. Art style: ${design.artStyle}. Color palette: ${design.palette.join(", ")}. High quality, professional game art.`;
 }
 
 async function finish(projectId: string, rec: AssetRecord, ext: string, data: Buffer, mime: string, provider: string) {
@@ -72,17 +89,36 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
     return null;
   }
   await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
+  let lastErr = "";
+  let spentUsd = 0;
+  let spentMs = 0;
   try {
-    const raw = await generateImage({
-      prompt: imagePrompt(spec, design),
-      aspect: spec.aspect,
-      transparent: spec.transparent,
-      provider,
-      hq: spec.role === "hero" || spec.role === "background",
-    });
-    const img = await processImage(raw.data, { role: spec.role, transparent: spec.transparent, needsKeying: raw.needsKeying });
-    await finish(projectId, rec, img.ext, img.data, img.mime, provider === "openai" ? "OpenAI" : "MiniMax");
-    return { provider, label: `img:${rec.id}`, estimatedUsd: raw.estimatedUsd, ms: raw.ms, images: 1 };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const raw = await generateImage({
+        prompt: imagePrompt(spec, design, lastErr),
+        aspect: spec.aspect,
+        transparent: spec.transparent,
+        provider,
+        hq: spec.role === "hero" || spec.role === "background" || spec.role === "enemy",
+      });
+      spentUsd += raw.estimatedUsd;
+      spentMs += raw.ms;
+      const img = await processImage(raw.data, { role: spec.role, transparent: spec.transparent, needsKeying: raw.needsKeying });
+      const qa = await validateImageQa(img.data, { transparent: spec.transparent, seamless: spec.seamless, role: spec.role });
+      if (!qa.ok) {
+        lastErr = qa.reasons.join("; ");
+        console.warn(`[forge] image QA failed ${rec.id} attempt ${attempt + 1}: ${lastErr}`);
+        if (attempt === 0) continue;
+        // Keep the best-effort image on final attempt but annotate error for visibility.
+        await finish(projectId, rec, img.ext, img.data, img.mime, provider === "openai" ? "OpenAI" : "MiniMax");
+        await patchAsset(projectId, rec.id, { error: `QA débil: ${lastErr}`.slice(0, 300) });
+        return { provider, label: `img:${rec.id}`, estimatedUsd: spentUsd, ms: spentMs, images: attempt + 1 };
+      }
+      await finish(projectId, rec, img.ext, img.data, img.mime, provider === "openai" ? "OpenAI" : "MiniMax");
+      return { provider, label: `img:${rec.id}`, estimatedUsd: spentUsd, ms: spentMs, images: attempt + 1 };
+    }
+    await fail(projectId, rec, lastErr || "QA de imagen falló");
+    return null;
   } catch (e) {
     await fail(projectId, rec, e);
     return null;

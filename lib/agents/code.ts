@@ -1,6 +1,7 @@
 import * as acorn from "acorn";
 import { config } from "../config";
 import { generateText, type AnthropicUsage } from "../providers/anthropic";
+import { wantsMeshCharacters } from "./director";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ModelAssetSpec } from "../types";
 import { runtimeDocs } from "./runtime-docs";
 
@@ -10,6 +11,7 @@ interface CodeInput {
   design: GameDesign;
   assets: AssetRecord[];
   mode: Mode;
+  idea?: string;
   instructions?: string;
   previousCode?: string;
   error?: string;
@@ -49,7 +51,14 @@ export function extractCode(text: string) {
   return text.trim();
 }
 
-export function validateCode(code: string, engine: "phaser" | "three"): string | null {
+export type ValidateCodeOpts = {
+  /** Reject forge.three.sprite — required for full 3D or mesh-character 2.5D. */
+  forbidSprites?: boolean;
+  /** Require forge.three.character or forge.three.model at least once. */
+  requireCharacterMeshes?: boolean;
+};
+
+export function validateCode(code: string, engine: "phaser" | "three", opts: ValidateCodeOpts = {}): string | null {
   let ast: acorn.Program;
   try {
     ast = acorn.parse(code, { ecmaVersion: "latest", sourceType: "module" });
@@ -67,19 +76,41 @@ export function validateCode(code: string, engine: "phaser" | "three"): string |
   }
   if (/\bfetch\s*\(|XMLHttpRequest|document\.cookie|\blocalStorage\b|\balert\s*\(/.test(code))
     return "Forbidden API used (fetch, XMLHttpRequest, document.cookie, localStorage or alert). Use the forge API instead.";
+  if (engine === "three" && opts.forbidSprites && /forge\.three\.sprite\s*\(/.test(code)) {
+    return "forge.three.sprite is forbidden for this design (3D / mesh characters required). Use forge.three.character(imageId, height) — it loads *_3d GLB when available, otherwise builds low-poly Capsule/Sphere primitives with the image texture. For décor use backdrop, skydome, or textured PlaneGeometry — not sprite.";
+  }
+  if (engine === "three" && opts.requireCharacterMeshes && !/forge\.three\.(character|model)\s*\(/.test(code)) {
+    return "This design requires 3D characters: call forge.three.character(imageId, height) for hero/enemies/NPCs (GLB if present, else low-poly primitives). Do not use billboard sprites.";
+  }
   return null;
 }
 
 export async function codeAgent(input: CodeInput): Promise<string> {
   const engine = input.design.engine;
+  const ideaBlob = `${input.idea || ""} ${input.design.title} ${input.design.tagline} ${input.design.setting} ${input.design.levelOutline} ${input.design.mechanics.join(" ")}`;
+  const meshChars = engine === "three" && wantsMeshCharacters(ideaBlob, input.design.dimension);
+  const forceMesh = engine === "three" && (input.design.dimension === "3d" || meshChars);
+  const meshValidate: ValidateCodeOpts = forceMesh ? { forbidSprites: true, requireCharacterMeshes: true } : {};
   const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n`;
   let task: string;
   if (input.mode === "create") {
-    task = `Write the complete game for this design. Implement every mechanic, the level outline, the objective and lose condition, juice and audio. Use the tuning keys via forge.tune.`;
+    task = `Write the complete game for this design. Implement every mechanic, the level outline, the objective and lose condition, juice and audio. Use the tuning keys via forge.tune.${
+      forceMesh
+        ? input.design.dimension === "3d"
+          ? " CRITICAL: full 3D — hero, enemies, collectibles, goals, hazards and props MUST be 3D meshes. Use forge.three.character(imageId, height) for each (loads *_3d GLB when available; otherwise auto low-poly Capsule/Sphere primitives textured with the image). Never use forge.three.sprite."
+          : " CRITICAL from the idea/design: CHARACTERS (hero, enemies, NPCs) MUST be real 3D meshes via forge.three.character(imageId, height) — prefers *_3d GLB, else builds low-poly primitives with the image texture. FORBIDDEN: forge.three.sprite / billboard paper cutouts. Décor/sky/far layers MAY stay 2D (forge.three.backdrop, skydome, or textured PlaneGeometry for parallax)."
+        : ""
+    }`;
   } else if (input.mode === "edit") {
-    task = `# Current game code\n\`\`\`js\n${input.previousCode}\n\`\`\`\n\n# Requested change\n${input.instructions}\n\nApply the change carefully, keep everything else working exactly as before, and return the full updated module.`;
+    task = `# Current game code\n\`\`\`js\n${input.previousCode}\n\`\`\`\n\n# Requested change\n${input.instructions}\n\nApply the change carefully, keep everything else working exactly as before, and return the full updated module.${
+      forceMesh
+        ? " Keep 3D characters as forge.three.character(...) / model(...); do not introduce forge.three.sprite for hero/enemies/NPCs."
+        : ""
+    }`;
   } else {
-    task = `# Current game code\n\`\`\`js\n${input.previousCode}\n\`\`\`\n\n# Runtime error reported by the browser\n${input.error}\n\nFind the root cause and fix it (and any similar latent bug you notice). Keep the gameplay identical otherwise. Return the full corrected module.`;
+    task = `# Current game code\n\`\`\`js\n${input.previousCode}\n\`\`\`\n\n# Runtime error reported by the browser\n${input.error}\n\nFind the root cause and fix it (and any similar latent bug you notice). Keep the gameplay identical otherwise. Return the full corrected module.${
+      forceMesh ? " Preserve forge.three.character / model for characters; do not replace them with sprite billboards." : ""
+    }`;
   }
 
   const messages: { role: "user" | "assistant"; content: string }[] = [{ role: "user", content: `${header}\n${task}` }];
@@ -95,7 +126,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
     });
     input.onUsage?.(usage, attempt === 0 ? `code:${input.mode}` : `code:fix${attempt + 1}`);
     const code = extractCode(text);
-    const err = stop === "max_tokens" ? "The response was cut off (too long). Write a more compact version of the module." : validateCode(code, engine);
+    const err = stop === "max_tokens" ? "The response was cut off (too long). Write a more compact version of the module." : validateCode(code, engine, meshValidate);
     if (!err) return code;
     lastErr = err;
     messages.push({ role: "assistant", content: "```js\n" + code + "\n```" }, { role: "user", content: `Validation failed: ${err}\nReturn the full corrected module.` });

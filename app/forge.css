@@ -1,4 +1,4 @@
-/* Forge Light design system (from the original artifact) */
+/* Forge Xpresso design system (from the original artifact) */
 :root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 /* Layout: guided flow rail on the left (one step open at a time), live playable stage + asset drawer on the right. Single dark "studio" look. */
 :root{
@@ -48,7 +48,7 @@ button{cursor:pointer}
 .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;letter-spacing:-.01em}
 .brand svg{width:26px;height:26px;filter:drop-shadow(0 0 10px rgba(255,122,26,.45))}
-.brand .light{font-weight:600;color:var(--forge);font-size:13px;border:1px solid rgba(255,122,26,.35);border-radius:999px;padding:1px 8px;margin-left:2px}
+.brand .xpresso{font-weight:600;color:var(--forge);font-size:13px;border:1px solid rgba(255,122,26,.35);border-radius:999px;padding:1px 8px;margin-left:2px}
 .proj{color:var(--muted);font-weight:600}
 .top .spacer{flex:1}
 .badge{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted)}
@@ -633,9 +633,9 @@ button.brand:hover .mascot{animation:hop .6s ease}
 .play-tools{display:flex;gap:6px}
 #playExit kbd{height:20px;min-width:0;font-size:10px;margin-left:4px}
 @media (max-width:520px){#playExit kbd{display:none}}
-.play-stage{flex:1;min-height:0;display:grid;place-items:center;padding:4px max(16px, env(safe-area-inset-right, 0px)) 22px max(16px, env(safe-area-inset-left, 0px))}
-.play-slot{width:min(1280px,100%,calc((100dvh - 110px) * 16 / 9));max-width:100%}
-.play-slot .viewport{border-radius:18px;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(16,185,129,.25)}
+.play-stage{flex:1;min-height:0;display:grid;place-items:center;padding:2px max(10px, env(safe-area-inset-right, 0px)) 12px max(10px, env(safe-area-inset-left, 0px))}
+.play-slot{width:min(1680px,96vw,calc((100dvh - 72px) * 16 / 9));max-width:100%}
+.play-slot .viewport{border-radius:14px;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(16,185,129,.25)}
 body.is-playing{overflow:hidden}
 /* floating chat */
 .chat{position:fixed;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(18px + env(safe-area-inset-bottom, 0px));z-index:52;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}

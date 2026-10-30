@@ -22,7 +22,9 @@ function withLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
 
 async function writeJsonAtomic(file: string, data: unknown) {
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2));
+  // Explicit UTF-8 without BOM — Windows tools that rewrite project.json with a BOM
+  // (or as Windows-1252) corrupt Spanish accents and arrows in the design UI.
+  await fs.writeFile(tmp, JSON.stringify(data, null, 2), { encoding: "utf8" });
   await fs.rename(tmp, file);
 }
 
@@ -52,7 +54,8 @@ export async function createProject(idea: string, dimension: Dimension, imagePro
 
 export async function getProject(id: string): Promise<Project | null> {
   try {
-    const raw = await fs.readFile(path.join(projectDir(id), "project.json"), "utf8");
+    let raw = await fs.readFile(path.join(projectDir(id), "project.json"), "utf8");
+    if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
     return JSON.parse(raw) as Project;
   } catch {
     return null;

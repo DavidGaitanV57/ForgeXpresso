@@ -198,6 +198,7 @@ async function createFlow(projectId: string) {
         design,
         assets: all,
         mode: "create",
+        idea: p0.idea,
         onProgress: (d) => void ctl.stage("code", "run", d),
         onUsage: (u, label) => void ctl.trackAnthropic(u, label),
       });
@@ -216,7 +217,7 @@ async function createFlow(projectId: string) {
       p.status = "ready";
       p.repairs = 0;
     });
-    await addChat(projectId, { who: "forge", text: `¡${design.title} está listo! Juégalo y pídeme cambios con tus palabras: los aplico al instante.` });
+    await addChat(projectId, { who: "forge", text: design.title, tags: ["sys:ready"] });
     emit(projectId, { type: "status", status: "ready" });
   } catch (e) {
     ctl.job.error = errMsg(e);

@@ -121,7 +121,7 @@ export async function createHost(createGame, ctx) {
     },
     texture(id, o = {}) {
       const base = textures[id];
-      if (!base) throw new Error(`Imagen desconocida: ${id}`);
+      if (!base) throw new Error(`Unknown image: ${id}`);
       const t = base.clone();
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       if (o.repeat) t.repeat.set(o.repeat[0], o.repeat[1] ?? o.repeat[0]);
@@ -144,7 +144,7 @@ export async function createHost(createGame, ctx) {
     },
     sprite(id, height = 1.7, o = {}) {
       const tex = textures[id];
-      if (!tex) throw new Error(`Imagen desconocida: ${id}`);
+      if (!tex) throw new Error(`Unknown image: ${id}`);
       const aspect = (tex.image.width || 1) / (tex.image.height || 1);
       const geo = new THREE.PlaneGeometry(height * aspect, height);
       geo.translate(0, height / 2, 0);
@@ -177,6 +177,76 @@ export async function createHost(createGame, ctx) {
       g.add(inner);
       g.userData.animations = gltf.animations || [];
       return g;
+    },
+    /**
+     * Real 3D character/entity: prefers GLB (`model` or `${id}_3d`), else stylized low-poly
+     * primitives textured with the image. Use this instead of sprite() when 3D characters are required.
+     * shape: "humanoid" | "creature" | "capsule" | "box" | "sphere"
+     */
+    character(id, height = 1.7, o = {}) {
+      const h = o.height ?? height;
+      const modelId = o.model ?? (String(id).endsWith("_3d") ? id : `${id}_3d`);
+      const fromModel = forge.three.model(modelId, { height: h });
+      if (fromModel) {
+        fromModel.userData.forgeCharacter = id;
+        return fromModel;
+      }
+      const shape = o.shape || "humanoid";
+      const tex = textures[id] || null;
+      if (!tex && id) {
+        // still build untextured mesh if image missing — better than a billboard
+      }
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex,
+        color: o.color ?? "#ffffff",
+        roughness: o.roughness ?? 0.75,
+        metalness: o.metalness ?? 0,
+        emissive: o.emissive ?? "#000000",
+        emissiveIntensity: o.emissiveIntensity ?? 0,
+        flatShading: o.flatShading !== false,
+      });
+      const imgMeta = id ? manifest.images.find((i) => i.id === id) : null;
+      if (tex && imgMeta?.transparent) mat.alphaTest = 0.5;
+
+      const root = new THREE.Group();
+      root.userData.forgeCharacter = id;
+      root.userData.forgeShape = shape;
+
+      const add = (geo, y, rx = 0, rz = 0, x = 0, z = 0) => {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.position.set(x, y, z);
+        mesh.rotation.x = rx;
+        mesh.rotation.z = rz;
+        root.add(mesh);
+        return mesh;
+      };
+
+      if (shape === "sphere") {
+        add(new THREE.SphereGeometry(h * 0.5, 12, 10), h * 0.5);
+      } else if (shape === "box") {
+        add(new THREE.BoxGeometry(h * 0.55, h, h * 0.45), h * 0.5);
+      } else if (shape === "capsule") {
+        const r = h * 0.22;
+        add(new THREE.CapsuleGeometry(r, Math.max(0.01, h - 2 * r), 4, 8), h * 0.5);
+      } else if (shape === "creature") {
+        const r = h * 0.26;
+        add(new THREE.CapsuleGeometry(r, Math.max(0.01, h * 0.4 - r), 4, 8), h * 0.3);
+        add(new THREE.SphereGeometry(h * 0.2, 10, 8), h * 0.68);
+      } else {
+        // humanoid: capsule torso + sphere head + arm capsules
+        const bodyR = h * 0.155;
+        const torso = h * 0.5;
+        add(new THREE.CapsuleGeometry(bodyR, Math.max(0.01, torso - 2 * bodyR), 4, 8), h * 0.36);
+        add(new THREE.SphereGeometry(h * 0.135, 10, 8), h * 0.78);
+        const armR = h * 0.05;
+        const armLen = h * 0.26;
+        const armGeo = new THREE.CapsuleGeometry(armR, Math.max(0.01, armLen - 2 * armR), 3, 6);
+        add(armGeo, h * 0.48, 0, 0.4, -(bodyR + armR), 0);
+        add(armGeo.clone(), h * 0.48, 0, -0.4, bodyR + armR, 0);
+      }
+      return root;
     },
     puppet(obj) {
       const pivot = new THREE.Group();
@@ -569,6 +639,54 @@ export async function createHost(createGame, ctx) {
     R = null;
   }
 
+  async function replaceImage(id, url) {
+    const bust = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now().toString(36);
+    let tex;
+    try {
+      tex = await texLoader.loadAsync(bust);
+    } catch (e) {
+      console.warn("[forge] replaceImage failed", id, e);
+      return false;
+    }
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAniso;
+    const old = textures[id];
+    textures[id] = tex;
+    const meta = manifest.images.find((i) => i.id === id);
+    if (meta) {
+      meta.url = url;
+      meta.width = tex.image?.width || meta.width;
+      meta.height = tex.image?.height || meta.height;
+      meta.ready = true;
+    }
+    if (R?.scene) {
+      if (R.scene.background === old) R.scene.background = tex;
+      R.scene.traverse((o) => {
+        const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+        for (const m of mats) {
+          if (!m) continue;
+          for (const key of ["map", "emissiveMap", "alphaMap", "roughnessMap", "metalnessMap", "normalMap"]) {
+            if (m[key] === old) {
+              m[key] = tex;
+              m.needsUpdate = true;
+            }
+          }
+        }
+      });
+      if (R.domes) {
+        for (const dome of R.domes) {
+          if (dome.material?.map === old) {
+            dome.material.map = tex;
+            dome.material.needsUpdate = true;
+          }
+        }
+      }
+    }
+    if (old && old !== tex) old.dispose();
+    if (R && !running) render();
+    return true;
+  }
+
   return {
     async start() {
       await build();
@@ -598,5 +716,6 @@ export async function createHost(createGame, ctx) {
         render();
       }
     },
+    replaceImage,
   };
 }

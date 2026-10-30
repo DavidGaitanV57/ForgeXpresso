@@ -27,6 +27,42 @@ export interface ImageAssetSpec {
   transparent: boolean;
   aspect: Aspect;
   usage: string;
+  /** Must tile on X (left≈right). Only abstract layers; never unique landmarks. */
+  seamless?: boolean;
+}
+
+export type UiControlType = "toggle" | "slider" | "select";
+
+export interface UiHudItem {
+  id: string;
+  label: string;
+  kind: "value" | "bar" | "icon" | "lives";
+  shows: string;
+}
+
+export interface UiMenuItem {
+  id: string;
+  label: string;
+  action: string;
+}
+
+export interface UiSetting {
+  key: string;
+  label: string;
+  type: UiControlType;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+  defaultValue?: number | string | boolean;
+}
+
+export interface GameUiSpec {
+  hud: UiHudItem[];
+  pauseMenu: UiMenuItem[];
+  settings: UiSetting[];
+  gameOverActions: string[];
+  startActions: string[];
 }
 
 export interface AudioAssetSpec {
@@ -71,6 +107,8 @@ export interface GameDesign {
   loseCondition: string;
   levelOutline: string;
   tuning: TuningParam[];
+  /** In-game UI the programmer must implement (HUD + pause/settings). */
+  ui: GameUiSpec;
   cinematic: { style: string; lines: string[] };
   assets: {
     images: ImageAssetSpec[];

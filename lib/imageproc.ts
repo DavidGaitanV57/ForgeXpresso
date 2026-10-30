@@ -194,3 +194,135 @@ export async function imageInfo(buf: Buffer) {
 export async function rekeySprite(input: Buffer, role: ImageRole = "prop"): Promise<ProcessedImage> {
   return processImage(input, { role, transparent: true, needsKeying: true });
 }
+
+export interface ImageQaResult {
+  ok: boolean;
+  reasons: string[];
+  /** 0 = perfect left/right match, 1 = totally different. */
+  seamError?: number;
+  /** Fraction of opaque edge ring that looks like baked scenery (nebula/clouds). */
+  sceneryEdge?: number;
+  /** Fraction of the full-frame margin that is still opaque (rectangular plate). */
+  borderOpaque?: number;
+  /** Fully transparent pixel ratio. */
+  transparentRatio?: number;
+}
+
+/** Horizontal wrap seam error (0 perfect … 1 bad) for seamless tiles / parallax layers. */
+export async function horizontalSeamError(buf: Buffer): Promise<number> {
+  const { data, info } = await sharp(buf)
+    .resize(256, 144, { fit: "fill" })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+  let sum = 0;
+  let n = 0;
+  const band = 2;
+  for (let y = 0; y < h; y++) {
+    for (let k = 0; k < band; k++) {
+      const iL = (y * w + k) * 3;
+      const iR = (y * w + (w - 1 - k)) * 3;
+      for (let c = 0; c < 3; c++) {
+        const d = data[iL + c] - data[iR + c];
+        sum += d * d;
+        n++;
+      }
+    }
+  }
+  return Math.min(1, Math.sqrt(sum / Math.max(1, n)) / 255);
+}
+
+/**
+ * Detects "AI plate" sprites: opaque rectangular cutouts whose FRAME MARGIN is still
+ * filled (nebula/sky) instead of true alpha. Also scores soft colourful edge fill.
+ */
+export async function sceneryContamination(
+  buf: Buffer,
+): Promise<{ transparentRatio: number; sceneryEdge: number; borderOpaque: number }> {
+  const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+  let a0 = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 12) a0++;
+  const box = alphaBounds(data, w, h);
+  if (!box) return { transparentRatio: 1, sceneryEdge: 0, borderOpaque: 0 };
+
+  // Full-frame margin: a baked scenery plate leaves the outer pixels opaque.
+  const margin = Math.max(4, Math.floor(Math.min(w, h) * 0.045));
+  let border = 0;
+  let borderOp = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x >= margin && x < w - margin && y >= margin && y < h - margin) continue;
+      border++;
+      if (data[(y * w + x) * 4 + 3] >= 40) borderOp++;
+    }
+  }
+
+  const ring = Math.max(8, Math.floor(Math.min(box.x1 - box.x0, box.y1 - box.y0) * 0.08));
+  let edge = 0;
+  let soft = 0;
+  for (let y = box.y0; y <= box.y1; y++) {
+    for (let x = box.x0; x <= box.x1; x++) {
+      const near = x - box.x0 < ring || box.x1 - x < ring || y - box.y0 < ring || box.y1 - y < ring;
+      if (!near) continue;
+      const i = (y * w + x) * 4;
+      if (data[i + 3] < 40) continue;
+      edge++;
+      const r = data[i],
+        g = data[i + 1],
+        b = data[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const lum = (r + g + b) / 3;
+      const sat = max - min;
+      // Soft colourful scenery (nebula/sky) vs hard subject silhouette.
+      if (lum > 35 && lum < 210 && sat > 22 && sat < 150) soft++;
+    }
+  }
+  return {
+    transparentRatio: a0 / (w * h),
+    sceneryEdge: edge ? soft / edge : 0,
+    borderOpaque: border ? borderOp / border : 0,
+  };
+}
+
+/** QA gate used by the image agent after generation. */
+export async function validateImageQa(
+  buf: Buffer,
+  o: { transparent: boolean; seamless?: boolean; role: ImageRole },
+): Promise<ImageQaResult> {
+  const reasons: string[] = [];
+  let seamError: number | undefined;
+  let sceneryEdge: number | undefined;
+  let borderOpaque: number | undefined;
+  let transparentRatio: number | undefined;
+
+  if (o.seamless || o.role === "texture" || (o.role === "tile" && o.seamless !== false)) {
+    seamError = await horizontalSeamError(buf);
+    if (seamError > 0.14) reasons.push(`no es seamless (error de borde ${(seamError * 100).toFixed(0)}%)`);
+  }
+
+  // Isolation QA for subject sprites. Collectibles/UI often have soft glow halos —
+  // only enforce transparentRatio + rectangular plate (borderOpaque) there.
+  const subjectRoles = new Set(["hero", "enemy", "npc", "prop", "goal", "platform", "hazard"]);
+  if (o.transparent && !["background", "texture", "portrait"].includes(o.role)) {
+    const s = await sceneryContamination(buf);
+    transparentRatio = s.transparentRatio;
+    sceneryEdge = s.sceneryEdge;
+    borderOpaque = s.borderOpaque;
+    if (s.transparentRatio < 0.12) reasons.push(`poco alpha real (${(s.transparentRatio * 100).toFixed(0)}% transparente)`);
+    // Opaque frame margin = unkeyed rectangular plate (hard vertical box in-game).
+    if (s.borderOpaque > 0.12) {
+      reasons.push(`placa rectangular opaca (${(s.borderOpaque * 100).toFixed(0)}% del margen)`);
+    }
+    // Soft nebula/sky still hugging the silhouette after keying (halo plate).
+    if (subjectRoles.has(o.role) && s.sceneryEdge > 0.55) {
+      reasons.push(`fondo de escena pegado al sprite (${(s.sceneryEdge * 100).toFixed(0)}% del borde)`);
+    }
+  }
+
+  return { ok: reasons.length === 0, reasons, seamError, sceneryEdge, borderOpaque, transparentRatio };
+}

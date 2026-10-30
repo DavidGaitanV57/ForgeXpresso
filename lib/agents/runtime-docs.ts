@@ -49,8 +49,12 @@ export default function createGame(forge, Phaser) {
   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
   The puppet draws a visual copy that mirrors the sprite's position, flipX, alpha, tint, visibility and depth, so keep controlling the physics sprite as usual.
   Do not scale physics sprites every frame yourself (it resizes the Arcade body); use the puppet or tweens on non-physics objects.
-- \`forge.phaser.parallax(scene, imageId, factor, {depth, alpha, tint, y, height})\` → full‑screen tiling background that scrolls with the camera (factor 0 = static, 1 = world speed).
-- \`forge.phaser.tiles(scene, imageId, x, y, w, h)\` → a TileSprite whose TOP-LEFT corner is at (x,y), repeating the texture scaled to height h; ideal for ground/platform bodies: \`scene.physics.add.existing(obj, true)\` (static) and add it to a static group/collider.
+- \`forge.phaser.parallax(scene, imageId, factor, {depth, alpha, tint, y, height, tile})\` → full‑screen parallax layer.
+  CRITICAL: only pass \`tile:true\` (or rely on \`forge.assets.image(id).seamless\`) for abstract seamless layers (starfields/clouds).
+  Scenic paintings with planets/landmarks are seamless=false — the helper will NOT wrap them (wrapping causes a hard vertical seam).
+  Stack: far seamless abstract layer (tile) + optional non-tiling landmark layer on top.
+- \`forge.phaser.tiles(scene, imageId, x, y, w, h)\` → TileSprite ONLY when the asset is seamless (or abstract fx). If \`seamless=false\`, the helper returns a non-wrapping image (no vertical seam). Prefer \`parallax\` for scenic backdrops.
+- Implement \`forge.design.ui\`: HUD via forge.hud.*. Pause (P / Esc / botón ⏸) and Ajustes (master/music/sfx volume sliders) are provided by the runtime — do not rebuild them. The studio chrome also has a master volume slider.
 - \`forge.phaser.burst(scene, x, y, {color, count, speed, life, size})\` particle explosion. \`forge.phaser.trail(scene, target, {color})\` → emitter following a sprite (call .destroy()).
 - \`forge.phaser.floatText(scene, x, y, text, {color, size})\` floating "+10" style text in world space.
 - Use the camera: \`this.cameras.main.startFollow(player, true, 0.12, 0.12)\`, \`setBounds\`, \`setDeadzone\`. Use tweens and particles for juice.
@@ -76,9 +80,11 @@ export default async function createGame(forge, ctx) {
 - \`world\` is a RAPIER.World with gravity {x:0,y:-9.81,z:0} (affects dynamic bodies only; assign \`world.gravity = {x,y,z}\` to change it). The runtime calls \`world.step()\` after your update and syncs linked meshes.
 - Units: meters. A character is ~1.6–1.8 m tall.
 - Textures: \`forge.three.texture(imageId, {repeat:[x,y]})\` (sRGB, mipmapped, wrap repeat). \`forge.three.material(imageId|null, {color, repeat, roughness, metalness, emissive, emissiveIntensity})\` → MeshStandardMaterial.
-- Characters/props from 2D images: \`forge.three.sprite(imageId, heightMeters, {billboard: "y"|true|false})\` → Mesh (alpha‑tested plane, casts shadows, bottom at y=0). "y" rotates only around Y to face the camera (best for 2.5D / Paper‑Mario style). Use \`.scale.x *= -1\` to face left.
+- Characters (preferred for 3D / mesh-character designs): \`forge.three.character(imageId, heightMeters, {shape, model, color, flatShading})\` → Object3D.
+  Tries \`forge.three.model(model || imageId+'_3d')\` first; if no GLB (no Tripo), builds stylized low‑poly primitives (default shape \`"humanoid"\`: capsule torso + sphere head + arms; also \`"creature"\`|\`"capsule"\`|\`"box"\`|\`"sphere"\`) textured with the image. Base at y=0. **Always use this for hero/enemies/NPCs when 3D characters are required.**
+- Paper billboards only: \`forge.three.sprite(imageId, heightMeters, {billboard: "y"|true|false})\` → Mesh (alpha‑tested plane). Only for paper-style 2.5D when the design does NOT demand 3D characters. **Forbidden** whenever the idea/design asks for 3D characters (or full 3D dimension) — use \`character()\` instead.
 - 3D models: \`forge.three.model(id, {height})\` → Object3D clone normalized to that height with its base at y=0, or null if no model exists for that id.
-  If null, build a stylized low‑poly model from primitives (Capsule/Box/Sphere/Cylinder, MeshStandardMaterial with palette colors, flatShading) or use a sprite.
+  Prefer model ids ending in \`_3d\`. Prefer wrapping with \`forge.three.character(imageId)\` so missing GLBs fall back to primitives automatically.
 - \`forge.three.puppet(object3D)\` → \`p.update({vx, vz, vy, grounded, speed}, dt)\` procedural bob/lean/squash for characters without skeletal animation.
 - \`forge.three.backdrop(imageId)\` sets a screen‑fixed background image (ideal for 2.5D side views); \`forge.three.skydome(imageId, radius)\` wraps it around a dome for free cameras; \`forge.three.fog(color, near, far)\`.
 - \`forge.three.follow(camera, targetObject3D, {offset:[x,y,z], lookAhead:[x,y,z], smooth:6})\` → call \`.update(dt)\` each frame (spring follow cam). For 2.5D use a side offset like [0,3,12].
@@ -100,8 +106,11 @@ export const QUALITY_RULES = `
 - Juice: particles on pickups/hits/landing, screen shake on impacts (forge.shake), squash/stretch (puppet), tween pops on collectibles, floating score text, sound on every meaningful event.
 - Level design by code: hand‑authored arrays or seeded procedural generation that is guaranteed beatable (check jump distances against tuning). Use forge.rand for randomness.
 - Visual depth: layered parallax/backdrops, palette‑consistent tints, lighting/fog in 3D, shadows under characters.
+- Full 3D dimension: every gameplay entity in the world is a real mesh via \`forge.three.character(imageId)\` / \`forge.three.model\` (GLB or auto low-poly). Do NOT use forge.three.sprite. UI/HUD stays 2D via forge.hud.
+- 2.5D with “3D characters + 2D décor/parallax”: hero/enemies/NPCs = \`forge.three.character(…)\`; backgrounds = backdrop/skydome/parallax planes. Never forge.three.sprite for characters.
 - Use every generated image and sound where it makes sense; never reference ids that are not in the manifest (except synthesized sfx names).
-- Show controls hints with forge.hud.message at start (short), keep HUD to the essentials.
+- Show controls hints with forge.hud.message at start (short). Build the HUD from \`forge.design.ui.hud\` (every chip/bar listed must appear). Do not invent a different HUD.
+- Never tileSprite-wrap a non-seamless background. If an enemy/boss sprite still shows a baked scene plate, prefer tinted placeholders only as last resort — assets should already be isolated by the image QA gate (sceneryContamination + alpha ratio); do not work around bad plates in code.
 - Robustness: no external network requests, no DOM access, no alert/prompt, no localStorage (use forge.save/load), no infinite loops, clean up on dispose. Guard against NaN. Keep frame time low (pool objects, avoid allocating per frame in hot loops).
 - Write clean, well‑structured, plain JavaScript (ES2022). No TypeScript, no JSX.
 `;

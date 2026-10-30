@@ -3,7 +3,7 @@ import "./forge.css";
 import "./forge-extra.css";
 
 export const metadata: Metadata = {
-  title: "Forge Light",
+  title: "Forge Xpresso",
   description: "Genera juegos 2D, 2.5D y 3D con agentes de IA: diseño, arte, audio y código.",
 };
 
