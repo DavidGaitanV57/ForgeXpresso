@@ -180,6 +180,39 @@ export async function generateModelAsset(projectId: string, rec: AssetRecord, de
   }
 }
 
+/**
+ * Auto-rig + retarget an existing ready GLB (Tripo). Opt-in only — not called by default generate.
+ * Replaces the asset file with a skinned GLB that has baked clips (idle/walk/run/…).
+ */
+export async function animateModelAsset(
+  projectId: string,
+  rec: AssetRecord,
+  opts: { rigType?: string; animations?: string[] } = {},
+): Promise<AssetUsage | null> {
+  if (!config.tripo.key()) {
+    await fail(projectId, rec, "Sin clave de Tripo: no se puede auto-rig.", "skipped");
+    return null;
+  }
+  if (rec.type !== "model" || !rec.file || rec.status !== "ready") {
+    await fail(projectId, rec, "Modelo no listo para animar.");
+    return null;
+  }
+  await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
+  try {
+    const { readProjectFile } = await import("../store");
+    const glb = await readProjectFile(projectId, rec.file);
+    const result = await tripo.animateExistingGlb(glb, {
+      ...opts,
+      onProgress: (label, p) => console.log(`[forge] animate ${rec.id} ${label} ${p}%`),
+    });
+    await finish(projectId, rec, "glb", result.data, "model/gltf-binary", "Tripo");
+    return { provider: "tripo", label: `anim:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, models: 1 };
+  } catch (e) {
+    await fail(projectId, rec, e);
+    return null;
+  }
+}
+
 export function generateAsset(projectId: string, rec: AssetRecord, design: GameDesign, provider: ImageProvider) {
   if (rec.type === "image") return generateImageAsset(projectId, rec, design, provider);
   if (rec.type === "audio") return generateAudioAsset(projectId, rec, design);

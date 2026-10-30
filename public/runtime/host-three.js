@@ -156,6 +156,29 @@ export async function createHost(createGame, ctx) {
       if (mesh.userData.billboard) R.billboards.add(mesh);
       return mesh;
     },
+    // Skinned Tripo GLBs nest mesh under an elevated Armature; Box3.setFromObject uses
+    // unskinned geometry and can put the visual feet well below y=0. Prefer skinned bounds.
+    boundsOf(root) {
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3();
+      let any = false;
+      root.traverse((c) => {
+        if (c.isSkinnedMesh) {
+          if (c.skeleton) c.skeleton.update();
+          c.computeBoundingBox();
+          if (!c.boundingBox || c.boundingBox.isEmpty()) return;
+          box.union(c.boundingBox.clone().applyMatrix4(c.matrixWorld));
+          any = true;
+        } else if (c.isMesh && c.geometry) {
+          if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+          if (!c.geometry.boundingBox) return;
+          box.union(c.geometry.boundingBox.clone().applyMatrix4(c.matrixWorld));
+          any = true;
+        }
+      });
+      if (!any || box.isEmpty()) box.setFromObject(root);
+      return box;
+    },
     model(id, o = {}) {
       const gltf = models[id];
       if (!gltf) return null;
@@ -179,11 +202,11 @@ export async function createHost(createGame, ctx) {
           }
         }
       });
-      const box = new THREE.Box3().setFromObject(inner);
+      const box = forge.three.boundsOf(inner);
       const sz = box.getSize(new THREE.Vector3());
       const s = (o.height ?? 1.7) / Math.max(0.001, sz.y);
       inner.scale.setScalar(s);
-      const box2 = new THREE.Box3().setFromObject(inner);
+      const box2 = forge.three.boundsOf(inner);
       const c = box2.getCenter(new THREE.Vector3());
       inner.position.set(-c.x, -box2.min.y, -c.z);
       // o.yaw: local Y offset so mesh nose aligns with group +Z (Tripo often faces +X → yaw -PI/2).
@@ -303,6 +326,163 @@ export async function createHost(createGame, ctx) {
           pivot.rotation.x = lean;
         },
       };
+    },
+    /**
+     * Skeletal clips from a Tripo-retargeted GLB (or any glTF with animations).
+     * Host advances mixers every frame — call play()/setLocomotion(); no manual mixer.update needed.
+     * Tripo locomotion often bakes root motion into Hip/Root.position; we lock those bones
+     * to bind pose so the mesh stays on the gameplay root (physics/path owns translation).
+     */
+    animator(root, o = {}) {
+      if (!root) return null;
+      const clips = (root.userData && root.userData.animations) || [];
+      if (!clips.length) return null;
+      const target = root.children && root.children[0] ? root.children[0] : root;
+      // GLTFLoader sanitizes "tripo::Root" to "tripoRoot"; compare on the bare bone name.
+      const boneKey = (n) => String(n || "").split("/").pop().replace(/^.*:/, "").replace(/^tripo_?/i, "").toLowerCase();
+      const lockNames = (o.lockBones || ["Root", "Hip", "Hips", "pelvis", "Pelvis"]).map(boneKey);
+      const bindPos = new Map();
+      target.traverse((obj) => {
+        const leaf = boneKey(obj.name);
+        if (leaf && lockNames.includes(leaf) && !bindPos.has(leaf)) bindPos.set(leaf, obj.position.clone());
+      });
+      const lockClip = (clip) => {
+        if (o.lockRoot === false) return clip;
+        const tracks = clip.tracks.map((track) => {
+          const m = String(track.name).match(/^(.*)\.position$/);
+          if (!m) return track;
+          const leaf = boneKey(m[1]);
+          if (!lockNames.includes(leaf)) return track;
+          const bind = bindPos.get(leaf);
+          const x0 = bind ? bind.x : track.values[0];
+          const y0 = bind ? bind.y : track.values[1];
+          const z0 = bind ? bind.z : track.values[2];
+          const values = track.values.slice();
+          for (let i = 0; i < values.length; i += 3) {
+            values[i] = x0;
+            values[i + 1] = y0;
+            values[i + 2] = z0;
+          }
+          return new THREE.VectorKeyframeTrack(track.name, track.times.slice(), values);
+        });
+        return new THREE.AnimationClip(clip.name, clip.duration, tracks, clip.blendMode);
+      };
+      const mixer = new THREE.AnimationMixer(target);
+      if (R) R.mixers.add(mixer);
+      const pinBones = [];
+      target.traverse((obj) => {
+        const leaf = boneKey(obj.name);
+        if (bindPos.has(leaf) && (obj.isBone || obj.type === "Bone")) {
+          pinBones.push({ bone: obj, pos: bindPos.get(leaf) });
+        }
+      });
+      // Also pin by name match on non-Bone Object3D (some loaders nest pivots).
+      if (!pinBones.length) {
+        target.traverse((obj) => {
+          const leaf = boneKey(obj.name);
+          if (bindPos.has(leaf)) pinBones.push({ bone: obj, pos: bindPos.get(leaf) });
+        });
+      }
+      const actions = new Map();
+      const names = [];
+      for (const raw of clips) {
+        const clip = lockClip(raw);
+        const n = String(clip.name || `clip_${names.length}`);
+        names.push(n);
+        const act = mixer.clipAction(clip);
+        act.enabled = true;
+        act.setEffectiveWeight(0);
+        actions.set(n.toLowerCase(), act);
+      }
+      const fade = o.fade ?? 0.22;
+      let current = null;
+      const find = (want) => {
+        if (!want) return null;
+        const q = String(want).toLowerCase();
+        if (actions.has(q)) return actions.get(q);
+        for (const [n, a] of actions) if (n.includes(q) || q.includes(n)) return a;
+        // preset:walk / biped_walk / Walk → match by last token
+        const tok = q.split(/[:_/.\s-]+/).filter(Boolean).pop();
+        if (tok) for (const [n, a] of actions) if (n.includes(tok)) return a;
+        return null;
+      };
+      const pin = () => {
+        for (const { bone, pos } of pinBones) bone.position.copy(pos);
+      };
+      const api = {
+        names: names.slice(),
+        mixer,
+        play(name, opts = {}) {
+          const next = find(name);
+          if (!next) return false;
+          if (current === next) return true;
+          const f = opts.fade ?? fade;
+          next.reset();
+          next.setLoop(opts.loop === false ? THREE.LoopOnce : THREE.LoopRepeat, opts.loop === false ? 1 : Infinity);
+          if (opts.loop === false) next.clampWhenFinished = true;
+          next.setEffectiveTimeScale(opts.timeScale ?? 1);
+          next.enabled = true;
+          next.setEffectiveWeight(1);
+          next.fadeIn(f);
+          next.play();
+          if (current && current !== next) current.fadeOut(f);
+          current = next;
+          return true;
+        },
+        /** Pick idle/walk/run/jump/fall from movement state (Tripo preset names). */
+        setLocomotion(s = {}) {
+          const sp = s.speed ?? Math.hypot(s.vx || 0, s.vz || 0);
+          const g = s.grounded !== false;
+          const vy = s.vy || 0;
+          let clip = "idle";
+          if (!g) clip = vy > 0.6 ? "jump" : "fall";
+          else if (sp > 5.5) clip = "run";
+          else if (sp > 0.45) clip = "walk";
+          let rate = clip === "walk" ? 0.85 + Math.min(sp, 6) * 0.08 : clip === "run" ? 0.9 + Math.min(sp, 12) * 0.04 : 1;
+          // Non-biped rigs (quadruped/hexapod/…) only get one gait clip ("walk" or "march"):
+          // it covers walk AND run (sped up), and idle/air rest in bind pose.
+          const gait = find("walk") || find("march");
+          const tries = [clip, clip === "fall" ? "jump" : null, clip === "run" ? "walk" : null, clip === "run" || clip === "walk" ? "march" : null, "idle"].filter(Boolean);
+          let next = null;
+          let name = clip;
+          for (const w of tries) {
+            next = find(w);
+            if (next) {
+              name = w;
+              break;
+            }
+          }
+          if (clip === "run" && next === gait && !find("run")) rate = 1.2 + Math.min(sp, 12) * 0.06;
+          if (!next || ((clip === "idle" || clip === "jump" || clip === "fall") && next === gait && !find(clip))) {
+            if (current) api.stop();
+            return false;
+          }
+          if (current === next) {
+            next.setEffectiveTimeScale(rate);
+            return true;
+          }
+          return api.play(name, { fade, timeScale: rate });
+        },
+        stop(f = fade) {
+          for (const a of actions.values()) a.fadeOut(f);
+          current = null;
+        },
+        dispose() {
+          mixer.stopAllAction();
+          if (R) {
+            R.mixers.delete(mixer);
+            if (R.animPins) R.animPins.delete(pin);
+          }
+        },
+      };
+      if (R) {
+        if (!R.animPins) R.animPins = new Set();
+        R.animPins.add(pin);
+      }
+      // Start in idle if present so T-pose is never shown.
+      api.play("idle", { fade: 0 });
+      pin();
+      return api;
     },
     backdrop(id) {
       const t = textures[id];
@@ -557,7 +737,7 @@ export async function createHost(createGame, ctx) {
     const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.35, 0.4, 0.85);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
-    R = { scene, camera, world, composer, bloom, game: null, links: [], bodies: new Map(), billboards: new Set(), domes: new Set(), floats: [], controllers: [], debugLines: null };
+    R = { scene, camera, world, composer, bloom, game: null, links: [], bodies: new Map(), billboards: new Set(), domes: new Set(), floats: [], controllers: [], mixers: new Set(), animPins: new Set(), debugLines: null };
     R.particles = makeParticles(scene);
     renderer.setSize(w, h);
     composer.setSize(w, h);
@@ -582,6 +762,9 @@ export async function createHost(createGame, ctx) {
       }
     }
     R.particles.update(dt);
+    if (R.mixers) for (const m of R.mixers) m.update(dt);
+    // Re-pin Root/Hip after mixer so Tripo root-motion can't drift the mesh off the gameplay root.
+    if (R.animPins) for (const pin of R.animPins) pin();
     input._end();
   }
   function post(dt) {
