@@ -16,8 +16,6 @@ services:
     envVars:
       - key: FORGE_DATA_DIR
         value: /var/data/projects
-      - key: FORGE_PASSWORD
-        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL_CODE
