@@ -101,8 +101,8 @@ export async function codeAgent(input: CodeInput): Promise<string> {
     task = `Write the complete game for this design. Implement every mechanic, the level outline, the objective and lose condition, juice and audio. Use the tuning keys via forge.tune.${
       forceMesh
         ? input.design.dimension === "3d"
-          ? " CRITICAL: full 3D — hero, enemies, collectibles, goals, hazards and props MUST be 3D meshes. Use forge.three.character(imageId, height) for each (loads *_3d GLB when available; otherwise auto low-poly Capsule/Sphere primitives textured with the image). Never use forge.three.sprite."
-          : " CRITICAL from the idea/design: CHARACTERS (hero, enemies, NPCs) MUST be real 3D meshes via forge.three.character(imageId, height) — prefers *_3d GLB, else builds low-poly primitives with the image texture. FORBIDDEN: forge.three.sprite / billboard paper cutouts. Décor/sky/far layers MAY stay 2D (forge.three.backdrop, skydome, or textured PlaneGeometry for parallax)."
+          ? " CRITICAL: full 3D — mesh entities via forge.three.character(logicalId, height, { yaw: -Math.PI/2 }) (Tripo +X→+Z) or primitives; never sprite. FACING: root.rotation.y = atan2(vx,vz) smoothed. Do NOT also += Math.PI on the model (profile-while-walking bug)."
+          : " CRITICAL: CHARACTERS via forge.three.character(logicalId, height) (GLB or primitives; never sprites). Décor/sky MAY stay 2D. SIDE-SCROLL FACING: sideYaw=(d)=>d>=0?-PI/2-0.55:PI/2+0.55 (do not pass third-person yaw -PI/2)."
         : ""
     }${cineHint}`;
   } else if (input.mode === "edit") {

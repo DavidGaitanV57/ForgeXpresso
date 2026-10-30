@@ -96,7 +96,7 @@ export function wantsMeshCharacters(idea: string, dimension: Dimension) {
 
 export async function runDirector(idea: string, dimension: Dimension, opts: { models3d: boolean }) {
   const system = `You are Forge's game director. You turn a short game idea into a precise, buildable design document for an AI team:
-an image artist, a sound designer (ElevenLabs), ${opts.models3d ? "a 3D modeler (text-to-3D), " : ""}and a programmer who writes the whole game in a single JS module.
+an image artist (2D décor/UI only when needed), a sound designer (ElevenLabs), ${opts.models3d ? "a 3D modeler (Tripo text→3D for mesh characters/entities — no 2D sprite for those), " : ""}and a programmer who writes the whole game in a single JS module.
 Design something fun, focused and achievable as one polished vertical slice. Be specific and concrete.
 Write titles, names, labels, objective, mechanics, controls, cinematic lines, UI labels and usage notes in the SAME language as the idea (French idea → French UI; Spanish → Spanish; English → English). Never mix languages in pause/settings/HUD labels.
 Write image, music, sfx and model prompts in English (better generation quality). Exception — voice/narration: prompt is ONLY the spoken script (see audio rules).`;
@@ -109,10 +109,14 @@ ${meshChars ? "ART SPLIT FROM IDEA: characters/entities in 3D meshes; décor/bac
 Rules:
 - artStyle: one rich paragraph (English) describing a single coherent visual style (rendering technique, line/shading, lighting, mood) that every image will share.
 - palette: 5-7 hex colors.
-- images: 6-12 assets. ids in snake_case, unique, <=24 chars. Exactly one "hero". Include at least: hero, the main enemies or obstacles, collectibles, goal (if any), ${
-    dimension === "2d"
-      ? "parallax: at least ONE seamless=true abstract background layer (starfield/nebula/clouds ONLY, no planets/ships/landmarks, aspect 16:9) for wrapping, PLUS optionally one seamless=false landmark backdrop (planets/stations) that must NEVER be tiled, and platform/ground tiles (role tile or platform, seamless=true when meant to repeat)"
-      : "2-4 seamless textures (role texture, seamless=true, aspect 1:1) and 1 background (role background, 16:9, seamless=false) used as sky/backdrop"
+- images: ${
+    dimension === "3d" || meshChars
+      ? "2D décor ONLY (no hero/enemy/npc/collectible/hazard/prop/goal sprites). Typically 2-4 seamless textures (role texture, 1:1) + 1 background (16:9, seamless=false) + optional ui. Mesh entities live under models[], not images."
+      : `6-12 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
+          dimension === "2d"
+            ? "parallax: at least ONE seamless=true abstract background layer (starfield/nebula/clouds ONLY, no planets/ships/landmarks, aspect 16:9) for wrapping, PLUS optionally one seamless=false landmark backdrop that must NEVER be tiled, and platform/ground tiles (seamless=true when meant to repeat)"
+            : "2-4 seamless textures (role texture, 1:1) and 1 background (16:9, seamless=false)"
+        }`
   }.
   transparent=true for sprites/characters/objects/ui; false for background, texture, portrait.
   Sprites MUST be isolated subjects: prompt the subject only — no scenery, no nebula plate, no ground, no frame. The image QA rejects baked backgrounds.
@@ -124,13 +128,13 @@ Rules:
 - models: ${
     opts.models3d && dimension !== "2d"
       ? dimension === "3d" || meshChars
-        ? "REQUIRED for every character/entity image (hero, enemy, npc; also collectible/hazard/prop/goal when they are gameplay objects the player touches): one text-to-3D model each (English prompt, single object, game-ready, stylized, matching artStyle). Id = image id + '_3d'. Do NOT skip — billboard-only characters are forbidden for this idea. 3-8 models typical. UI images do not get models."
-        : "1-4 key 3D models (hero first, then main enemy/prop/goal) as text-to-3D prompts (English, single object, game-ready, stylized, matching artStyle). Id = matching image id + '_3d'."
-      : "empty array (no Tripo key). Programmer will build low-poly meshes instead when 3D characters are required."
+        ? "REQUIRED text→3D models (English prompts) for every mesh entity: hero, enemy, npc; also collectible/hazard/prop/goal when the player touches them. Id = logical id + '_3d' (e.g. hero_ila_3d). Do NOT also create images for those roles — Tripo builds the GLB from the model prompt alone. Prompts must describe a CLOSED solid game-ready mesh (no paper cutouts, no hollow shells). 3-8 models typical."
+        : "1-4 key text→3D models (hero first). Id = logical id + '_3d'. English prompt, closed solid mesh."
+      : "empty array (no Tripo key)."
   }
 ${
   dimension === "3d" || meshChars
-    ? "- MESH CHARACTERS HARD RULE: hero/enemies/NPCs must be real 3D (programmer uses forge.three.character → GLB or auto low-poly Capsule/Sphere). Images for those roles are texture/reference only. Never plan billboard-only characters. 2D parallax is OK for backgrounds/sky only. Without Tripo, models[] stays empty and the programmer still ships primitive meshes via character()."
+    ? "- MESH / NO-2D RULE: for hero/enemies/NPCs (and full-3D touchable entities), DO NOT list them under images — only under models (or nowhere if no Tripo; programmer uses forge.three.character primitives). Never billboard sprites for those roles. Images are ONLY for background, texture, ui, portrait, and 2.5D décor that stays flat. Without Tripo, models[] empty + character() primitives — still never 2D sprites for mesh roles."
     : ""
 }
 - tuning: 4-8 live-tunable numbers that the player may want to tweak from the chat (e.g. playerSpeed, jumpForce, gravity, enemySpeed, spawnRate, timeLimit). key in camelCase, label short in the idea's language, sensible value/min/max in the units the programmer will use (${dimension === "2d" ? "pixels and px/s at 1280x720" : "meters and m/s"}).
@@ -297,28 +301,45 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     };
   });
   const meshChars = wantsMeshCharacters(idea, dimension);
+  const meshMode = dimension === "3d" || meshChars;
+  const entityRoles = new Set(
+    dimension === "3d" ? ["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal"] : meshChars ? ["hero", "enemy", "npc"] : [],
+  );
   let models =
     models3d && dimension !== "2d"
-      ? (r.models || []).slice(0, dimension === "3d" || meshChars ? 10 : 4).map((m) => ({ ...m, id: slug(m.id || m.name, used) }))
+      ? (r.models || []).slice(0, meshMode ? 10 : 4).map((m) => ({ ...m, id: slug(m.id || m.name, used) }))
       : [];
-  // Full 3D or 2.5D with mesh characters: ensure every character/entity image has a matching *_3d model.
-  if (models3d && (dimension === "3d" || meshChars)) {
-    const entityRoles = new Set(
-      dimension === "3d" ? ["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal"] : ["hero", "enemy", "npc"],
-    );
-    const covered = (imgId: string) => models.some((m) => m.id === imgId || m.id === `${imgId}_3d` || m.id.startsWith(`${imgId}_`));
+  // Mesh mode: promote any entity images the LLM still emitted into *_3d text→3D models, then drop those images
+  // (no 2D sprite generation for mesh roles — Tripo text or programmer primitives only).
+  if (meshMode && entityRoles.size) {
+    const covered = (baseId: string) => models.some((m) => m.id === baseId || m.id === `${baseId}_3d` || m.id.startsWith(`${baseId}_`));
     for (const img of images) {
-      if (!entityRoles.has(img.role) || covered(img.id)) continue;
-      const mid = slug(`${img.id}_3d`, used);
-      models.push({
-        id: mid,
-        name: img.name,
-        prompt: `Game-ready stylized low-poly 3D ${img.role}: ${img.prompt}. Single isolated object, clean topology, readable silhouette, no ground plane, no scenery pedestal.`,
-        usage: `3D mesh for ${img.role} ${img.name}`,
-      });
+      if (!entityRoles.has(img.role)) continue;
+      if (models3d && !covered(img.id)) {
+        const mid = slug(`${img.id}_3d`, used);
+        models.push({
+          id: mid,
+          name: img.name,
+          prompt: `Game-ready stylized low-poly 3D ${img.role}: ${img.prompt}. Closed solid watertight mesh, clean topology, readable silhouette, no holes, no paper-thin shells, no ground plane.`,
+          usage: `3D mesh for ${img.role} ${img.name}`,
+        });
+      }
     }
-    models = models.slice(0, 10);
+    if (models3d) {
+      // Ensure at least a hero model exists
+      if (!models.some((m) => /hero|_hero/i.test(m.id) || /hero/i.test(m.name))) {
+        const mid = slug("hero_3d", used);
+        models.push({
+          id: mid,
+          name: "Hero",
+          prompt: `Game-ready stylized low-poly 3D playable hero. Closed solid watertight mesh, readable silhouette, ${r.artStyle || "stylized game art"}.`,
+          usage: "3D mesh for hero",
+        });
+      }
+      models = models.slice(0, 10);
+    }
   }
+  const imagesFinal = meshMode ? images.filter((i) => !entityRoles.has(i.role)) : images;
   const tuning = (r.tuning || []).slice(0, 8).map((t) => {
     const min = Number(t.min);
     const max = Number(t.max);
@@ -345,6 +366,6 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     tuning,
     ui: normalizeUi(r.ui, `${r.title} ${r.objective}`),
     cinematic: { style: r.cinematic?.style || "epica", lines: (r.cinematic?.lines || []).slice(0, 3) },
-    assets: { images, audio, models },
+    assets: { images: imagesFinal, audio, models },
   };
 }

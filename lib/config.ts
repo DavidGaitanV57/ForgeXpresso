@@ -10,7 +10,14 @@ export const config = {
     codeModel: () => env("ANTHROPIC_MODEL_CODE", "claude-opus-5-5"),
     fastModel: () => env("ANTHROPIC_MODEL_FAST", "claude-sonnet-5-5"),
   },
-  imageProvider: (): ImageProvider => (env("IMAGE_PROVIDER", "openai") === "minimax" ? "minimax" : "openai"),
+  /** Prefer OpenAI when both keys exist; otherwise the only configured image API. */
+  imageProvider: (): ImageProvider => {
+    const hasOpenAI = !!env("OPENAI_API_KEY");
+    const hasMiniMax = !!env("MINIMAX_API_KEY");
+    if (hasOpenAI) return "openai";
+    if (hasMiniMax) return "minimax";
+    return env("IMAGE_PROVIDER", "openai") === "minimax" ? "minimax" : "openai";
+  },
   openai: {
     key: () => env("OPENAI_API_KEY"),
     imageModel: () => env("OPENAI_IMAGE_MODEL", "gpt-image-2.5-sunburst"),

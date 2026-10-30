@@ -164,6 +164,19 @@ export async function createHost(createGame, ctx) {
         if (c.isMesh) {
           c.castShadow = true;
           c.receiveShadow = true;
+          // Tripo shells are often single-sided / holey — double-side + tame alpha leaks.
+          const mats = Array.isArray(c.material) ? c.material : c.material ? [c.material] : [];
+          for (const m of mats) {
+            if (!m) continue;
+            m.side = THREE.DoubleSide;
+            if (m.map && m.transparent && m.opacity >= 0.99 && (m.alphaTest == null || m.alphaTest < 0.05)) {
+              m.alphaTest = 0.35;
+              m.transparent = false;
+            }
+            if ("metalness" in m && m.metalness > 0.35) m.metalness = Math.min(m.metalness, 0.25);
+            if ("roughness" in m && m.roughness < 0.4) m.roughness = 0.55;
+            m.needsUpdate = true;
+          }
         }
       });
       const box = new THREE.Box3().setFromObject(inner);
@@ -173,9 +186,12 @@ export async function createHost(createGame, ctx) {
       const box2 = new THREE.Box3().setFromObject(inner);
       const c = box2.getCenter(new THREE.Vector3());
       inner.position.set(-c.x, -box2.min.y, -c.z);
+      // o.yaw: local Y offset so mesh nose aligns with group +Z (Tripo often faces +X → yaw -PI/2).
+      if (typeof o.yaw === "number" && Number.isFinite(o.yaw)) inner.rotation.y += o.yaw;
       const g = new THREE.Group();
       g.add(inner);
       g.userData.animations = gltf.animations || [];
+      g.userData.forgeYaw = o.yaw || 0;
       return g;
     },
     /**
@@ -186,7 +202,8 @@ export async function createHost(createGame, ctx) {
     character(id, height = 1.7, o = {}) {
       const h = o.height ?? height;
       const modelId = o.model ?? (String(id).endsWith("_3d") ? id : `${id}_3d`);
-      const fromModel = forge.three.model(modelId, { height: h });
+      // o.yaw: align Tripo nose to group +Z. Third-person often needs -PI/2 (+X → +Z); 2.5D side-scroll usually 0 + root sideYaw.
+      const fromModel = forge.three.model(modelId, { height: h, yaw: o.yaw });
       if (fromModel) {
         fromModel.userData.forgeCharacter = id;
         return fromModel;

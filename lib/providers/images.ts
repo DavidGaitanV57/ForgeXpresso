@@ -16,6 +16,8 @@ export interface RawImage {
 
 export function availableImageProvider(preferred: ImageProvider): ImageProvider | null {
   const has = { openai: !!config.openai.key(), minimax: !!config.minimax.key() };
+  // Always prefer OpenAI when both keys are present (end users don't pick a provider).
+  if (has.openai && has.minimax) return "openai";
   if (has[preferred]) return preferred;
   if (has.openai) return "openai";
   if (has.minimax) return "minimax";

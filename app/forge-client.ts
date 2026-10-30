@@ -41,7 +41,10 @@ const audioLabel = (kind: string) => (kind === "music" || kind === "sfx" || kind
 const ORDER = ["hero", "enemy", "npc", "collectible", "hazard", "goal", "platform", "tile", "prop", "background", "texture", "portrait", "ui", "model", "music", "voice", "sfx"];
 const COVER_ROLES = new Set(["background", "texture", "portrait"]);
 const DIM_LABEL: Record<Dimension, string> = { "2d": "2D", "2.5d": "2.5D", "3d": "3D" };
-const PROVIDER_LABEL: Record<ImageProvider, string> = { openai: "OpenAI", minimax: "MiniMax" };
+function setScreen(next: typeof S.screen) {
+  S.screen = next;
+  document.body.dataset.screen = next;
+}
 
 const IDEA_DIMS: Dimension[] = ["2d", "2d", "2.5d", "3d", "3d"];
 const ideasList = (): [string, Dimension][] => IDEA_DIMS.map((d, i) => [t(`idea.${i + 1}`), d]);
@@ -313,6 +316,35 @@ async function refreshProject() {
 }
 
 /* ================= Intro ================= */
+function pickImageProvider(c: Caps): ImageProvider {
+  // Server + both keys → OpenAI first (end users never pick).
+  if (c.images.openai) return "openai";
+  if (c.images.minimax) return "minimax";
+  return c.defaultImageProvider;
+}
+function isDebugApis() {
+  try {
+    if (localStorage.getItem("forge.debugApis") === "1") return true;
+  } catch {}
+  return /(?:^|[?&#])debug(?:apis)?(?:=1|&|$)/i.test(location.search + location.hash);
+}
+function syncDebugApisUi(announce = false) {
+  const on = isDebugApis();
+  document.body.classList.toggle("debug-apis", on);
+  const box = $("#keysStatus");
+  if (box) {
+    box.hidden = !on;
+    box.setAttribute("aria-hidden", on ? "false" : "true");
+  }
+  if (announce) toast(on ? "Debug APIs ON (Ctrl+Shift+D)" : "Debug APIs OFF", 2200);
+}
+function toggleDebugApis() {
+  const next = !isDebugApis();
+  try {
+    localStorage.setItem("forge.debugApis", next ? "1" : "0");
+  } catch {}
+  syncDebugApisUi(true);
+}
 async function initIntro() {
   try {
     S.caps = await api<Caps>("/api/config");
@@ -321,31 +353,26 @@ async function initIntro() {
   }
   const c = S.caps;
   if (c) {
-    S.provider = c.images[c.defaultImageProvider] ? c.defaultImageProvider : c.images.openai ? "openai" : c.images.minimax ? "minimax" : c.defaultImageProvider;
+    S.provider = pickImageProvider(c);
     const chip = (ok: boolean, label: string, req = false) =>
       `<span class="${ok ? "ok" : ""} ${req ? "req" : ""}" title="${ok ? t("keys.configured") : t("keys.missing")}"><i></i>${label}</span>`;
-    $("#keysStatus").innerHTML =
-      chip(c.code, "Claude", true) + chip(c.images.openai, "OpenAI") + chip(c.images.minimax, "MiniMax") + chip(c.audio, "ElevenLabs") + chip(c.models3d, "Tripo");
+    const ks = $("#keysStatus");
+    if (ks) {
+      ks.innerHTML =
+        chip(c.code, "Claude", true) + chip(c.images.openai, "OpenAI") + chip(c.images.minimax, "MiniMax") + chip(c.audio, "ElevenLabs") + chip(c.models3d, "Tripo");
+    }
     $("#agentTxt").textContent = c.code ? t("intro.agentReady") : t("intro.agentMissing");
     $("#agentDot").style.background = c.code ? "" : "var(--rose)";
   }
-  renderProvider();
+  syncDebugApisUi();
   $("#sugs").innerHTML = ideasList()
     .map(([txt, d], i) => `<button type="button" data-i="${i}">${DIM_LABEL[d]} · ${esc(txt.split(" ").slice(0, 5).join(" "))}…</button>`)
     .join("");
   void loadProjects();
 }
-function renderProvider() {
-  $$("#provSw button").forEach((b) => {
-    const pv = b.dataset.p as ImageProvider;
-    b.classList.toggle("on", pv === S.provider);
-    b.classList.toggle("na", !!S.caps && !S.caps.images[pv]);
-    b.title = S.caps && !S.caps.images[pv] ? t("keys.noProviderTitle") : t("keys.withProvider", { name: PROVIDER_LABEL[pv] });
-  });
-}
 function setIntroDim(d: Dimension) {
   S.dim = d;
-  $$(".dimsw:not(.prov) button").forEach((x) => x.classList.toggle("on", x.dataset.d === d));
+  $$(".dimsw button[data-d]").forEach((x) => x.classList.toggle("on", x.dataset.d === d));
 }
 async function loadProjects() {
   try {
@@ -375,7 +402,7 @@ async function createGame(idea: string) {
   const btn = $<HTMLButtonElement>("#askSend");
   btn.disabled = true;
   try {
-    const p = await api<Project>("/api/projects", { method: "POST", json: { idea, dimension: S.dim, imageProvider: S.provider } });
+    const p = await api<Project>("/api/projects", { method: "POST", json: { idea, dimension: S.dim } });
     $("#intro").classList.add("leaving");
     await sleep(430);
     openProject(p);
@@ -409,7 +436,7 @@ function openProject(p: Project) {
 /* ================= Loader ================= */
 const LD = { raf: 0, t0: 0, shown: 0, target: 0, stageT: {} as Record<string, number>, tipTimer: 0 as unknown as ReturnType<typeof setInterval>, gallery: [] as string[], galI: 0, galT: 0, finishing: false, typed: "" };
 function runLoader() {
-  S.screen = "loader";
+  setScreen("loader");
   const ld = $("#loader");
   ld.hidden = false;
   ld.classList.remove("leaving", "handoff");
@@ -727,7 +754,7 @@ function leaveLoader() {
 
 /* ================= Studio ================= */
 function enterStudio(from: DOMRect | null) {
-  S.screen = "studio";
+  setScreen("studio");
   S.ptab = "guia";
   S.open = 1; // Consumo de APIs (segunda sección de la guía)
   S.playing = false;
@@ -962,9 +989,7 @@ function guideHTML() {
   sections.push({
     name: t("guide.idea"),
     detail: `“${p.idea}”`,
-    body: `<div class="dz"><p>${esc(p.idea)}</p><div class="dz-row"><span>${DIM_LABEL[p.dimension]}</span>${d ? `<span>${esc(d.camera)}</span>` : ""}</div>
-      <div class="lbl">${esc(t("guide.provider"))}</div>
-      <div class="presets">${(["openai", "minimax"] as ImageProvider[]).map((pv) => `<button type="button" class="preset ${p.imageProvider === pv ? "on" : ""}" data-prov="${pv}" ${S.caps && !S.caps.images[pv] ? `title="${esc(t("keys.missing"))}"` : ""}>${PROVIDER_LABEL[pv]}${S.caps && !S.caps.images[pv] ? esc(t("guide.nokey")) : ""}</button>`).join("")}</div></div>`,
+    body: `<div class="dz"><p>${esc(p.idea)}</p><div class="dz-row"><span>${DIM_LABEL[p.dimension]}</span>${d ? `<span>${esc(d.camera)}</span>` : ""}</div></div>`,
   });
   if (d) {
     sections.push({
@@ -1490,6 +1515,21 @@ async function viewModel(url: string, cv: HTMLCanvasElement) {
     ctl.autoRotate = true;
     const gltf = await new GLTFLoader().loadAsync(url);
     const obj = gltf.scene;
+    obj.traverse((c: { isMesh?: boolean; material?: unknown }) => {
+      if (!c.isMesh) return;
+      const mats = Array.isArray(c.material) ? c.material : c.material ? [c.material] : [];
+      for (const m of mats as { side?: number; map?: unknown; transparent?: boolean; opacity?: number; alphaTest?: number; metalness?: number; roughness?: number; needsUpdate?: boolean }[]) {
+        if (!m) continue;
+        m.side = THREE.DoubleSide;
+        if (m.map && m.transparent && (m.opacity ?? 1) >= 0.99 && (m.alphaTest == null || m.alphaTest < 0.05)) {
+          m.alphaTest = 0.35;
+          m.transparent = false;
+        }
+        if (typeof m.metalness === "number" && m.metalness > 0.35) m.metalness = Math.min(m.metalness, 0.25);
+        if (typeof m.roughness === "number" && m.roughness < 0.4) m.roughness = 0.55;
+        m.needsUpdate = true;
+      }
+    });
     const box = new THREE.Box3().setFromObject(obj);
     const size = box.getSize(new THREE.Vector3()).length() || 1;
     const center = box.getCenter(new THREE.Vector3());
@@ -1609,7 +1649,7 @@ function openPro() {
   setTimeout(() => {
     st.hidden = true;
     st.classList.remove("leaving");
-    S.screen = "pro";
+    setScreen("pro");
     const pro = $("#pro");
     pro.hidden = false;
     pro.classList.remove("leaving");
@@ -1646,7 +1686,7 @@ function closePro() {
   setTimeout(() => {
     pro.hidden = true;
     pro.classList.remove("leaving");
-    S.screen = "studio";
+    setScreen("studio");
     const st = $("#studio");
     st.hidden = false;
     st.classList.add("assemble");
@@ -1830,7 +1870,7 @@ function goLobby() {
     leave.classList.remove("leaving");
     gameFrame().removeAttribute("src");
     S.p = null;
-    S.screen = "intro";
+    setScreen("intro");
     document.title = "Forge Xpresso";
     history.replaceState(null, "", "/");
     const it = $("#intro");
@@ -1853,7 +1893,10 @@ function ensureLangSwitcherHosts() {
     intro.id = "introLang";
     intro.className = "langsw langsw-fixed";
     intro.setAttribute("role", "group");
-    (document.getElementById("intro") || document.body).appendChild(intro);
+    document.body.appendChild(intro);
+  } else if (intro.parentElement !== document.body) {
+    // Keep fixed top-right of the viewport (not clipped/centered by #intro).
+    document.body.appendChild(intro);
   }
   let studio = $("#studioLang");
   if (!studio) {
@@ -1942,7 +1985,9 @@ export function mount() {
   initLocale();
   setLocale(getLocale());
   applyDomI18n(document);
+  setScreen(S.screen);
   renderLangSwitchers();
+  syncDebugApisUi();
   document.documentElement.style.setProperty("--vol-label", `"${t("studio.volume")}"`);
   try {
     S.tourSeen = localStorage.getItem("forge.tourSeen") === "1";
@@ -1971,17 +2016,16 @@ export function mount() {
     },
     { signal },
   );
-  $$(".dimsw:not(.prov) button").forEach((b) => b.addEventListener("click", () => setIntroDim(b.dataset.d as Dimension), { signal }));
-  $$("#provSw button").forEach((b) =>
-    b.addEventListener(
-      "click",
-      () => {
-        S.provider = b.dataset.p as ImageProvider;
-        renderProvider();
-        if (S.caps && !S.caps.images[S.provider]) toast(t("keys.provider", { name: PROVIDER_LABEL[S.provider] }));
-      },
-      { signal },
-    ),
+  $$(".dimsw button[data-d]").forEach((b) => b.addEventListener("click", () => setIntroDim(b.dataset.d as Dimension), { signal }));
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "D" || e.key === "d")) {
+        e.preventDefault();
+        toggleDebugApis();
+      }
+    },
+    { signal },
   );
   $("#sugs").addEventListener(
     "click",
@@ -2129,11 +2173,6 @@ export function mount() {
     const ver = el.closest<HTMLElement>("[data-ver]");
     if (ver) {
       void patchProject({ currentVersion: Number(ver.dataset.ver) }).then((p) => p && toast(t("guide.versionRestored", { n: ver.dataset.ver! })));
-      return;
-    }
-    const prov = el.closest<HTMLElement>("[data-prov]");
-    if (prov) {
-      void patchProject({ imageProvider: prov.dataset.prov }).then(() => renderFlow());
       return;
     }
     const cs = el.closest<HTMLElement>("[data-cs]");

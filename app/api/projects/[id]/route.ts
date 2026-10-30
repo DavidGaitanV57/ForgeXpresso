@@ -20,7 +20,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
     cineAuto?: boolean;
     cinematicLines?: string[];
     cinematicStyle?: string;
-    imageProvider?: "openai" | "minimax";
     currentVersion?: number;
     tuning?: { key: string; value: number }[];
   };
@@ -31,7 +30,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
       pp.repairs = 0;
     }
     if (typeof body.cineAuto === "boolean") pp.cineAuto = body.cineAuto;
-    if (body.imageProvider === "openai" || body.imageProvider === "minimax") pp.imageProvider = body.imageProvider;
     if (pp.design && Array.isArray(body.cinematicLines)) pp.design.cinematic.lines = body.cinematicLines.slice(0, 3).map((l) => String(l).slice(0, 90));
     if (pp.design && body.cinematicStyle) pp.design.cinematic.style = String(body.cinematicStyle).slice(0, 20);
     if (pp.design && Array.isArray(body.tuning)) {

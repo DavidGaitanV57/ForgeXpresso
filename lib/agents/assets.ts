@@ -7,6 +7,11 @@ import { patchAsset, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec } from "../types";
 import { sanitizeVoicePrompt } from "./voice-prompt";
 
+/** Image id paired with a `*_3d` model (lumi_hero_3d → lumi_hero). */
+export function sourceImageIdForModel(modelId: string) {
+  return modelId.endsWith("_3d") ? modelId.slice(0, -3) : "";
+}
+
 export function newRecord(type: AssetRecord["type"], spec: ImageAssetSpec | AudioAssetSpec | ModelAssetSpec): AssetRecord {
   return { id: spec.id, type, name: spec.name, spec, status: "pending", rev: 0, liked: 0, updatedAt: Date.now() };
 }
@@ -165,7 +170,8 @@ export async function generateModelAsset(projectId: string, rec: AssetRecord, de
   }
   await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
   try {
-    const result = await tripo.textToModel(`${spec.prompt}. Style: ${design.artStyle.slice(0, 300)}`);
+    // Text→3D is the primary path for new 3D/2.5D mesh entities (no 2D intermediary).
+    const result = await tripo.textToModel(`${spec.prompt}. Art style: ${design.artStyle.slice(0, 280)}`);
     await finish(projectId, rec, "glb", result.data, "model/gltf-binary", "Tripo");
     return { provider: "tripo", label: `model:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, models: 1 };
   } catch (e) {

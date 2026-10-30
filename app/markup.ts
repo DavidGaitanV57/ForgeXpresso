@@ -4,12 +4,12 @@ const ICSND = (id: string, wave: string) =>
   `<button class="iconbtn on" id="${id}" type="button" data-i18n-title="studio.sound" data-i18n-aria="studio.sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path ${wave} d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>`;
 
 export const MARKUP = `
+<div class="langsw langsw-fixed" id="introLang" role="group" aria-label="Idioma">
+  <button type="button" data-locale="es" class="on" title="Español">ES</button>
+  <button type="button" data-locale="en" title="English">EN</button>
+  <button type="button" data-locale="fr" title="Français">FR</button>
+</div>
 <section class="intro" id="intro">
-  <div class="langsw langsw-fixed" id="introLang" role="group" aria-label="Idioma">
-    <button type="button" data-locale="es" class="on" title="Español">ES</button>
-    <button type="button" data-locale="en" title="English">EN</button>
-    <button type="button" data-locale="fr" title="Français">FR</button>
-  </div>
   <div class="intro-in" id="introIn">
     <span class="mascot mark" aria-hidden="true"></span>
     <h1 data-i18n-html="intro.title">¿Qué juego quieres <span>forjar</span> hoy?</h1>
@@ -19,12 +19,11 @@ export const MARKUP = `
       <textarea id="askIn" rows="3" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
       <div class="ask-bar">
         <div class="dimsw" role="group" data-i18n-aria="intro.ariaDim" aria-label="Dimensión"><button type="button" data-d="2d" class="on">2D</button><button type="button" data-d="2.5d">2.5D</button><button type="button" data-d="3d">3D</button></div>
-        <div class="dimsw prov" role="group" data-i18n-aria="intro.ariaImages" aria-label="Imágenes" id="provSw"><button type="button" data-p="openai">OpenAI</button><button type="button" data-p="minimax">MiniMax</button></div>
         <span class="sp"></span>
         <button class="send" id="askSend" type="submit" data-i18n-aria="intro.ariaCreate" aria-label="Crear juego" disabled>${ICSEND}</button>
       </div>
     </form>
-    <div class="keys-status" id="keysStatus"></div>
+    <div class="keys-status" id="keysStatus" hidden aria-hidden="true"></div>
     <div class="sugs" id="sugs"></div>
     <div class="projects" id="projects" hidden>
       <div class="lbl" data-i18n="intro.yourGames">Tus juegos</div>

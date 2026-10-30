@@ -4,13 +4,59 @@ import type { AnthropicUsage } from "../providers/anthropic";
 import { pool } from "../providers/http";
 import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
-import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, Job, JobStage, Project, StageStatus, UsageEvent, UsageReport } from "../types";
+import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
 import { generateAsset, newRecord, recordsFromDesign } from "./assets";
 import { planChange } from "./chat";
 import { codeAgent } from "./code";
-import { runDirector } from "./director";
+import { runDirector, wantsMeshCharacters } from "./director";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
+
+const MESH_ROLES = new Set<ImageRole>(["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal"]);
+
+function meshEntityRoles(dimension: Project["dimension"], idea: string) {
+  if (dimension === "3d") return MESH_ROLES;
+  if (wantsMeshCharacters(idea, dimension)) return new Set<ImageRole>(["hero", "enemy", "npc"]);
+  return new Set<ImageRole>();
+}
+
+function ensureTextModel(
+  d: GameDesign,
+  assets: Record<string, AssetRecord>,
+  mid: string,
+  name: string,
+  prompt: string,
+  usage: string,
+) {
+  let rec = assets[mid];
+  const solid = /watertight|closed solid|no holes/i.test(prompt)
+    ? prompt
+    : `${prompt}. Closed solid watertight mesh, clean topology, readable silhouette, no holes, no paper-thin shells, no ground plane.`;
+  if (!rec) {
+    const spec: ModelAssetSpec = { id: mid, name, prompt: solid, usage };
+    if (!d.assets.models.some((m) => m.id === mid)) d.assets.models.push(spec);
+    rec = newRecord("model", spec);
+    assets[mid] = rec;
+  } else if (rec.type === "model") {
+    (rec.spec as ModelAssetSpec).prompt = solid;
+    const dSpec = d.assets.models.find((m) => m.id === mid);
+    if (dSpec) dSpec.prompt = solid;
+  }
+  return rec;
+}
+
+/** Legacy helper: if a 2D entity image still exists, keep a paired *_3d text model in sync. */
+function ensurePairedModel(d: GameDesign, assets: Record<string, AssetRecord>, imageId: string, imageSpec: ImageAssetSpec) {
+  if (!MESH_ROLES.has(imageSpec.role)) return null as AssetRecord | null;
+  return ensureTextModel(
+    d,
+    assets,
+    `${imageId}_3d`,
+    `${imageSpec.name} 3D`,
+    `Game-ready stylized low-poly 3D ${imageSpec.role}: ${imageSpec.prompt}`,
+    `3D mesh for ${imageSpec.role} ${imageSpec.name}`,
+  );
+}
 
 const g = globalThis as unknown as { __forgeRunning?: Set<string> };
 const running = g.__forgeRunning ?? (g.__forgeRunning = new Set<string>());
@@ -189,6 +235,7 @@ async function createFlow(projectId: string) {
     if (!audio.length) await ctl.stage("audio", "ok", "Sin cambios");
     if (models3d && !models.length) await ctl.stage("models", "ok", "Sin cambios");
 
+    // Décor images + audio in parallel; Tripo text→3D models in parallel too (no image→3D dependency).
     const assetsJob = Promise.all([
       generateMany(projectId, images, design, p0.imageProvider, ctl, "art"),
       generateMany(projectId, audio, design, p0.imageProvider, ctl, "audio"),
@@ -302,13 +349,64 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       emit(projectId, { type: "design", design });
     }
 
+    // Cinematic expert (chat): when asked for an intro / onCinematic, author direction.shots for the programmer.
+    const wantCine =
+      /cinemat|onCinematic|intro in-engine|in-engine intro|secuencia (de )?intro|cin[eé]mat/i.test(message) ||
+      /cinemat|onCinematic/i.test(plan.code || "");
+    if (wantCine) {
+      try {
+        const { direction, usage: cineUsage } = await runCinematicDirector(p.idea, design, p.dimension);
+        await ctl.trackAnthropic(cineUsage, "cinematic");
+        const updated = await updateProject(projectId, (pp) => {
+          if (!pp.design) return;
+          pp.design.cinematic = {
+            ...pp.design.cinematic,
+            style: pp.design.cinematic?.style || "epica",
+            lines: pp.design.cinematic?.lines || [],
+            direction,
+          };
+        });
+        design = updated.design!;
+        emit(projectId, { type: "design", design });
+        if (!plan.code.trim()) {
+          plan.code =
+            "Implement onCinematic(dt, cine) from design.cinematic.direction (camera from→to/lookAt per shot, fx cues). Not a static frame; restore gameplay camera when cinematic ends.";
+        } else if (!/onCinematic/i.test(plan.code)) {
+          plan.code +=
+            " Also implement onCinematic(dt, cine) using design.cinematic.direction shots (live camera, not a static frame).";
+        }
+      } catch (e) {
+        console.warn("[forge] chat cinematic director failed", e);
+      }
+    }
+
     // Assets.
     const toGenerate: AssetRecord[] = [];
+    const models3d = !!config.tripo.key() && p.dimension !== "2d";
+    const entityRoles = meshEntityRoles(p.dimension, p.idea);
     await updateProject(projectId, (pp) => {
       const d = pp.design!;
       for (const r of plan.regenerate) {
-        const a = pp.assets[r.id];
-        if (!a || a.type === "model") continue;
+        let a = pp.assets[r.id];
+        // Missing *_3d: create from text prompt (preferred) or legacy paired image.
+        if (!a && models3d && r.id.endsWith("_3d")) {
+          const imgId = r.id.slice(0, -3);
+          const img = pp.assets[imgId];
+          if (img?.type === "image") {
+            a = ensurePairedModel(d, pp.assets, imgId, img.spec as ImageAssetSpec) || undefined;
+          } else {
+            a =
+              ensureTextModel(
+                d,
+                pp.assets,
+                r.id,
+                r.id.replace(/_3d$/, ""),
+                r.prompt || `Game-ready stylized low-poly 3D character ${imgId}`,
+                `3D mesh ${r.id}`,
+              ) || undefined;
+          }
+        }
+        if (!a) continue;
         if (r.prompt) {
           const spec = a.spec as { prompt: string; kind?: string };
           spec.prompt =
@@ -318,9 +416,26 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
         }
         a.liked = 0;
         toGenerate.push(a);
+        // Legacy: if a mesh-role 2D image is regenerated, keep its *_3d text model in sync.
+        if (models3d && a.type === "image" && entityRoles.has((a.spec as ImageAssetSpec).role)) {
+          const paired = ensurePairedModel(d, pp.assets, a.id, a.spec as ImageAssetSpec);
+          if (paired && !toGenerate.includes(paired)) {
+            paired.liked = 0;
+            toGenerate.push(paired);
+          }
+        }
       }
       for (const s of plan.newImages) {
         if (pp.assets[s.id]) continue;
+        // Mesh games: divert entity "images" into text→3D models (never generate 2D for those roles).
+        if (models3d && entityRoles.has(s.role)) {
+          const mid = s.id.endsWith("_3d") ? s.id : `${s.id}_3d`;
+          const rec = ensureTextModel(d, pp.assets, mid, s.name, `Game-ready stylized low-poly 3D ${s.role}: ${s.prompt}`, s.usage || `3D mesh for ${s.role}`);
+          rec.liked = 0;
+          if (!toGenerate.includes(rec)) toGenerate.push(rec);
+          continue;
+        }
+        if (entityRoles.has(s.role)) continue; // no Tripo: skip 2D for mesh roles (programmer uses primitives)
         d.assets.images.push(s);
         pp.assets[s.id] = newRecord("image", s);
         toGenerate.push(pp.assets[s.id]);
@@ -340,7 +455,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       ? (async () => {
           await ctl.stage("assets", "run", `0/${toGenerate.length}`);
           let n = 0;
-          await pool(toGenerate, 3, async (r) => {
+          const trackOne = async (r: AssetRecord) => {
             const u = await generateAsset(projectId, r, design, p.imageProvider);
             if (u) {
               await ctl.track({
@@ -355,7 +470,11 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
               });
             }
             await ctl.stage("assets", "run", `${++n}/${toGenerate.length}`);
-          });
+          };
+          const imgs = toGenerate.filter((r) => r.type !== "model");
+          const mods = toGenerate.filter((r) => r.type === "model");
+          await pool(imgs, 3, trackOne);
+          await pool(mods, 2, trackOne);
           await ctl.stage("assets", "ok", `${toGenerate.length} actualizados`);
         })()
       : ctl.stage("assets", "skip");

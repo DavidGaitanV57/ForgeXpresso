@@ -2,7 +2,8 @@
 
 /* intro */
 .dimsw.prov button.na{opacity:.4}
-.keys-status{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font-size:11.5px;color:var(--dim)}
+.keys-status{display:none;flex-wrap:wrap;gap:6px;justify-content:center;font-size:11.5px;color:var(--dim)}
+body.debug-apis .keys-status{display:flex}
 .keys-status span{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-weight:700}
 .keys-status span i{width:6px;height:6px;border-radius:50%;background:var(--line-2)}
 .keys-status span.ok{color:var(--muted)}
@@ -25,9 +26,17 @@
 .langsw button{appearance:none;border:0;background:transparent;color:var(--muted);font:800 11px/1 Manrope,system-ui,sans-serif;letter-spacing:.06em;padding:8px 11px;border-radius:999px;cursor:pointer}
 .langsw button.on{background:linear-gradient(135deg,rgba(255,122,26,.35),rgba(255,79,139,.25));color:#fff}
 .langsw button:hover{color:#fff}
-.langsw-fixed{position:fixed;top:max(14px, env(safe-area-inset-top, 0px));right:max(14px, env(safe-area-inset-right, 0px));z-index:80}
-#intro[hidden] .langsw-fixed{display:none !important}
-#studioLang,.langsw{position:relative;z-index:56;pointer-events:auto}
+/* Must beat `.langsw{position:relative}` so the lobby switcher stays viewport top-right */
+.langsw.langsw-fixed,#introLang.langsw-fixed{
+  position:fixed !important;
+  top:max(14px, env(safe-area-inset-top, 0px));
+  right:max(14px, env(safe-area-inset-right, 0px));
+  left:auto;
+  z-index:80;
+  pointer-events:auto;
+}
+body:not([data-screen="intro"]) #introLang{display:none !important}
+#studioLang{position:relative;z-index:56;pointer-events:auto}
 body.is-playing #studio .top{position:relative;z-index:55}
 body.is-playing #studioLang{z-index:56}
 @media (max-width:720px){.langsw button{padding:7px 9px;font-size:10px}.langsw-fixed{top:10px;right:10px}}
