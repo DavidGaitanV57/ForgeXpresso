@@ -60,10 +60,19 @@ export default function createGame(forge, Phaser) {
   \`forge.phaser.fit(gameObject, targetHeightPx)\` (keeps aspect). For physics sprites call \`forge.phaser.body(sprite, {w:0.6, h:0.9})\` AFTER fit
   to set a body as a fraction of the displayed size (bottom‑centered).
 - Sprites are drawn facing right: use \`setFlipX(true)\` to face left.
-- There are no sprite sheets. Bring characters to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
+- Animated characters: when the asset list has a \`spritesheet\` whose \`of\` is a character image id, create the sprite with the
+  CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
+  — BEFORE fit/body, because it swaps the texture to the \`<id>_sheet\` frames (square cells, feet on the cell bottom). Then fit/body as usual
+  (sheet frames have side margins: use \`forge.phaser.body(sprite, {w:0.42, h:0.88})\`). Every frame call
+  \`anim.update({vx, vy, grounded, dashing, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/dash/attack/hurt
+  (only those listed in the sheet; \`attacking\` triggers once on its rising edge). \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
+  You still flip with \`setFlipX(vx < 0)\`. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
+  so ALWAYS use animate for characters that have a spritesheet — never load or slice sheets yourself, never use this.anims directly.
+- Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
   The puppet draws a visual copy that mirrors the sprite's position, flipX, alpha, tint, visibility and depth, so keep controlling the physics sprite as usual.
-  Do not scale physics sprites every frame yourself (it resizes the Arcade body); use the puppet or tweens on non-physics objects.
+  Do not scale physics sprites every frame yourself (it resizes the Arcade body); use animate/puppet or tweens on non-physics objects.
+  Never draw a \`*_sheet\` asset as a plain image (it is a grid of frames).
 - \`forge.phaser.parallax(scene, imageId, factor, {depth, alpha, tint, y, height, tile})\` → full‑screen parallax layer.
   CRITICAL: only pass \`tile:true\` (or rely on \`forge.assets.image(id).seamless\`) for abstract seamless layers (starfields/clouds).
   Scenic paintings with planets/landmarks are seamless=false — the helper will NOT wrap them (wrapping causes a hard vertical seam).

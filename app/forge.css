@@ -503,12 +503,16 @@ button.brand:hover .mascot{animation:hop .6s ease}
 @keyframes avBg{from{opacity:0}}
 .av.closing{animation:avBgOut .25s ease forwards}
 @keyframes avBgOut{to{opacity:0}}
-.av-card{width:min(1040px,100%);max-height:calc(100% - 8px);display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);background:var(--surface);border:1px solid var(--line-2);border-radius:20px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.7);animation:avIn .45s cubic-bezier(.2,.9,.3,1.15)}
+.av-card{width:min(1040px,100%);max-height:calc(100% - 8px);display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);grid-template-rows:minmax(0,1fr);background:var(--surface);border:1px solid var(--line-2);border-radius:20px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.7);animation:avIn .45s cubic-bezier(.2,.9,.3,1.15)}
 @keyframes avIn{from{opacity:0;transform:translateY(24px) scale(.94)}}
 .av.closing .av-card{animation:avOut .25s ease forwards}
 @keyframes avOut{to{opacity:0;transform:scale(.96)}}
 @media (max-width:760px){.av-card{grid-template-columns:minmax(0,1fr);overflow:auto}}
-.av-stage{position:relative;aspect-ratio:4/3;max-width:100%;background:radial-gradient(ellipse at 50% 35%,#20243a,#0b0c12 70%);min-height:0}
+/* Fill the full card row (Y + X). aspect-ratio alone left a solid gap under the checker when the info column was taller. */
+.av-stage{position:relative;height:100%;min-height:220px;max-width:100%;align-self:stretch;background:radial-gradient(ellipse at 50% 35%,#20243a,#0b0c12 70%)}
+/* Checker behind transparent sprites so hollow/dark-keyed bodies are visible (dark stage hid them). */
+.av-stage.is-cutout{background-color:#1a1c24;background-image:linear-gradient(45deg,#2a2e3a 25%,transparent 25%),linear-gradient(-45deg,#2a2e3a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2e3a 75%),linear-gradient(-45deg,transparent 75%,#2a2e3a 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+@media (max-width:760px){.av-stage{aspect-ratio:4/3;height:auto}}
 .av-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #av3d{cursor:grab}#av3d:active{cursor:grabbing}
 .av-modes{position:absolute;top:12px;left:12px;display:flex;background:rgba(10,11,16,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:3px}
@@ -516,6 +520,9 @@ button.brand:hover .mascot{animation:hop .6s ease}
 .av-modes button.on{background:var(--indigo);color:#fff}
 .av-modes button:disabled{opacity:.35;cursor:not-allowed}
 .av-hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(236,238,245,.7);background:rgba(10,11,16,.55);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.av-hint.chips{display:flex;gap:4px;padding:4px;pointer-events:auto}
+.av-hint.chips button{border:0;background:none;color:inherit;font:inherit;font-weight:700;padding:3px 9px;border-radius:999px;cursor:pointer}
+.av-hint.chips button.on,.av-hint.chips button:hover{background:rgba(255,176,32,.22);color:#fff}
 .av-load{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:8px;color:var(--muted);font-weight:600}
 .av-load .mascot{height:48px;animation:bob 1.2s ease-in-out infinite}
 .av-play{position:absolute;bottom:14px;left:50%;transform:translateX(-50%)}

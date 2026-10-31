@@ -6,7 +6,8 @@ import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
-import { generateAsset, newRecord, recordsFromDesign } from "./assets";
+import { ensureSheet, generateAsset, isSheetRecord, newRecord, recordsFromDesign } from "./assets";
+import { sheetIdFor } from "../sheets";
 import { planChange } from "./chat";
 import { codeAgent } from "./code";
 import { runDirector, wantsMeshCharacters } from "./director";
@@ -199,6 +200,7 @@ async function createFlow(projectId: string) {
   const ctl = await startJob(projectId, "create", [
     { id: "director", label: "Director de juego" },
     { id: "art", label: "Artista de imágenes" },
+    ...(p0.dimension === "2d" ? [{ id: "anim", label: "Animador 2D" }] : []),
     { id: "audio", label: "Músico y sonidista" },
     ...(models3d ? [{ id: "models", label: "Escultor 3D" }] : []),
     { id: "code", label: "Programador" },
@@ -228,16 +230,21 @@ async function createFlow(projectId: string) {
 
     const all = Object.values(records);
     const todo = all.filter((a) => a.status !== "ready" && a.status !== "skipped");
-    const images = todo.filter((a) => a.type === "image");
+    const images = todo.filter((a) => a.type === "image" && !isSheetRecord(a));
+    const sheets = todo.filter(isSheetRecord);
     const audio = todo.filter((a) => a.type === "audio");
     const models = todo.filter((a) => a.type === "model");
     if (!images.length) await ctl.stage("art", "ok", "Sin cambios");
+    if (!sheets.length) await ctl.stage("anim", "ok", all.some(isSheetRecord) ? "Sin cambios" : "Sin animaciones");
     if (!audio.length) await ctl.stage("audio", "ok", "Sin cambios");
     if (models3d && !models.length) await ctl.stage("models", "ok", "Sin cambios");
 
     // Décor images + audio in parallel; Tripo text→3D models in parallel too (no image→3D dependency).
+    // Spritesheets need the approved character sprite as reference, so they follow the art stage.
     const assetsJob = Promise.all([
-      generateMany(projectId, images, design, p0.imageProvider, ctl, "art"),
+      generateMany(projectId, images, design, p0.imageProvider, ctl, "art").then(() =>
+        generateMany(projectId, sheets, design, p0.imageProvider, ctl, "anim"),
+      ),
       generateMany(projectId, audio, design, p0.imageProvider, ctl, "audio"),
       models3d ? generateMany(projectId, models, design, p0.imageProvider, ctl, "models") : Promise.resolve(),
     ]);
@@ -382,12 +389,13 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
 
     // Assets.
     const toGenerate: AssetRecord[] = [];
+    const animated: string[] = [];
     const models3d = !!config.tripo.key() && p.dimension !== "2d";
     const entityRoles = meshEntityRoles(p.dimension, p.idea);
     await updateProject(projectId, (pp) => {
       const d = pp.design!;
       for (const r of plan.regenerate) {
-        let a = pp.assets[r.id];
+        let a: AssetRecord | undefined = pp.assets[r.id];
         // Missing *_3d: create from text prompt (preferred) or legacy paired image.
         if (!a && models3d && r.id.endsWith("_3d")) {
           const imgId = r.id.slice(0, -3);
@@ -424,6 +432,21 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
             toGenerate.push(paired);
           }
         }
+        // A redrawn character makes its frames stale.
+        const sheet = a.type === "image" ? pp.assets[sheetIdFor(a.id)] : undefined;
+        if (sheet && !toGenerate.includes(sheet)) {
+          sheet.liked = 0;
+          toGenerate.push(sheet);
+        }
+      }
+      if (p.dimension === "2d") {
+        for (const an of plan.animate || []) {
+          const rec = ensureSheet(d, pp.assets, an.id, an.animations);
+          if (!rec) continue;
+          rec.liked = 0;
+          if (!toGenerate.includes(rec)) toGenerate.push(rec);
+          animated.push(an.id);
+        }
       }
       for (const s of plan.newImages) {
         if (pp.assets[s.id]) continue;
@@ -450,6 +473,10 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       design = d;
     });
     for (const a of toGenerate) emit(projectId, { type: "asset", asset: a });
+    if (animated.length) {
+      const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, attacking, hurt }, dt)\`. Remove forge.phaser.puppet from those sprites.`;
+      plan.code = plan.code.trim() ? `${plan.code}\n${how}` : how;
+    }
 
     const assetsJob = toGenerate.length
       ? (async () => {
@@ -471,9 +498,11 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
             }
             await ctl.stage("assets", "run", `${++n}/${toGenerate.length}`);
           };
-          const imgs = toGenerate.filter((r) => r.type !== "model");
+          const imgs = toGenerate.filter((r) => r.type !== "model" && !isSheetRecord(r));
+          const sheets = toGenerate.filter(isSheetRecord);
           const mods = toGenerate.filter((r) => r.type === "model");
           await pool(imgs, 3, trackOne);
+          await pool(sheets, 2, trackOne);
           await pool(mods, 2, trackOne);
           await ctl.stage("assets", "ok", `${toGenerate.length} actualizados`);
         })()
@@ -567,16 +596,26 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
     const p = await getProject(projectId);
     const rec = p?.assets[assetId];
     if (!p?.design || !rec) return;
-    const ctl = await startJob(projectId, "asset", [{ id: "assets", label: rec.name }]);
+    const sheet = rec.type === "image" ? p.assets[sheetIdFor(assetId)] : undefined;
+    const ctl = await startJob(projectId, "asset", [
+      { id: "assets", label: rec.name },
+      ...(sheet ? [{ id: "anim", label: sheet.name }] : []),
+    ]);
     if (prompt) {
-      const cleaned =
-        rec.type === "audio" && (rec.spec as AudioAssetSpec).kind === "voice"
-          ? sanitizeVoicePrompt(prompt, p.design.cinematic?.lines)
-          : prompt;
+      const isVoice = rec.type === "audio" && (rec.spec as AudioAssetSpec).kind === "voice";
+      // Voice regen: sanitize the USER text only — do not pass cinematic.lines or they
+      // overwrite the textarea and the old narration is spoken again.
+      const cleaned = isVoice ? sanitizeVoicePrompt(prompt) : prompt;
       await updateProject(projectId, (pp) => {
         (pp.assets[assetId].spec as { prompt: string }).prompt = cleaned;
         const dAudio = pp.design?.assets.audio.find((a) => a.id === assetId);
         if (dAudio) dAudio.prompt = cleaned;
+        const dImg = pp.design?.assets.images.find((a) => a.id === assetId);
+        if (dImg) dImg.prompt = cleaned;
+        if (isVoice && cleaned && pp.design?.cinematic) {
+          const beats = cleaned.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+          if (beats.length >= 2 && beats.length <= 4) pp.design.cinematic.lines = beats;
+        }
       });
       (rec.spec as { prompt: string }).prompt = cleaned;
     }
@@ -597,6 +636,18 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
     const fresh = await getProject(projectId);
     const status = fresh?.assets[assetId]?.status;
     await ctl.stage("assets", status === "ready" ? "ok" : "error", fresh?.assets[assetId]?.error);
+    // The frames are drawn from this sprite: redraw them so the animation matches the new look.
+    if (sheet && fresh?.design) {
+      if (status === "ready") {
+        await ctl.stage("anim", "run", "Animando");
+        const su = await generateAsset(projectId, fresh.assets[sheet.id], fresh.design, p.imageProvider);
+        if (su) {
+          await ctl.track({ provider: su.provider as ApiProvider, label: su.label, calls: 1, estimatedUsd: su.estimatedUsd, ms: su.ms, images: su.images });
+        }
+        const sf = (await getProject(projectId))?.assets[sheet.id];
+        await ctl.stage("anim", sf?.status === "ready" ? "ok" : "error", sf?.error);
+      } else await ctl.stage("anim", "skip");
+    }
     ctl.job.finishedAt = Date.now();
     ctl.job.reload = status === "ready";
     await ctl.finishUsage();

@@ -24,16 +24,18 @@ function stripOuterQuotes(s: string): string {
 /**
  * ElevenLabs speech speaks `prompt` verbatim. LLMs often wrap the script in English
  * delivery notes ("Warm gentle storyteller…"); strip those and keep only spoken lines.
- * Prefer `lines` from design.cinematic when present.
+ *
+ * `lines` from design.cinematic are a FALLBACK when the prompt is empty or is only
+ * delivery direction — never when the user (or a regen) supplied a real script.
+ * Overwriting with lines on every call made "Regenerar" ignore textarea edits.
  */
 export function sanitizeVoicePrompt(prompt: string, lines?: string[]): string {
-  if (lines?.length) {
-    const fromLines = voicePromptFromLines(lines);
-    if (fromLines) return fromLines;
-  }
-
+  const fromLines = lines?.length ? voicePromptFromLines(lines) : "";
   let raw = String(prompt || "").trim();
-  if (!raw) return raw;
+  if (!raw) return fromLines;
+
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  if (fromLines && norm(raw) === norm(fromLines)) return fromLines;
 
   if (VOICE_DIRECTION.test(raw) || /^[\s\S]{0,240}:\s*['"«]/.test(raw)) {
     const quotedStart = raw.search(/:\s*['"«]/);
@@ -44,6 +46,9 @@ export function sanitizeVoicePrompt(prompt: string, lines?: string[]): string {
         raw = raw.slice(colon + 1).trim();
       }
     }
+    raw = stripOuterQuotes(raw).trim();
+    // Direction-only fluff with no usable script → cinematic lines.
+    if (!raw || (VOICE_DIRECTION.test(raw) && raw.length < 80)) return fromLines || raw;
   }
 
   const parts = raw

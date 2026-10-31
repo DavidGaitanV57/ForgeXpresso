@@ -2,6 +2,7 @@
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, Dimension, ForgeEvent, ImageAssetSpec, ImageProvider, Job, Project, TuningParam, UsageReport } from "@/lib/types";
 import { formatDuration, formatUsd, PROVIDER_LABEL as API_LABEL } from "@/lib/usage";
 import { applyDomI18n, getLocale, initLocale, setLocale, t, type Locale } from "@/lib/i18n";
+import { sheetAnimsFor, sheetLayout, type SheetAnimSpec } from "@/lib/sheets";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
 type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null };
@@ -1486,7 +1487,13 @@ function setVolume(v: number) {
 }
 
 /* ---------- Asset viewer ---------- */
-const AV = { id: "" as string, viewRev: 0, audio: null as HTMLAudioElement | null, three: null as null | { dispose: () => void } };
+const AV = {
+  id: "" as string,
+  viewRev: 0,
+  audio: null as HTMLAudioElement | null,
+  three: null as null | { dispose: () => void },
+  sheet: null as null | (() => void),
+};
 function assetRevList(a: AssetRecord): { rev: number; file: string }[] {
   if (!a.file || !a.rev) return a.file ? [{ rev: Math.max(1, a.rev), file: a.file }] : [];
   const m = /^(assets\/.+)\.r(\d+)\.([^.]+)$/.exec(a.file);
@@ -1613,7 +1620,12 @@ function fillViewer() {
       a.status === "generating" || a.status === "pending" ? t("lib.generating") : a.status === "skipped" ? t("asset.noKey") : t("asset.unavailable");
     return;
   }
-  if (a.type === "image") {
+  const stage = $("#avStage");
+  stage.classList.toggle("is-cutout", a.type === "image" && !!(a.spec as ImageAssetSpec).transparent && !COVER_ROLES.has(roleOf(a)));
+  if (a.type === "image" && spec.sheet) {
+    wave.hidden = false;
+    viewSheet(url, wave, sheetAnimsFor(spec.sheet, cur?.file || a.file));
+  } else if (a.type === "image") {
     img.hidden = false;
     img.className = COVER_ROLES.has(roleOf(a)) ? "cover" : "";
     img.src = url;
@@ -1631,6 +1643,68 @@ function fillViewer() {
     $("#avHint").textContent = t("asset.orbitHint");
     void viewModel(url, c3);
   }
+}
+/** Plays a spritesheet's clips in the viewer (feet on a fixed floor line) with one chip per animation. */
+function viewSheet(url: string, cv: HTMLCanvasElement, anims: SheetAnimSpec[]) {
+  const layout = sheetLayout(anims);
+  const hint = $("#avHint");
+  hint.hidden = false;
+  hint.classList.add("chips");
+  let pick = layout.anims.find((x) => x.name === "walk") || layout.anims[0];
+  const chips = () => {
+    hint.innerHTML = layout.anims
+      .map((x) => `<button type="button" data-sheet-anim="${x.name}" class="${x === pick ? "on" : ""}">${esc(x.name)}</button>`)
+      .join("");
+  };
+  chips();
+  hint.onclick = (e) => {
+    const n = (e.target as HTMLElement).closest<HTMLElement>("[data-sheet-anim]")?.dataset.sheetAnim;
+    const next = layout.anims.find((x) => x.name === n);
+    if (!next) return;
+    pick = next;
+    t0 = performance.now();
+    chips();
+  };
+  const im = new Image();
+  im.src = url;
+  let raf = 0;
+  let t0 = performance.now();
+  const draw = (now: number) => {
+    raf = requestAnimationFrame(draw);
+    if (!im.complete || !im.naturalWidth) return;
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * dpr));
+    const h = Math.max(1, Math.round(r.height * dpr));
+    if (cv.width !== w || cv.height !== h) {
+      cv.width = w;
+      cv.height = h;
+    }
+    const x = cv.getContext("2d")!;
+    x.clearRect(0, 0, w, h);
+    const el = (now - t0) / 1000;
+    const step = Math.floor(el * pick.fps);
+    const k = pick.loop ? step % pick.frames : Math.min(pick.frames - 1, step);
+    if (!pick.loop && step >= pick.frames + Math.ceil(pick.fps * 0.6)) t0 = now;
+    const idx = pick.start + k;
+    const cell = layout.cell;
+    const size = Math.min(h * 0.82, w * 0.7);
+    const floor = h * 0.9;
+    x.imageSmoothingQuality = "high";
+    x.drawImage(im, (idx % layout.cols) * cell, Math.floor(idx / layout.cols) * cell, cell, cell, (w - size) / 2, floor - size, size, size);
+    x.strokeStyle = "rgba(255,176,32,.45)";
+    x.setLineDash([6 * dpr, 4 * dpr]);
+    x.beginPath();
+    x.moveTo(w * 0.2, floor - size * 0.03);
+    x.lineTo(w * 0.8, floor - size * 0.03);
+    x.stroke();
+  };
+  raf = requestAnimationFrame(draw);
+  AV.sheet = () => {
+    cancelAnimationFrame(raf);
+    hint.onclick = null;
+    hint.classList.remove("chips");
+  };
 }
 function avPlayBtn() {
   const playing = !!AV.audio && !AV.audio.paused;
@@ -1741,6 +1815,8 @@ function stopViewerMedia() {
   AV.audio = null;
   AV.three?.dispose();
   AV.three = null;
+  AV.sheet?.();
+  AV.sheet = null;
 }
 function closeViewer() {
   const av = $("#av");
@@ -1835,7 +1911,7 @@ function openPro() {
     const d = design();
     $("#proProj").textContent = d?.title || "";
     $("#proMeta").textContent = `${d?.genre || ""} · ${t("pro.meta", { versions: S.p?.versions.length || 0, assets: assets().filter((a) => a.status === "ready").length })}`;
-    const imgs = sorted(assets().filter((a) => a.type === "image" && a.status === "ready"));
+    const imgs = sorted(assets().filter((a) => a.type === "image" && a.status === "ready" && !(a.spec as ImageAssetSpec).sheet));
     const pick = [imgs.find((a) => roleOf(a) === "hero"), imgs.find((a) => roleOf(a) === "background"), imgs.find((a) => !["hero", "background"].includes(roleOf(a)))];
     $$<HTMLElement>(".pc-img").forEach((el, i) => {
       const a = pick[i] || imgs[i];

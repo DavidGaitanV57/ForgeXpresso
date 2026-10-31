@@ -11,7 +11,7 @@ export async function GET() {
   const list = await listProjects();
   return NextResponse.json(
     list.map((p) => {
-      const hero = Object.values(p.assets).find((a) => a.type === "image" && (a.spec as { role?: string }).role === "hero" && a.status === "ready");
+      const hero = Object.values(p.assets).find((a) => a.type === "image" && (a.spec as { role?: string; sheet?: unknown }).role === "hero" && !(a.spec as { sheet?: unknown }).sheet && a.status === "ready");
       return {
         id: p.id,
         title: p.design?.title || p.idea.slice(0, 40),

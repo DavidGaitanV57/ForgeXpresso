@@ -59,6 +59,48 @@ async function openai(o: { prompt: string; aspect: Aspect; transparent: boolean;
   throw new ProviderError("OpenAI", 500, "respuesta sin imagen");
 }
 
+/**
+ * gpt-image edit with a reference image (keeps the character's identity across frames).
+ * Optional params are dropped on a 400 because not every image model accepts them.
+ */
+export async function editImageOpenAI(o: { prompt: string; image: Buffer; aspect: Aspect; hq?: boolean }): Promise<RawImage> {
+  const size = o.aspect === "1:1" ? "1024x1024" : o.aspect === "9:16" || o.aspect === "2:3" ? "1024x1536" : "1536x1024";
+  const quality = o.hq ? "high" : "medium";
+  const send = async (extras: boolean) => {
+    const form = new FormData();
+    form.append("model", config.openai.imageModel());
+    form.append("prompt", o.prompt);
+    form.append("image", new Blob([new Uint8Array(o.image)], { type: "image/png" }), "reference.png");
+    form.append("size", size);
+    form.append("quality", quality);
+    form.append("n", "1");
+    if (extras) {
+      form.append("input_fidelity", "high");
+      form.append("background", "opaque");
+      form.append("output_format", "png");
+    }
+    return fetchWithRetry(
+      "https://api.openai.com/v1/images/edits",
+      { method: "POST", headers: { Authorization: `Bearer ${config.openai.key()}` }, body: form },
+      { provider: "OpenAI", timeoutMs: 300_000 },
+    );
+  };
+  const t0 = Date.now();
+  let res: Response;
+  try {
+    res = await send(true);
+  } catch (e) {
+    if (!(e instanceof ProviderError) || e.status !== 400) throw e;
+    res = await send(false);
+  }
+  const j = (await res.json()) as { data?: { b64_json?: string; url?: string }[] };
+  const item = j.data?.[0];
+  const meta = { provider: "openai" as const, needsKeying: true, estimatedUsd: estimateOpenAIImageUsd(quality, o.aspect) * 1.3, ms: Date.now() - t0 };
+  if (item?.b64_json) return { data: Buffer.from(item.b64_json, "base64"), ...meta };
+  if (item?.url) return { data: Buffer.from(await (await fetch(item.url)).arrayBuffer()), ...meta };
+  throw new ProviderError("OpenAI", 500, "respuesta sin imagen");
+}
+
 async function minimax(o: { prompt: string; aspect: Aspect; transparent: boolean }): Promise<RawImage> {
   const prompt = o.transparent
     ? `${o.prompt}. Single isolated subject, centered, full body visible, on a perfectly flat solid pure magenta (${CHROMA_HEX}) background, no shadows on the background, no magenta on the subject.`

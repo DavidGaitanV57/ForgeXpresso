@@ -23,10 +23,14 @@ export async function processImage(input: Buffer, o: { role: ImageRole; transpar
   const raw = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const info = raw.info;
   let data: Buffer = raw.data;
-  // gpt-image often returns "transparent" PNGs that still have an opaque dark plate.
-  // Only skip keying when there is a real cutout (meaningful fully-transparent area).
-  if (o.needsKeying || !hasRealCutout(data, info.width, info.height)) {
+  // Trust real alpha cutouts. Re-keying a black/dark hero on a charcoal plate (OpenAI)
+  // used to flood-fill through the body and leave only neon outlines — looks fine on a
+  // dark viewer, hollow in-game. Only run full keying when there is no real cutout yet
+  // (e.g. MiniMax magenta chroma). Plate leftovers on an existing cutout use a safe punch.
+  if (!hasRealCutout(data, info.width, info.height)) {
     data = keyBackground(data, info.width, info.height);
+    data = punchDarkPlate(data, info.width, info.height);
+  } else if (o.needsKeying) {
     data = punchDarkPlate(data, info.width, info.height);
   }
   const box = alphaBounds(data, info.width, info.height);
@@ -65,11 +69,15 @@ function keyBackground(px: Buffer, w: number, h: number): Buffer {
     const db = px[i + 2] - ref[2];
     return Math.sqrt(dr * dr + dg * dg + db * db);
   };
-  // Magenta chroma (MiniMax) needs a wider soft edge; dark plates from GPT need a tighter hard cut.
+  // Magenta chroma (MiniMax) needs a wider soft edge; light plates flood from the border.
+  // Dark charcoal plates must NOT flood-fill: a black hero/enemy has the same RGB as the
+  // plate, so a deep flood hollows the body and leaves only neon outlines.
   const lum = (ref[0] + ref[1] + ref[2]) / 3;
   const isChroma = ref[0] > 180 && ref[2] > 180 && ref[1] < 80;
-  const HARD = isChroma ? 55 : lum < 40 ? 48 : 70;
-  const SOFT = isChroma ? 130 : lum < 40 ? 95 : 140;
+  if (!isChroma && lum < 40) return keyDarkBorderBand(px, w, h, ref);
+
+  const HARD = isChroma ? 55 : 70;
+  const SOFT = isChroma ? 130 : 140;
   const seen = new Uint8Array(w * h);
   const stack: number[] = [];
   for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
@@ -99,21 +107,59 @@ function keyBackground(px: Buffer, w: number, h: number): Buffer {
   return out;
 }
 
+/** Clear only a border band of a dark plate — never flood into a dark subject in the center. */
+function keyDarkBorderBand(px: Buffer, w: number, h: number, ref: [number, number, number]): Buffer {
+  const out = Buffer.from(px);
+  const band = Math.max(14, Math.floor(Math.min(w, h) * 0.09));
+  const HARD = 40;
+  const SOFT = 78;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const borderDist = Math.min(x, y, w - 1 - x, h - 1 - y);
+      if (borderDist > band) continue;
+      const i = (y * w + x) * 4;
+      const dr = px[i] - ref[0];
+      const dg = px[i + 1] - ref[1];
+      const db = px[i + 2] - ref[2];
+      const d = Math.sqrt(dr * dr + dg * dg + db * db);
+      if (d > SOFT) continue;
+      if (d <= HARD) out[i + 3] = 0;
+      else {
+        const a = (d - HARD) / (SOFT - HARD);
+        out[i + 3] = Math.round(out[i + 3] * a);
+      }
+    }
+  }
+  return out;
+}
+
 /**
- * Second pass for GPT plates: any near-black (or flat dark) region still connected to the
- * image border after the first key becomes fully transparent. Protects glowing subjects
- * that sit on an opaque charcoal square.
+ * Second pass for GPT plates: opaque near-black regions still connected to the frame
+ * via other opaque plate pixels become transparent. Does NOT walk through already-
+ * transparent pixels (that path used to reach black character interiors from the
+ * outside and hollow them out). Skips entirely when the subject itself is mostly dark.
  */
 function punchDarkPlate(px: Buffer, w: number, h: number): Buffer {
+  let opaque = 0;
+  let dark = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 40) continue;
+    opaque++;
+    const max = Math.max(px[i], px[i + 1], px[i + 2]);
+    const min = Math.min(px[i], px[i + 1], px[i + 2]);
+    if (max < 55 && max - min < 28) dark++;
+  }
+  // Black / charcoal heroes & enemies: punching would erase the body.
+  if (!opaque || dark / opaque > 0.28) return px;
+
   const out = Buffer.from(px);
-  const isPlate = (i: number) => {
-    if (out[i + 3] < 12) return true;
+  const isOpaquePlate = (i: number) => {
+    if (out[i + 3] < 40) return false;
     const r = out[i],
       g = out[i + 1],
       b = out[i + 2];
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    // Dark + low saturation (charcoal plate), not saturated neon glows.
     return max < 55 && max - min < 28;
   };
   const seen = new Uint8Array(w * h);
@@ -127,7 +173,7 @@ function punchDarkPlate(px: Buffer, w: number, h: number): Buffer {
     if (seen[p]) continue;
     seen[p] = 1;
     const i = p * 4;
-    if (!isPlate(i)) continue;
+    if (!isOpaquePlate(i)) continue;
     out[i + 3] = 0;
     const x = p % w;
     const y = (p / w) | 0;
@@ -322,7 +368,38 @@ export async function validateImageQa(
     if (subjectRoles.has(o.role) && s.sceneryEdge > 0.55) {
       reasons.push(`fondo de escena pegado al sprite (${(s.sceneryEdge * 100).toFixed(0)}% del borde)`);
     }
+    // Hollow silhouette: keying ate a dark body and left only neon outlines (looks fine on a
+    // dark studio viewer, ghosted in-game over a bright background).
+    if (subjectRoles.has(o.role) && ["hero", "enemy", "npc"].includes(o.role)) {
+      const hollow = await interiorHollowRatio(buf);
+      if (hollow > 0.42 && (s.transparentRatio ?? 0) > 0.45) {
+        reasons.push(`silueta vaciada (${(hollow * 100).toFixed(0)}% hueco interior — ¿cuerpo oscuro eliminado?)`);
+      }
+    }
   }
 
   return { ok: reasons.length === 0, reasons, seamError, sceneryEdge, borderOpaque, transparentRatio };
+}
+
+/** Transparent fraction inside an inset of the alpha bounding box (hollowed dark bodies). */
+async function interiorHollowRatio(buf: Buffer): Promise<number> {
+  const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+  const box = alphaBounds(data, w, h);
+  if (!box) return 1;
+  const bw = box.x1 - box.x0 + 1;
+  const bh = box.y1 - box.y0 + 1;
+  if (bw < 16 || bh < 16) return 0;
+  const insetX = Math.max(2, Math.floor(bw * 0.18));
+  const insetY = Math.max(2, Math.floor(bh * 0.18));
+  let n = 0;
+  let hollow = 0;
+  for (let y = box.y0 + insetY; y <= box.y1 - insetY; y++) {
+    for (let x = box.x0 + insetX; x <= box.x1 - insetX; x++) {
+      n++;
+      if (data[(y * w + x) * 4 + 3] < 40) hollow++;
+    }
+  }
+  return n ? hollow / n : 0;
 }

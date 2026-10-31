@@ -1,6 +1,7 @@
 import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
-import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
+import { normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES, sheetSpecFor } from "../sheets";
+import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const str = { type: "string" };
@@ -56,6 +57,7 @@ const schema = obj({
       aspect: { type: "string", enum: ASPECTS },
       usage: str,
       seamless: bool,
+      animations: arr({ type: "string", enum: [...SHEET_ANIMS] }),
     }),
   ),
   audio: arr(
@@ -80,7 +82,7 @@ type Raw = Omit<GameDesign, "dimension" | "engine" | "assets" | "ui"> & {
 };
 
 const DIM_GUIDE: Record<Dimension, string> = {
-  "2d": "2D side/top-down game. Sprites are single transparent images; backgrounds are wide parallax images.",
+  "2d": "2D side/top-down game. Sprites are single transparent images (moving characters also get a frame-animation spritesheet derived from their sprite); backgrounds are wide parallax images.",
   "2.5d": "2.5D side-scroller on a gameplay plane with a side/three-quarter camera. READ THE IDEA for art split: if it asks for 3D characters + 2D décor/parallax (personnages en 3D + décor/fond en 2D, etc.), hero/enemies/NPCs MUST be real 3D via forge.three.character (GLB when Tripo available, else auto Capsule/Sphere low-poly) — never flat billboard sprites — while sky/far scenery stay 2D parallax (backdrop + layered planes). If unspecified, prefer 3D characters when models exist, else textured low-poly meshes for characters.",
   "3d": "Full 3D game (third-person, first-person or isometric). Environment from procedural meshes with generated seamless textures. EVERY gameplay entity (hero, enemies, collectibles, goals, hazards, props) MUST be true 3D via forge.three.character / model (GLB and/or auto low-poly). Flat billboard/sprite planes are FORBIDDEN for those entities — only HUD/UI may be 2D. Image assets for entities are reference/texture sources, not flat cardboard cutouts in the world.",
 };
@@ -123,6 +125,11 @@ Rules:
   CUTOUT HARD RULE for roles prop, collectible, hazard, goal (and platform when used as a floating piece): transparent=true ALWAYS. Prompt ONLY the object — forbidden: painted white/colored rectangle plate, scenery backdrop, room wall, ground shadow plate, vignette frame. These are alpha-cutout sprites composited into the scene; a baked background makes them look like stickers.
   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
   Characters/objects for 2D or billboards must be "side view facing right" (2D side games) or "three-quarter front view" (top-down/3D).
+  animations: ${
+    dimension === "2d"
+      ? 'for the hero and up to 2 enemies/npcs that visibly move, list the frame animations the mechanics need from [idle, walk, run, jump, fall, land, dash, attack, hurt] (max 6, e.g. platformer hero: ["idle","walk","jump","fall","dash","attack"]). An animation spritesheet is generated from the approved sprite. [] for static enemies, items and everything else.'
+      : "always []."
+  }
 - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
   and 1 voice (id "narration", kind voice). VOICE HARD RULE: prompt = the 3 cinematic.lines joined with a blank line between them, in the idea's language — NOTHING ELSE. ElevenLabs speaks the prompt verbatim. FORBIDDEN in voice prompt: English delivery notes, tone ("warm gentle storyteller"), language labels ("in French"), "reading exactly N lines", pause instructions, or any text that is not spoken aloud.
 - models: ${
@@ -250,7 +257,7 @@ function normalizeUi(raw: Raw["ui"] | undefined, idea: string): GameUiSpec {
 function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): GameDesign {
   const used = new Set<string>();
   const cutoutRoles = new Set(["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "platform", "ui"]);
-  const images = (r.images || []).slice(0, 14).map((a) => {
+  const images = (r.images || []).slice(0, 14).map((a): ImageAssetSpec => {
     const role = a.role;
     const forceCutout = ["prop", "collectible", "hazard", "goal", "platform"].includes(role);
     const transparent = ["background", "texture", "portrait"].includes(role)
@@ -270,8 +277,9 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     if (forceCutout && !/isolated cutout|no background|transparent background|chroma/i.test(prompt)) {
       prompt = `Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: ${prompt}`;
     }
+    const { animations: _animations, ...rest } = a as ImageAssetSpec & { animations?: string[] };
     return {
-      ...a,
+      ...rest,
       id: slug(a.id || a.name, used),
       prompt,
       transparent,
@@ -279,6 +287,18 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     };
   });
   if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
+  if (dimension === "2d") {
+    const wants = images
+      .map((img, k) => ({ img, anims: ((r.images || [])[k] as { animations?: string[] } | undefined)?.animations || [] }))
+      .filter((x) => SHEET_ROLES.has(x.img.role) && (x.anims.length || x.img.role === "hero"))
+      .sort((a, b) => Number(b.img.role === "hero") - Number(a.img.role === "hero"))
+      .slice(0, 3);
+    for (const { img, anims } of wants) {
+      const spec = sheetSpecFor(img, normalizeSheetAnims(anims));
+      used.add(spec.id);
+      images.push(spec);
+    }
+  }
   // Guarantee at least one seamless wrap layer for 2D side/scroll games when any background exists.
   if (dimension === "2d" && images.some((i) => i.role === "background") && !images.some((i) => i.role === "background" && i.seamless)) {
     const far = images.find((i) => i.role === "background");

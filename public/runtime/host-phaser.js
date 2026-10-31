@@ -32,18 +32,24 @@ export async function createHost(createGame, ctx) {
           super("__forge_boot");
         }
         preload() {
-          for (const img of manifest.images) if (img.url) this.load.image(img.id, img.url);
+          for (const img of manifest.images) {
+            if (!img.url) continue;
+            if (img.sheet) this.load.spritesheet(img.id, img.url, { frameWidth: img.sheet.cell, frameHeight: img.sheet.cell });
+            else this.load.image(img.id, img.url);
+          }
           if (!progressed) this.load.on("filecomplete", () => onProgress());
           this.load.on("loaderror", (file) => console.warn("[forge] image failed", file.key));
         }
         create() {
           progressed = true;
           for (const img of manifest.images) {
-            if (!this.textures.exists(img.id)) this.textures.addCanvas(img.id, forge._placeholder(img));
+            const loaded = this.textures.exists(img.id);
+            if (!loaded) this.textures.addCanvas(img.id, forge._placeholder(img));
             const src = this.textures.get(img.id).getSourceImage();
-            img.width = src.width;
-            img.height = src.height;
-            img.ready = !!img.url;
+            img.width = img.sheet && loaded ? img.sheet.cell : src.width;
+            img.height = img.sheet && loaded ? img.sheet.cell : src.height;
+            img.ready = !!img.url && loaded;
+            if (img.sheet && img.ready) makeSheetAnims(this.anims, img);
           }
           if (!this.textures.exists("forge-dot")) {
             const c = document.createElement("canvas");
@@ -97,6 +103,13 @@ export async function createHost(createGame, ctx) {
         }
       });
       game.events.on(Phaser.Core.Events.POST_STEP, () => input._end());
+      game.events.on(Phaser.Core.Events.PRE_RENDER, () => {
+        try {
+          forge.phaser._autoAnimate(game);
+        } catch (e) {
+          console.warn("[forge] auto animate", e);
+        }
+      });
     });
   }
 
@@ -130,22 +143,38 @@ export async function createHost(createGame, ctx) {
       const scene = game.scene.getScenes(true)[0] || game.scene.scenes[0];
       if (!scene) return resolve(false);
       const key = id;
+      const meta = manifest.images.find((i) => i.id === id);
+      const sheet = meta?.sheet;
+      // Load under a temp key and swap in one synchronous step: removing a texture that live
+      // (or animating) objects still reference crashes the WebGL batch on the next render.
+      const tmp = `${key}__swap_${Date.now().toString(36)}`;
       const onDone = () => {
         try {
-          if (!game.textures.exists(key)) return resolve(false);
-          const tex = game.textures.get(key);
-          const meta = manifest.images.find((i) => i.id === id);
+          if (!game.textures.exists(tmp)) return resolve(false);
+          const users = [];
+          for (const sc of game.scene.getScenes(false)) {
+            sc.children?.list?.forEach((obj) => {
+              if (obj?.texture?.key !== key || typeof obj.setTexture !== "function") return;
+              users.push({ obj, anim: obj.anims?.currentAnim?.key || null, frame: obj.frame?.name });
+              obj.anims?.stop();
+              obj.setTexture("__DEFAULT");
+            });
+          }
+          if (sheet) for (const a of sheet.anims) game.anims.remove(`${key}:${a.name}`);
+          if (game.textures.exists(key)) game.textures.remove(key);
+          game.textures.renameTexture(tmp, key);
+          const src = game.textures.get(key).getSourceImage();
           if (meta) {
             meta.url = url;
-            const src = tex.getSourceImage();
-            meta.width = src.width;
-            meta.height = src.height;
+            meta.width = sheet ? sheet.cell : src.width;
+            meta.height = sheet ? sheet.cell : src.height;
             meta.ready = true;
           }
-          for (const sc of game.scene.getScenes(true)) {
-            sc.children?.list?.forEach((obj) => {
-              if (obj?.texture?.key === key && typeof obj.setTexture === "function") obj.setTexture(key);
-            });
+          if (sheet) makeSheetAnims(game.anims, meta);
+          for (const { obj, anim, frame } of users) {
+            if (!obj.active) continue;
+            obj.setTexture(key, sheet ? (typeof frame === "number" ? frame : 0) : undefined);
+            if (anim && game.anims.exists(anim)) obj.anims.play(anim);
           }
           resolve(true);
         } catch (e) {
@@ -155,8 +184,8 @@ export async function createHost(createGame, ctx) {
       };
       scene.load.once(Phaser.Loader.Events.COMPLETE, onDone);
       scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve(false));
-      if (game.textures.exists(key)) game.textures.remove(key);
-      scene.load.image(key, bust);
+      if (sheet) scene.load.spritesheet(tmp, bust, { frameWidth: sheet.cell, frameHeight: sheet.cell });
+      else scene.load.image(tmp, bust);
       scene.load.start();
     });
   }
@@ -195,9 +224,104 @@ export async function createHost(createGame, ctx) {
   };
 }
 
+const manifestHasSheets = (forge) => forge.assets.list("image").some((i) => i.sheet && i.ready);
+
+/** Register `${sheetId}:${anim}` animations for a ready spritesheet (re-creates them on hot swap). */
+function makeSheetAnims(anims, img) {
+  for (const a of img.sheet.anims) {
+    const key = `${img.id}:${a.name}`;
+    if (anims.exists(key)) anims.remove(key);
+    anims.create({
+      key,
+      frames: anims.generateFrameNumbers(img.id, { start: a.start, end: a.start + a.frames - 1 }),
+      frameRate: a.fps,
+      repeat: a.loop ? -1 : 0,
+    });
+  }
+}
+
 function helpers(Phaser, forge) {
   const noRender = () => {};
   return {
+    animate(sprite, o = {}) {
+      const scene = sprite.scene;
+      const key = String(sprite.texture.key);
+      const sheetId = o.sheet || (forge.assets.image(key)?.sheet ? key : `${key}_sheet`);
+      const meta = forge.assets.image(sheetId);
+      const first = meta?.sheet?.anims?.[0]?.name;
+      sprite.__forgeAnim = true;
+      if (!meta?.sheet || !meta.ready || !first || !scene.textures.exists(sheetId) || !scene.anims.exists(`${sheetId}:${first}`)) {
+        const p = this.puppet(sprite);
+        return { animated: false, names: [], current: null, visual: p.visual, has: () => false, play: () => false, update: (s, dt) => p.update(s, dt) };
+      }
+      sprite.setTexture(sheetId, 0);
+      const specs = meta.sheet.anims;
+      const names = specs.map((a) => a.name);
+      const has = (n) => names.includes(n);
+      let cur = null, oneShot = null, wasGrounded = true, wasAttacking = false, landT = 0;
+      const play = (n, force) => {
+        if (!has(n)) return false;
+        if (cur === n && !force) return true;
+        cur = n;
+        sprite.anims.play(`${sheetId}:${n}`);
+        return true;
+      };
+      sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (anim) => {
+        if (oneShot && anim.key === `${sheetId}:${oneShot}`) oneShot = null;
+      });
+      play(has("idle") ? "idle" : first);
+      return {
+        animated: true,
+        names,
+        has,
+        get current() {
+          return cur;
+        },
+        play(n) {
+          const ok = play(n, true);
+          const a = specs.find((x) => x.name === n);
+          if (ok) oneShot = a && !a.loop ? n : null;
+          return ok;
+        },
+        update(s = {}, dt = 1 / 60) {
+          if (!sprite.active) return;
+          const vx = +s.vx || 0, vy = +s.vy || 0;
+          const grounded = s.grounded !== false;
+          const attacking = !!s.attacking;
+          if (grounded && !wasGrounded && has("land")) {
+            const l = specs.find((x) => x.name === "land");
+            landT = l.frames / Math.max(1, l.fps);
+            play("land", true);
+          }
+          wasGrounded = grounded;
+          landT = Math.max(0, landT - dt);
+          sprite.anims.timeScale = 1;
+          if (attacking && !wasAttacking && has("attack")) {
+            wasAttacking = true;
+            play("attack", true);
+            oneShot = "attack";
+            return;
+          }
+          wasAttacking = attacking;
+          if (s.hurt && has("hurt")) {
+            oneShot = null;
+            return void play("hurt");
+          }
+          if (oneShot) return;
+          if (s.dashing && has("dash")) return void play("dash");
+          if (!grounded) return void play(vy < 0 ? (has("jump") ? "jump" : "fall") : has("fall") ? "fall" : "jump");
+          if (landT > 0) return void play("land");
+          const sp = Math.abs(vx);
+          if (sp > (o.runSpeed ?? 380) && has("run")) return void play("run");
+          if (sp > (o.walkMin ?? 20) && (has("walk") || has("run"))) {
+            play(has("walk") ? "walk" : "run");
+            sprite.anims.timeScale = clamp(sp / (o.walkSpeed ?? 220), 0.6, 1.8);
+            return;
+          }
+          play(has("idle") ? "idle" : first);
+        },
+      };
+    },
     fit(obj, targetHeight) {
       const h = obj.frame ? obj.frame.realHeight : obj.height;
       const s = targetHeight / Math.max(1, h);
@@ -217,8 +341,92 @@ function helpers(Phaser, forge) {
       b.setOffset((fw - w) / 2, fh - h);
       return sprite;
     },
+    /** Ready spritesheet for a character texture key, or null. */
+    _sheetFor(scene, key) {
+      const meta = forge.assets.image(`${key}_sheet`);
+      const first = meta?.sheet?.anims?.[0]?.name;
+      return meta?.sheet && meta.ready && first && scene.textures.exists(meta.id) && scene.anims.exists(`${meta.id}:${first}`) ? meta : null;
+    },
+    /**
+     * Frame-animated visual copy of a physics sprite (body untouched, so it works after fit/body).
+     * State comes from `update()` when the game calls it, otherwise from the body itself.
+     */
+    _sheetVisual(sprite, meta) {
+      const scene = sprite.scene;
+      sprite.__forgeAnim = true;
+      const vis = scene.add.sprite(sprite.x, sprite.y, meta.id, 0).setOrigin(0.5, 1);
+      const ctl = this.animate(vis, { sheet: meta.id });
+      sprite.renderWebGL = noRender;
+      sprite.renderCanvas = noRender;
+      let manual = null;
+      const fill = 0.92;
+      const sync = () => {
+        if (!sprite.active) return;
+        const b = sprite.body;
+        let st = manual;
+        if (!st && b?.velocity) {
+          const gravity = b.allowGravity !== false && (scene.physics?.world?.gravity?.y || 0) + (b.gravity?.y || 0) > 0;
+          st = gravity
+            ? { vx: b.velocity.x, vy: b.velocity.y, grounded: !!(b.blocked?.down || b.touching?.down) }
+            : { vx: Math.hypot(b.velocity.x, b.velocity.y), vy: 0, grounded: true };
+        }
+        ctl.update(st || {}, (scene.game.loop.delta || 16) / 1000);
+        vis.setScale((Math.abs(sprite.displayHeight) / (meta.sheet.cell * fill)) || 1);
+        vis.x = sprite.x + (0.5 - sprite.originX) * sprite.displayWidth;
+        vis.y = sprite.y + (1 - sprite.originY) * sprite.displayHeight;
+        vis.rotation = sprite.rotation;
+        vis.setFlipX(sprite.flipX);
+        vis.alpha = sprite.alpha;
+        vis.visible = sprite.visible;
+        vis.depth = sprite.depth;
+        vis.scrollFactorX = sprite.scrollFactorX;
+        vis.scrollFactorY = sprite.scrollFactorY;
+        if (sprite.isTinted) {
+          vis.tintFill = sprite.tintFill;
+          vis.setTint(sprite.tintTopLeft, sprite.tintTopRight, sprite.tintBottomLeft, sprite.tintBottomRight);
+        } else if (vis.isTinted) vis.clearTint();
+      };
+      scene.events.on("postupdate", sync);
+      sprite.once("destroy", () => {
+        scene.events.off("postupdate", sync);
+        vis.destroy();
+      });
+      sync();
+      return {
+        animated: true,
+        visual: vis,
+        names: ctl.names,
+        has: ctl.has,
+        play: ctl.play,
+        get current() {
+          return ctl.current;
+        },
+        update(s) {
+          manual = { ...(s || {}) };
+        },
+      };
+    },
+    /** Attach frame animation to physics sprites whose character has a sheet but that the game never animated. */
+    _autoAnimate(game) {
+      if (!manifestHasSheets(forge)) return;
+      for (const sc of game.scene.getScenes(true)) {
+        const list = sc.children?.list;
+        if (!list) continue;
+        for (let i = 0; i < list.length; i++) {
+          const obj = list[i];
+          if (obj.__forgeAnim || !obj.body || !obj.texture || (obj.type !== "Sprite" && obj.type !== "Image")) continue;
+          if (obj.__forgeNoSheet === obj.texture.key) continue;
+          const meta = this._sheetFor(sc, obj.texture.key);
+          if (meta) this._sheetVisual(obj, meta);
+          else obj.__forgeNoSheet = obj.texture.key;
+        }
+      }
+    },
     puppet(sprite) {
       const scene = sprite.scene;
+      const sheet = this._sheetFor(scene, String(sprite.texture.key));
+      if (sheet) return this._sheetVisual(sprite, sheet);
+      sprite.__forgeAnim = true;
       const vis = scene.add.image(sprite.x, sprite.y, sprite.texture.key, sprite.frame.name).setOrigin(0.5, 1);
       sprite.renderWebGL = noRender;
       sprite.renderCanvas = noRender;
