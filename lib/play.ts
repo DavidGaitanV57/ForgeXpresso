@@ -1,5 +1,5 @@
 import { sheetAnimsFor, sheetLayout, type SheetLayout } from "./sheets";
-import type { AudioAssetSpec, ImageAssetSpec, Project } from "./types";
+import type { AssetRecord, AudioAssetSpec, ImageAssetSpec, Project } from "./types";
 
 export interface PlayManifest {
   images: {
@@ -16,9 +16,9 @@ export interface PlayManifest {
   models: { id: string; name: string; url: string | null }[];
 }
 
-export function buildManifest(p: Project, fileUrl: (rel: string) => string): PlayManifest {
+export function buildManifest(p: Project, fileUrl: (rel: string, a?: AssetRecord) => string): PlayManifest {
   const all = Object.values(p.assets);
-  const url = (a: (typeof all)[number]) => (a.status === "ready" && a.file ? fileUrl(a.file) : null);
+  const url = (a: (typeof all)[number]) => (a.status === "ready" && a.file ? fileUrl(a.file, a) : null);
   return {
     images: all
       .filter((a) => a.type === "image")
@@ -115,7 +115,7 @@ export function buildPlayHtml(
     base: string;
     gameUrl: string;
     version: number;
-    fileUrl: (rel: string) => string;
+    fileUrl: (rel: string, a?: AssetRecord) => string;
     locale?: "es" | "en" | "fr";
     /** Optional design override (localized genre/tagline/objective for the start menu). */
     design?: NonNullable<Project["design"]>;

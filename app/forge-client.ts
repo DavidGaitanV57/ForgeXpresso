@@ -74,7 +74,8 @@ const S = {
   tourSeen: false,
   assetsOpen: true,
 };
-const FILE = (a: AssetRecord) => (S.p && a.file ? `/api/files/${S.p.id}/${a.file}` : "");
+// Files are served immutable; `v` keeps a replaced file from showing a stale cached copy.
+const FILE = (a: AssetRecord) => (S.p && a.file ? `/api/files/${S.p.id}/${a.file}?v=${a.updatedAt}` : "");
 const assets = () => (S.p ? Object.values(S.p.assets) : []);
 const roleOf = (a: AssetRecord) => (a.type === "image" ? (a.spec as ImageAssetSpec).role : a.type === "audio" ? (a.spec as AudioAssetSpec).kind : "model");
 const kindOf = (a: AssetRecord) => (a.type === "image" ? roleLabel(roleOf(a)) : a.type === "audio" ? audioLabel(roleOf(a)) : t("kind.model"));
@@ -1506,8 +1507,8 @@ function assetActiveRev(a: AssetRecord) {
   const m = a.file ? /\.r(\d+)\.[^.]+$/.exec(a.file) : null;
   return m ? Number(m[1]) : a.rev || 1;
 }
-function assetFileUrl(file: string) {
-  return S.p ? `/api/files/${S.p.id}/${file}` : "";
+function assetFileUrl(file: string, v: number) {
+  return S.p ? `/api/files/${S.p.id}/${file}?v=${v}` : "";
 }
 async function useAssetRev(rev: number) {
   const a = S.p?.assets[AV.id];
@@ -1552,7 +1553,7 @@ function fillViewer() {
   const active = assetActiveRev(a);
   if (!AV.viewRev || AV.viewRev > Math.max(a.rev || 1, active)) AV.viewRev = active;
   const cur = revs.find((r) => r.rev === AV.viewRev) || revs.at(-1);
-  const url = cur ? assetFileUrl(cur.file) : FILE(a);
+  const url = cur ? assetFileUrl(cur.file, a.updatedAt) : FILE(a);
   const viewingActive = AV.viewRev === active;
   $("#avKind").textContent = kindOf(a);
   $("#avName").textContent = a.name;
