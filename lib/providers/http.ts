@@ -8,6 +8,8 @@ export class ProviderError extends Error {
   }
 }
 
+export const isSafetyRejection = (e: unknown) => e instanceof ProviderError && /safety system|moderation|content policy/i.test(e.message);
+
 export async function readError(res: Response) {
   const text = await res.text().catch(() => "");
   try {
