@@ -95,16 +95,20 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
     fps: 12,
     loop: false,
     poses: [
-      "attack wind-up: weapon/arm pulled back behind the body, weight on the back foot",
-      "attack strike: full forward slash with weapon/arm extended far in front, front foot stepping in",
-      "attack follow-through: weapon past the body, recovering balance",
+      "action wind-up: tool/arm pulled back behind the body, weight on the back foot",
+      "action swing: full forward swing with tool/arm extended far in front, front foot stepping in",
+      "action follow-through: tool/arm past the body, recovering balance",
     ],
   },
   hurt: {
     frames: 2,
     fps: 8,
     loop: false,
-    poses: ["hurt recoil: flinching backwards, head thrown back, arms up", "hurt stagger: hunched and off-balance, one foot stepping back"],
+    // Image safety filters reject injury/pain wording on characters; keep it a comic bump reaction.
+    poses: [
+      "bump reaction: comic surprised lean backwards, eyes wide, arms raised, cartoon-style (no injury)",
+      "wobble: off-balance and dizzy in a funny cartoon way, one foot stepping back, arms waving for balance",
+    ],
   },
 };
 

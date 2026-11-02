@@ -1,7 +1,7 @@
 import { config } from "../config";
 import type { Aspect, ImageProvider } from "../types";
 import { estimateMiniMaxImageUsd, estimateOpenAIImageUsd } from "../usage";
-import { fetchWithRetry, ProviderError } from "./http";
+import { fetchWithRetry, isSafetyRejection, ProviderError } from "./http";
 
 export const CHROMA_HEX = "#FF00FF";
 
@@ -90,7 +90,7 @@ export async function editImageOpenAI(o: { prompt: string; image: Buffer; aspect
   try {
     res = await send(true);
   } catch (e) {
-    if (!(e instanceof ProviderError) || e.status !== 400) throw e;
+    if (!(e instanceof ProviderError) || e.status !== 400 || isSafetyRejection(e)) throw e;
     res = await send(false);
   }
   const j = (await res.json()) as { data?: { b64_json?: string; url?: string }[] };
