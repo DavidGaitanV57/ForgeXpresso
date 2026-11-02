@@ -9,6 +9,7 @@ import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, normalizeSheetAn
 import sharp from "sharp";
 import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec, Project } from "../types";
+import { cameraOverride, characterView, sheetIdentityLine, sheetViewLine, stillViewLine } from "../sprite-view";
 import { sanitizeVoicePrompt } from "./voice-prompt";
 
 /** Image id paired with a `*_3d` model (lumi_hero_3d → lumi_hero). */
@@ -178,11 +179,19 @@ const ROLE_FRAMING: Record<ImageRole, string> = {
     "Square promotional key art poster, full-bleed splash illustration, the hero large and readable, the game's world behind them, the game title in bold stylized lettering, opaque painted background, not a sprite, not a transparent cutout, no UI buttons, no border, no watermark",
 };
 
+function designView(design: GameDesign, prompt = "") {
+  return characterView({
+    camera: design.camera,
+    levelOutline: design.levelOutline,
+    setting: design.setting,
+    heroDescription: design.hero?.description,
+    prompt,
+  });
+}
+
 export function imagePrompt(spec: ImageAssetSpec, design: GameDesign, retryNote = "") {
-  const view =
-    design.dimension === "2d" && ["hero", "enemy", "npc", "hazard", "prop", "goal"].includes(spec.role) && !/top[- ]?down/i.test(design.camera)
-      ? " Side view, facing right."
-      : "";
+  const cast = ["hero", "enemy", "npc", "hazard", "prop", "goal", "keyart"].includes(spec.role);
+  const view = design.dimension === "2d" && cast ? stillViewLine(designView(design, spec.prompt)) : "";
   let seamless = "";
   if (spec.seamless) {
     seamless =
@@ -255,7 +264,8 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
   try {
     const ref = provider === "openai" && (spec.role === "keyart" || CAST_LOCK.has(spec.role)) ? await identityReference(projectId, spec) : null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const prompt = imagePrompt(spec, design, lastErr) + (ref ? ref.note : "");
+      const view = design.dimension === "2d" && ["hero", "enemy", "npc", "hazard", "prop", "goal", "keyart"].includes(spec.role) ? designView(design, spec.prompt) : null;
+      const prompt = imagePrompt(spec, design, lastErr) + (ref ? ref.note : "") + (ref && view ? cameraOverride(view) : "");
       const hq = spec.role === "hero" || spec.role === "background" || spec.role === "enemy" || spec.role === "keyart";
       let raw;
       if (ref) {
@@ -304,13 +314,12 @@ function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayo
     for (let k = row.length; k < layout.cols; k++) cells.push(`cell ${k + 1}) EMPTY, background only`);
     return `Row ${r + 1}:\n  ${cells.join("\n  ")}`;
   });
+  const view = designView(o.design, [o.subject, o.extra].filter(Boolean).join("\n"));
   return [
     `2D game sprite sheet: ${o.withRef ? "the EXACT same character as the reference image (identical proportions, colors, outfit, accessories, line and shading style)" : "one single consistent character"}.`,
-    o.withRef
-      ? "The reference defines ONLY the character's identity, NOT the pose: do not copy its pose; draw every cell in the pose described for it."
-      : "",
+    o.withRef ? sheetIdentityLine(view) : "",
     `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
-    "Exactly one full-body pose per cell, side view, facing RIGHT in every cell, the same character size in every cell, feet on the same invisible baseline near the bottom of each cell, generous empty margin so no pose touches or crosses into a neighbouring cell.",
+    sheetViewLine(view),
     "Each animation reads left to right as consecutive frames: neighbouring frames of a cycle MUST show clearly different leg and arm positions exactly as described (never the same stride repeated).",
     `FORBIDDEN: grid lines, borders, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, any ${c.label} on the character.`,
     ...rows,
