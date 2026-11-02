@@ -1,7 +1,7 @@
 {
   "id": "eea89b8b-c294-4b1c-b7bb-78c9a3aa592b",
   "createdAt": 1793314006412,
-  "updatedAt": 1793400020896,
+  "updatedAt": 1793651702116,
   "idea": "A third-person 3D explorer collecting crystals in floating ruins",
   "dimension": "3d",
   "imageProvider": "openai",
@@ -490,6 +490,28 @@
       "mime": "model/gltf-binary",
       "provider": "Tripo",
       "custom": false
+    },
+    "keyart_skyshard_drift": {
+      "id": "keyart_skyshard_drift",
+      "type": "image",
+      "name": "Portada Skyshard Drift",
+      "spec": {
+        "id": "keyart_skyshard_drift",
+        "name": "Portada Skyshard Drift",
+        "role": "keyart",
+        "prompt": "Square game cover poster for 'Skyshard Drift': Ila the young Skywalker hero in the foreground, mid-leap with arms outstretched, gliding over floating ancient ruin islands in a golden-hour sky. Glowing emissive aether crystals with soft bloom and floating motes, a distant luminous beacon gate on the highest island, pastel atmospheric haze and a cloud sea below. Stylized low-poly diorama look, hand-painted softly gradated textures, no hard outlines, warm low sun with long soft shadows and cool blue ambient fill, serene, wondrous and slightly melancholic mood. Bold, elegant title lettering 'SKYSHARD DRIFT' integrated at the top or bottom, crystalline glowing style, clearly legible.",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Portada cuadrada para la biblioteca; no se usa dentro del juego."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651702074,
+      "file": "assets/keyart_skyshard_drift.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
     }
   },
   "versions": [
@@ -561,33 +583,46 @@
         "Centinela 3D"
       ],
       "at": 1793388543735
+    },
+    {
+      "who": "you",
+      "text": "Genera una portada cuadrada del juego, con el personaje y el título. No la pongas dentro del juego.",
+      "at": 1793651648560
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Estoy generando una portada cuadrada con Ila, las ruinas flotantes y el título «Skyshard Drift». Queda solo en la biblioteca, no se usa dentro del juego.",
+      "tags": [
+        "Portada cuadrada"
+      ],
+      "at": 1793651702115
     }
   ],
   "repairs": 0,
   "jobUsage": {
-    "startedAt": 1793388411058,
+    "startedAt": 1793651648579,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
         "calls": 1,
-        "inputTokens": 4171,
-        "outputTokens": 522,
+        "inputTokens": 4543,
+        "outputTokens": 510,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 0.020343,
-        "ms": 5011
+        "estimatedUsd": 0.014186,
+        "ms": 4454
       },
-      "tripo": {
-        "provider": "tripo",
-        "calls": 2,
+      "openai": {
+        "provider": "openai",
+        "calls": 1,
         "inputTokens": 0,
         "outputTokens": 0,
-        "images": 0,
+        "images": 1,
         "audioSec": 0,
-        "models": 2,
-        "estimatedUsd": 0.4,
-        "ms": 216618
+        "models": 0,
+        "estimatedUsd": 0.053,
+        "ms": 48428
       }
     },
     "events": [
@@ -595,57 +630,48 @@
         "provider": "anthropic",
         "label": "chat:plan",
         "calls": 1,
-        "inputTokens": 4171,
-        "outputTokens": 522,
-        "estimatedUsd": 0.020343,
-        "ms": 5011,
+        "inputTokens": 4543,
+        "outputTokens": 510,
+        "estimatedUsd": 0.014186,
+        "ms": 4454,
         "model": "claude-sonnet-5-5",
-        "at": 1793388416081
+        "at": 1793651653114
       },
       {
-        "provider": "tripo",
-        "label": "model:hero_ila_3d",
+        "provider": "openai",
+        "label": "img:keyart_skyshard_drift",
         "calls": 1,
-        "estimatedUsd": 0.2,
-        "ms": 89021,
-        "models": 1,
-        "at": 1793388505131
-      },
-      {
-        "provider": "tripo",
-        "label": "model:stone_sentinel_3d",
-        "calls": 1,
-        "estimatedUsd": 0.2,
-        "ms": 127597,
-        "models": 1,
-        "at": 1793388543715
+        "estimatedUsd": 0.053,
+        "ms": 48428,
+        "images": 1,
+        "at": 1793651702079
       }
     ],
     "totals": {
-      "calls": 3,
-      "inputTokens": 4171,
-      "outputTokens": 522,
-      "images": 0,
+      "calls": 2,
+      "inputTokens": 4543,
+      "outputTokens": 510,
+      "images": 1,
       "audioSec": 0,
-      "models": 2,
-      "estimatedUsd": 0.420343,
-      "ms": 221629
+      "models": 0,
+      "estimatedUsd": 0.067186,
+      "ms": 53522
     },
-    "finishedAt": 1793388543728
+    "finishedAt": 1793651702101
   },
   "usage": {
     "startedAt": 1793314006415,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
-        "calls": 11,
-        "inputTokens": 251876,
-        "outputTokens": 273275,
+        "calls": 12,
+        "inputTokens": 256419,
+        "outputTokens": 273785,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 23.449917,
-        "ms": 2250095
+        "estimatedUsd": 23.464102999999998,
+        "ms": 2254549
       },
       "elevenlabs": {
         "provider": "elevenlabs",
@@ -660,14 +686,14 @@
       },
       "openai": {
         "provider": "openai",
-        "calls": 12,
+        "calls": 13,
         "inputTokens": 0,
         "outputTokens": 0,
-        "images": 15,
+        "images": 16,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 0.687,
-        "ms": 409240
+        "estimatedUsd": 0.7400000000000001,
+        "ms": 457668
       },
       "tripo": {
         "provider": "tripo",
@@ -1045,23 +1071,43 @@
         "ms": 127597,
         "models": 1,
         "at": 1793388543715
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4543,
+        "outputTokens": 510,
+        "estimatedUsd": 0.014186,
+        "ms": 4454,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651653116
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_skyshard_drift",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 48428,
+        "images": 1,
+        "at": 1793651702081
       }
     ],
     "totals": {
-      "calls": 38,
-      "inputTokens": 251876,
-      "outputTokens": 273275,
-      "images": 15,
+      "calls": 40,
+      "inputTokens": 256419,
+      "outputTokens": 273785,
+      "images": 16,
       "audioSec": 97.67142857142858,
       "models": 6,
-      "estimatedUsd": 26.410077,
-      "ms": 74537313
+      "estimatedUsd": 26.477262999999997,
+      "ms": 337695686
     },
-    "finishedAt": 1793388543728
+    "finishedAt": 1793651702101
   },
   "job": {
     "kind": "chat",
-    "startedAt": 1793388411058,
+    "startedAt": 1793651648579,
     "stages": [
       {
         "id": "plan",
@@ -1073,7 +1119,7 @@
         "id": "assets",
         "label": "Recursos",
         "status": "ok",
-        "detail": "2 actualizados"
+        "detail": "1 actualizados"
       },
       {
         "id": "code",
@@ -1081,7 +1127,7 @@
         "status": "skip"
       }
     ],
-    "finishedAt": 1793388543728,
+    "finishedAt": 1793651702101,
     "reload": true
   },
   "design": {
@@ -1533,6 +1579,15 @@
           "aspect": "16:9",
           "usage": "Skybox and backdrop for the whole level.",
           "seamless": false
+        },
+        {
+          "id": "keyart_skyshard_drift",
+          "name": "Portada Skyshard Drift",
+          "role": "keyart",
+          "prompt": "Square game cover poster for 'Skyshard Drift': Ila the young Skywalker hero in the foreground, mid-leap with arms outstretched, gliding over floating ancient ruin islands in a golden-hour sky. Glowing emissive aether crystals with soft bloom and floating motes, a distant luminous beacon gate on the highest island, pastel atmospheric haze and a cloud sea below. Stylized low-poly diorama look, hand-painted softly gradated textures, no hard outlines, warm low sun with long soft shadows and cool blue ambient fill, serene, wondrous and slightly melancholic mood. Bold, elegant title lettering 'SKYSHARD DRIFT' integrated at the top or bottom, crystalline glowing style, clearly legible.",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Portada cuadrada para la biblioteca; no se usa dentro del juego."
         }
       ],
       "audio": [

@@ -1,0 +1,2644 @@
+{
+  "id": "5a268c03-fdc6-425d-9e5c-3759c6f25801",
+  "createdAt": 1793647757065,
+  "updatedAt": 1793653795882,
+  "idea": "Crea un juego completo tipo \"endless runner\" de 3 carriles, inspirado en la jugabilidad de Subway Surfers pero totalmente en 2D. VISTA Y ESTILO - Vista vertical, NO horizontal: el jugador está en la parte inferior de la pantalla y el mundo se desplaza hacia abajo, dando la sensación de correr hacia adelante (vista trasera/cenital en 2D). - 3 carriles bien definidos con vías/líneas que se mueven para dar sensación de velocidad. - Estilo visual colorido y cartoon, con sombras simples bajo los objetos y un leve efecto de escala (los objetos aparecen pequeños arriba y se agrandan al acercarse) para simular profundidad sin ser 3D. - Fondo con elementos laterales que se desplazan (edificios, vallas, carteles, árboles) con parallax. - Personaje original (no uses personajes ni marcas existentes), con animación simple de correr. MECÁNICAS - Obstáculos variados: barreras bajas (se saltan), barreras altas (se esquivan deslizándose), vagones/bloques que ocupan un carril completo (se esquivan cambiando de carril), y conos o cajas. - Monedas en filas y arcos a lo largo de los carriles; contador de monedas. - Power-ups: imán de monedas, escudo (aguanta un golpe), multiplicador x2 y salto alto.",
+  "dimension": "2d",
+  "imageProvider": "openai",
+  "status": "ready",
+  "assets": {
+    "hero_kiko": {
+      "id": "hero_kiko",
+      "type": "image",
+      "name": "Kiko",
+      "spec": {
+        "id": "hero_kiko",
+        "name": "Kiko",
+        "role": "hero",
+        "prompt": "Cartoon raccoon courier kid seen from behind, back to the camera, mid-run pose, orange hoodie, yellow backpack, blue sneakers, striped tail, thick outline, isolated subject",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Personaje jugador en la parte inferior; base para spritesheet.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647820925,
+      "file": "assets/hero_kiko.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "low_barrier": {
+      "id": "low_barrier",
+      "type": "image",
+      "name": "Barrera baja",
+      "spec": {
+        "id": "low_barrier",
+        "name": "Barrera baja",
+        "role": "hazard",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Low striped construction barrier with two orange and white bars on small legs, seen from behind, cartoon style, isolated object",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Obstáculo que se salta.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647818412,
+      "file": "assets/low_barrier.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: fondo de escena pegado al sprite (59% del borde)"
+    },
+    "high_barrier": {
+      "id": "high_barrier",
+      "type": "image",
+      "name": "Barrera alta",
+      "spec": {
+        "id": "high_barrier",
+        "name": "Barrera alta",
+        "role": "hazard",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Tall overhead gantry sign barrier with two posts and a high crossbar with hazard stripes, seen from behind, cartoon style, isolated object",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Obstáculo que se esquiva deslizándose.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647804116,
+      "file": "assets/high_barrier.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "train_car": {
+      "id": "train_car",
+      "type": "image",
+      "name": "Vagón",
+      "spec": {
+        "id": "train_car",
+        "name": "Vagón",
+        "role": "hazard",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Blue and teal train car block rear view, flat back face with ladder and lights, boxy chunky cartoon design, isolated object",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Bloquea un carril completo; cambiar de carril.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647835268,
+      "file": "assets/train_car.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (29% del margen)"
+    },
+    "cone_crate": {
+      "id": "cone_crate",
+      "type": "image",
+      "name": "Cono y caja",
+      "spec": {
+        "id": "cone_crate",
+        "name": "Cono y caja",
+        "role": "hazard",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Orange traffic cone next to a small wooden crate, seen from behind, cartoon style, isolated objects",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Obstáculos pequeños, saltar o esquivar.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647847544,
+      "file": "assets/cone_crate.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (17% del margen)"
+    },
+    "coin": {
+      "id": "coin",
+      "type": "image",
+      "name": "Moneda",
+      "spec": {
+        "id": "coin",
+        "name": "Moneda",
+        "role": "collectible",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Shiny golden coin with star emblem, front view, cartoon style with highlight, isolated object",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Monedas en filas y arcos.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647851301,
+      "file": "assets/coin.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (25% del margen)"
+    },
+    "powerups": {
+      "id": "powerups",
+      "type": "image",
+      "name": "Power-up orbe",
+      "spec": {
+        "id": "powerups",
+        "name": "Power-up orbe",
+        "role": "collectible",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Glowing round power-up orb with a white lightning bolt icon in the center, magenta and cyan rim, cartoon style, isolated object",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Base para power-ups; se tiñe por tipo (imán, escudo, x2, salto).",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647867250,
+      "file": "assets/powerups.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (24% del margen)"
+    },
+    "sky_clouds": {
+      "id": "sky_clouds",
+      "type": "image",
+      "name": "Cielo",
+      "spec": {
+        "id": "sky_clouds",
+        "name": "Cielo",
+        "role": "background",
+        "prompt": "Seamless warm sunset sky with soft puffy cartoon clouds only, orange to pink to blue, no buildings, no sun disc",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Fondo del cielo en el horizonte con scroll lento.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647873470,
+      "file": "assets/sky_clouds.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "asphalt_ground": {
+      "id": "asphalt_ground",
+      "type": "image",
+      "name": "Asfalto",
+      "spec": {
+        "id": "asphalt_ground",
+        "name": "Asfalto",
+        "role": "texture",
+        "prompt": "Seamless abstract ground surface only: flat cartoon asphalt grain with subtle speckle, no rails, no sleepers, no lane markings, no objects, no perspective, tileable vertically and horizontally",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Superficie del suelo; el código dibuja carriles y vías.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647881545,
+      "file": "assets/asphalt_ground.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: no es seamless (error de borde 15%)"
+    },
+    "prop_building": {
+      "id": "prop_building",
+      "type": "image",
+      "name": "Edificio",
+      "spec": {
+        "id": "prop_building",
+        "name": "Edificio",
+        "role": "prop",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Colorful cartoon city apartment building with rows of windows and awning, front facade, single subject, isolated",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Decoración lateral con parallax.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647900062,
+      "file": "assets/prop_building.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: poco alpha real (10% transparente); placa rectangular opaca (35% del margen)"
+    },
+    "prop_tree": {
+      "id": "prop_tree",
+      "type": "image",
+      "name": "Árbol",
+      "spec": {
+        "id": "prop_tree",
+        "name": "Árbol",
+        "role": "prop",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Round bushy cartoon tree with green foliage and brown trunk, single subject, isolated",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Decoración lateral con parallax.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647903033,
+      "file": "assets/prop_tree.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (15% del margen); fondo de escena pegado al sprite (76% del borde)"
+    },
+    "prop_billboard": {
+      "id": "prop_billboard",
+      "type": "image",
+      "name": "Cartel",
+      "spec": {
+        "id": "prop_billboard",
+        "name": "Cartel",
+        "role": "prop",
+        "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Blank cartoon billboard on two metal posts with colorful abstract shapes, no text, single subject, isolated",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Decoración lateral con parallax.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647908747,
+      "file": "assets/prop_billboard.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (28% del margen)"
+    },
+    "scenery_fence": {
+      "id": "scenery_fence",
+      "type": "image",
+      "name": "Valla",
+      "spec": {
+        "id": "scenery_fence",
+        "name": "Valla",
+        "role": "prop",
+        "prompt": "Short stretch of cartoon picket fence, front view, bold outline, flat colors, isolated cutout on a transparent background, no ground, no sky",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Escenario: Valla. Colócalo a escala según la distancia; no lo dibujes con rectángulos.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647929094,
+      "file": "assets/scenery_fence.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (38% del margen)"
+    },
+    "hero_kiko_sheet": {
+      "id": "hero_kiko_sheet",
+      "type": "image",
+      "name": "Kiko · anim",
+      "spec": {
+        "id": "hero_kiko_sheet",
+        "name": "Kiko · anim",
+        "role": "hero",
+        "prompt": "Improve only the slide (crouch/duck-under) animation: smooth 6-frame sequence seen from behind. Frames: 1) lowering into the crouch, 2) deep low slide with torso leaning back and legs forward, 3) holding the low slide pose with a small dust puff, 4) holding the pose with slight variation, 5) rising up, 6) back to standing run pose. Consistent character size, feet baseline and line weight across frames, no jitter.",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Animation spritesheet of hero_kiko (slide, jump, run, hurt, idle). Use forge.phaser.animate(sprite) on the hero_kiko sprite.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "slide",
+              "frames": 2
+            },
+            {
+              "name": "jump",
+              "frames": 2
+            },
+            {
+              "name": "run",
+              "frames": 4
+            },
+            {
+              "name": "hurt",
+              "frames": 2
+            },
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "slide",
+                "frames": 2
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "run",
+                "frames": 4
+              },
+              {
+                "name": "hurt",
+                "frames": 2
+              },
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "slide",
+                "frames": 2
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "run",
+                "frames": 4
+              },
+              {
+                "name": "hurt",
+                "frames": 2
+              },
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "slide",
+                "frames": 2
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "run",
+                "frames": 4
+              },
+              {
+                "name": "hurt",
+                "frames": 2
+              },
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "4": [
+              {
+                "name": "slide",
+                "frames": 2
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "run",
+                "frames": 4
+              },
+              {
+                "name": "hurt",
+                "frames": 2
+              },
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 4,
+      "liked": 0,
+      "updatedAt": 1793651114840,
+      "file": "assets/hero_kiko_sheet.r4.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "music_main": {
+      "id": "music_main",
+      "type": "audio",
+      "name": "Música principal",
+      "spec": {
+        "id": "music_main",
+        "name": "Música principal",
+        "kind": "music",
+        "prompt": "Upbeat energetic chiptune-pop electronic loop, driving drums, bouncy bass, bright synth arpeggios, playful runner game soundtrack, 140 bpm",
+        "durationSec": 75,
+        "loop": true,
+        "usage": "Música de fondo durante la partida."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647800323,
+      "file": "assets/music_main.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_jump": {
+      "id": "sfx_jump",
+      "type": "audio",
+      "name": "Salto",
+      "spec": {
+        "id": "sfx_jump",
+        "name": "Salto",
+        "kind": "sfx",
+        "prompt": "Short cartoon jump whoosh with rising boing",
+        "durationSec": 0.6,
+        "loop": false,
+        "usage": "Al saltar."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647804253,
+      "file": "assets/sfx_jump.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_slide": {
+      "id": "sfx_slide",
+      "type": "audio",
+      "name": "Deslizamiento",
+      "spec": {
+        "id": "sfx_slide",
+        "name": "Deslizamiento",
+        "kind": "sfx",
+        "prompt": "Quick sliding swoosh on pavement, cartoon",
+        "durationSec": 0.7,
+        "loop": false,
+        "usage": "Al deslizarse."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647808955,
+      "file": "assets/sfx_slide.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_coin": {
+      "id": "sfx_coin",
+      "type": "audio",
+      "name": "Moneda",
+      "spec": {
+        "id": "sfx_coin",
+        "name": "Moneda",
+        "kind": "sfx",
+        "prompt": "Bright sparkly coin pickup ding, short arcade chime",
+        "durationSec": 0.5,
+        "loop": false,
+        "usage": "Al recoger moneda."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647812644,
+      "file": "assets/sfx_coin.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_powerup": {
+      "id": "sfx_powerup",
+      "type": "audio",
+      "name": "Power-up",
+      "spec": {
+        "id": "sfx_powerup",
+        "name": "Power-up",
+        "kind": "sfx",
+        "prompt": "Magical rising power-up chime with sparkle, arcade",
+        "durationSec": 1.2,
+        "loop": false,
+        "usage": "Al recoger power-up."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647816707,
+      "file": "assets/sfx_powerup.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_shield_break": {
+      "id": "sfx_shield_break",
+      "type": "audio",
+      "name": "Escudo roto",
+      "spec": {
+        "id": "sfx_shield_break",
+        "name": "Escudo roto",
+        "kind": "sfx",
+        "prompt": "Glassy energy shield shattering with soft zap",
+        "durationSec": 1,
+        "loop": false,
+        "usage": "Cuando el escudo absorbe un golpe."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647820813,
+      "file": "assets/sfx_shield_break.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_crash": {
+      "id": "sfx_crash",
+      "type": "audio",
+      "name": "Choque",
+      "spec": {
+        "id": "sfx_crash",
+        "name": "Choque",
+        "kind": "sfx",
+        "prompt": "Cartoon crash impact with thud and clatter, then sad descending tone",
+        "durationSec": 1.8,
+        "loop": false,
+        "usage": "Al chocar y perder."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647825004,
+      "file": "assets/sfx_crash.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "narration": {
+      "id": "narration",
+      "type": "audio",
+      "name": "Narración",
+      "spec": {
+        "id": "narration",
+        "name": "Narración",
+        "kind": "voice",
+        "prompt": "Kiko, el mapache mensajero, llega tarde a su entrega más importante.\n\n¡La ciudad está llena de vagones, vallas y conos traviesos!\n\nSalta, desliza y recoge monedas: ¡no hay tiempo que perder!",
+        "durationSec": 12,
+        "loop": false,
+        "usage": "Narración de la cinemática inicial."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793647827549,
+      "file": "assets/narration.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "side_ground": {
+      "id": "side_ground",
+      "type": "image",
+      "name": "Piso lateral",
+      "spec": {
+        "id": "side_ground",
+        "name": "Piso lateral",
+        "role": "texture",
+        "prompt": "Seamless tileable top-down-perspective ground texture for the roadside scenery: bright candy-green grass patches with a light beige sidewalk paving strip, small flat cel-shaded details, thick dark-blue outlines, warm late-afternoon light, clearly different in color and pattern from gray asphalt, no text, no gradients",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Tiled floor on the left and right sides of the track, outside the asphalt lanes, scrolling with the world and perspective."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793649582198,
+      "file": "assets/side_ground.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "powerup_magnet": {
+      "id": "powerup_magnet",
+      "type": "image",
+      "name": "Icono imán",
+      "spec": {
+        "id": "powerup_magnet",
+        "name": "Icono imán",
+        "role": "collectible",
+        "prompt": "Game pickup icon: a chunky red horseshoe magnet with silver tips inside a round glowing cyan orb, small sparkle lines being attracted toward it, no text",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Pickup icon for the magnet power-up on the lanes and in the active power-up HUD"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651062795,
+      "file": "assets/powerup_magnet.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (24% del margen)"
+    },
+    "powerup_shield": {
+      "id": "powerup_shield",
+      "type": "image",
+      "name": "Icono escudo",
+      "spec": {
+        "id": "powerup_shield",
+        "name": "Icono escudo",
+        "role": "collectible",
+        "prompt": "Game pickup icon: a chunky blue heroic shield with a white star in the center and gold rim, inside a round glowing translucent bubble orb, no text",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Pickup icon for the shield power-up on the lanes and in the active power-up HUD"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651064390,
+      "file": "assets/powerup_shield.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (25% del margen)"
+    },
+    "powerup_multiplier": {
+      "id": "powerup_multiplier",
+      "type": "image",
+      "name": "Icono multiplicador x2",
+      "spec": {
+        "id": "powerup_multiplier",
+        "name": "Icono multiplicador x2",
+        "role": "collectible",
+        "prompt": "Game pickup icon: two overlapping shiny golden stars, one big and one smaller, with a purple glowing round orb behind them and small sparkles, conveying a double score bonus, no text or numbers",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Pickup icon for the x2 multiplier power-up on the lanes and in the active power-up HUD"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651046672,
+      "file": "assets/powerup_multiplier.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "powerup_jump": {
+      "id": "powerup_jump",
+      "type": "image",
+      "name": "Icono salto alto",
+      "spec": {
+        "id": "powerup_jump",
+        "name": "Icono salto alto",
+        "role": "collectible",
+        "prompt": "Game pickup icon: a chunky green coiled spring with an upward arrow and small motion lines, inside a round glowing lime orb, no text",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Pickup icon for the high jump power-up on the lanes and in the active power-up HUD"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651079879,
+      "file": "assets/powerup_jump.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (25% del margen)"
+    },
+    "keyart_cover": {
+      "id": "keyart_cover",
+      "type": "image",
+      "name": "Portada Carril Cometa",
+      "spec": {
+        "id": "keyart_cover",
+        "name": "Portada Carril Cometa",
+        "role": "keyart",
+        "prompt": "Square game cover poster for an endless runner. Hero Kiko is a chunky cartoon raccoon (not a human child) with a ringed tail, black eye mask, grey-brown fur, running toward the viewer from behind-front on a 3-lane city road, dynamic pose, coins and a comet streaking across a warm late-afternoon sky, colorful buildings and trees on the sides. Bold playful title lettering 'Carril Cometa' at the top. Bright cartoon 2D vector-like style, thick clean dark-blue outlines, flat cel shading with one soft highlight band, saturated candy colors, simple oval drop shadows, cheerful energetic mood.",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Portada cuadrada para la biblioteca del proyecto; no se usa dentro del juego."
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793651485069,
+      "file": "assets/keyart_cover.r2.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "hero_kiko_sheet_slide": {
+      "id": "hero_kiko_sheet_slide",
+      "type": "image",
+      "name": "Kiko · slide",
+      "spec": {
+        "id": "hero_kiko_sheet_slide",
+        "name": "Kiko · slide",
+        "role": "hero",
+        "prompt": "Kiko the raccoon, back view, very low crouched slide under a barrier: duck down, long low slide with body almost horizontal, recover to stand. Evenly spaced frames in a single row with equal-sized cells, same scale and ground baseline in every frame, clean thick dark-blue outlines, flat cel shading, transparent background, no overlap or cropping.",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"slide\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "slide",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "2": [
+              {
+                "name": "slide",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "slide",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793653544566,
+      "file": "assets/hero_kiko_sheet_slide.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "hero_kiko_sheet_jump": {
+      "id": "hero_kiko_sheet_jump",
+      "type": "image",
+      "name": "Kiko · jump",
+      "spec": {
+        "id": "hero_kiko_sheet_jump",
+        "name": "Kiko · jump",
+        "role": "hero",
+        "prompt": "Kiko the raccoon, back view, jump sequence: crouch anticipation, takeoff, peak with tucked legs, descent. Evenly spaced frames in a single row with equal-sized cells, character centered at the same scale, clean thick dark-blue outlines, flat cel shading, transparent background, no overlap or cropping.",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"jump\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "jump",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "2": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793653541984,
+      "file": "assets/hero_kiko_sheet_jump.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "hero_kiko_sheet_run": {
+      "id": "hero_kiko_sheet_run",
+      "type": "image",
+      "name": "Kiko · run",
+      "spec": {
+        "id": "hero_kiko_sheet_run",
+        "name": "Kiko · run",
+        "role": "hero",
+        "prompt": "Strict back view of Kiko the raccoon running directly away from the camera, seen only from behind: back of the head with both round ears, the striped bushy tail swaying behind, shoulders and back facing the viewer, both heels and soles alternating as the legs pump, arms swinging at the sides. Absolutely no side profile, no three-quarter view, face not visible. Frames evenly spaced, same size, clean cut, thick dark-blue outline, flat cel shading, transparent background.",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Animation clip \"run\" of hero_kiko, 4 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "run",
+              "frames": 6
+            }
+          ],
+          "revs": {
+            "2": [
+              {
+                "name": "run",
+                "frames": 6
+              }
+            ],
+            "3": [
+              {
+                "name": "run",
+                "frames": 6
+              }
+            ],
+            "4": [
+              {
+                "name": "run",
+                "frames": 6
+              }
+            ],
+            "5": [
+              {
+                "name": "run",
+                "frames": 6
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 5,
+      "liked": 0,
+      "updatedAt": 1793653795797,
+      "file": "assets/hero_kiko_sheet_run.r5.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "hero_kiko_sheet_hurt": {
+      "id": "hero_kiko_sheet_hurt",
+      "type": "image",
+      "name": "Kiko · hurt",
+      "spec": {
+        "id": "hero_kiko_sheet_hurt",
+        "name": "Kiko · hurt",
+        "role": "hero",
+        "prompt": "Kiko the raccoon, back view, hit reaction: impact flinch, stagger backward, dizzy recoil. Evenly spaced frames in a single row with equal-sized cells, character centered at the same scale, clean thick dark-blue outlines, flat cel shading, transparent background, no overlap or cropping.",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"hurt\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "hurt",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "2": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793653568356,
+      "file": "assets/hero_kiko_sheet_hurt.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "hero_kiko_sheet_idle": {
+      "id": "hero_kiko_sheet_idle",
+      "type": "image",
+      "name": "Kiko · idle",
+      "spec": {
+        "id": "hero_kiko_sheet_idle",
+        "name": "Kiko · idle",
+        "role": "hero",
+        "prompt": "Kiko the raccoon, back view, idle breathing loop. Evenly spaced frames in a single row with equal-sized cells, character centered and same scale in every frame, feet on the same baseline, clean thick dark-blue outlines, flat cel shading, transparent background, no overlap or cropping between frames.",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kiko",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793653515429,
+      "file": "assets/hero_kiko_sheet_idle.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    }
+  },
+  "versions": [
+    {
+      "n": 1,
+      "createdAt": 1793648539295,
+      "note": "Versión inicial",
+      "file": "versions/v1/game.js"
+    },
+    {
+      "n": 2,
+      "createdAt": 1793648746783,
+      "note": "Reparación automática",
+      "file": "versions/v2/game.js"
+    },
+    {
+      "n": 3,
+      "createdAt": 1793649817999,
+      "note": "puedes separar el piso de la carrera con el piso del escenario a los lados? actu",
+      "file": "versions/v3/game.js"
+    },
+    {
+      "n": 4,
+      "createdAt": 1793650951757,
+      "note": "regenera la animacion de run para que no se vea tan rapida y se vea mas fluida a",
+      "file": "versions/v4/game.js"
+    },
+    {
+      "n": 5,
+      "createdAt": 1793651269540,
+      "note": "genera un icono por cada tipo de power up, no uno para todos y mejora tambien la",
+      "file": "versions/v5/game.js"
+    }
+  ],
+  "currentVersion": 5,
+  "chat": [
+    {
+      "who": "forge",
+      "text": "Carril Cometa",
+      "tags": [
+        "sys:ready"
+      ],
+      "at": 1793648539611
+    },
+    {
+      "who": "you",
+      "text": "puedes separar el piso de la carrera con el piso del escenario a los lados? actualmente se ve el mismo piso y se ve extraño, ademas para la animacion de run del personaje se pueden crear mas fotogramas? actualmente se ve muy rapida la animacion y no se ve tan fluida",
+      "at": 1793649547742
+    },
+    {
+      "who": "forge",
+      "text": "No pude aplicar ese cambio: EPERM: operation not permitted, rename 'E:\\ForgeXpresso\\data\\projects\\5a268c03-fdc6-425d-9e5c-3759c6f25801\\project.json.12400.1793649818060.tmp' -> 'E:\\ForgeXpresso\\data\\projects\\5a268c03-fdc6-425d-9e5c-3759c6f25801\\project.json'",
+      "at": 1793649818161
+    },
+    {
+      "who": "you",
+      "text": "regenera la animacion de run para que no se vea tan rapida y se vea mas fluida agrega mas fotogramas de ser necesario",
+      "at": 1793650768165
+    },
+    {
+      "who": "forge",
+      "text": "Regeneré la animación de run de Kiko con un ciclo más largo, con más fotogramas intermedios, y le bajé la velocidad de reproducción para que se vea más fluida y menos acelerada.",
+      "tags": [
+        "Run más fluido",
+        "Más fotogramas"
+      ],
+      "at": 1793650951838
+    },
+    {
+      "who": "you",
+      "text": "genera un icono por cada tipo de power up, no uno para todos y mejora tambien la animacion de slide",
+      "at": 1793651017079
+    },
+    {
+      "who": "forge",
+      "text": "Creé un icono distinto para cada power-up (imán, escudo, multiplicador x2 y salto alto) y el juego usará el de cada tipo. También redibujé los fotogramas de slide de Kiko para que se vea más fluido, con agachada, deslizamiento y recuperación.",
+      "tags": [
+        "4 iconos power-up",
+        "Slide mejorado"
+      ],
+      "at": 1793651269628
+    },
+    {
+      "who": "you",
+      "text": "Genera una portada cuadrada del juego, con el personaje y el título. No la pongas dentro del juego.",
+      "at": 1793651346062
+    },
+    {
+      "who": "forge",
+      "text": "Estoy generando una portada cuadrada con Kiko y el título \"Carril Cometa\". Se guardará solo en la biblioteca, sin usarla dentro del juego.",
+      "tags": [
+        "Portada cuadrada"
+      ],
+      "at": 1793651397854
+    },
+    {
+      "who": "you",
+      "text": "la imagen generada muestra a kiko como un niño mientras que en el juego es un mapache, corrije la imagen",
+      "at": 1793651442442
+    },
+    {
+      "who": "forge",
+      "text": "Corregí la portada: la regenero con Kiko como mapache, igual que en el juego, con el título y solo para la biblioteca.",
+      "tags": [
+        "Portada corregida",
+        "Kiko mapache"
+      ],
+      "at": 1793651485314
+    },
+    {
+      "who": "you",
+      "text": "Regenera únicamente la animación de correr. No regeneres ninguna otra animación y no cambies el código.",
+      "at": 1793652048790
+    },
+    {
+      "who": "forge",
+      "text": "Listo, regenero únicamente la animación de correr de Kiko (hero_kiko_sheet_run), sin tocar otras animaciones ni el código.",
+      "tags": [
+        "Run regenerado"
+      ],
+      "at": 1793652082848
+    },
+    {
+      "who": "you",
+      "text": "Regenera únicamente la animación de slide, más agachada. No regeneres correr ni ninguna otra, y no cambies el código.",
+      "at": 1793652106469
+    },
+    {
+      "who": "forge",
+      "text": "Listo, regenero únicamente la animación de slide de Kiko (hero_kiko_sheet_slide) con una postura mucho más agachada, sin tocar correr, otras animaciones ni el código.",
+      "tags": [
+        "Slide más agachado"
+      ],
+      "at": 1793652138792
+    },
+    {
+      "who": "you",
+      "text": "elimina todas las spritesheets existentes y genera nuevas bien cortadas y definidas e implementalas, no regeneres codigo",
+      "at": 1793653474270
+    },
+    {
+      "who": "forge",
+      "text": "Regenero las 5 animaciones de Kiko (idle, run, jump, slide y hurt) para reemplazar las anteriores. Las hago con fotogramas bien separados, del mismo tamaño y con el contorno definido. El código no se toca; las nuevas animaciones se usan con el cableado actual.",
+      "tags": [
+        "Spritesheets nuevas",
+        "Animaciones redibujadas"
+      ],
+      "at": 1793653568466
+    },
+    {
+      "who": "you",
+      "text": "elimina kiko anim, y regenera kiko run para que se vea completamente vista trasera, no de medio lado, es decir debe correr completamente desde atras",
+      "at": 1793653651330
+    },
+    {
+      "who": "forge",
+      "text": "Regenero solo la animación de correr de Kiko (hero_kiko_sheet_run) con vista totalmente trasera, sin perfil, y no toco otras animaciones ni el código. Desde aquí no puedo borrar la hoja combinada hero_kiko_sheet, así que elimínala desde la biblioteca de assets.",
+      "tags": [
+        "Run vista trasera"
+      ],
+      "at": 1793653688331
+    },
+    {
+      "who": "you",
+      "text": "sigue sin verse totalmente vista posterior, regenera la animacion para verse completamente back view, corriendo hacia adelante",
+      "at": 1793653760585
+    },
+    {
+      "who": "forge",
+      "text": "Regenero solo la animación de correr de Kiko (hero_kiko_sheet_run) con una vista 100% trasera, sin nada de perfil ni tres cuartos, corriendo hacia adelante. No toco otras animaciones ni el código.",
+      "tags": [
+        "Correr vista trasera"
+      ],
+      "at": 1793653795880
+    }
+  ],
+  "repairs": 0,
+  "jobUsage": {
+    "startedAt": 1793653762639,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 1,
+        "inputTokens": 4936,
+        "outputTokens": 351,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.013382,
+        "ms": 3852
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 1,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28943
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4936,
+        "outputTokens": 351,
+        "estimatedUsd": 0.013382,
+        "ms": 3852,
+        "model": "claude-sonnet-5-5",
+        "at": 1793653766512
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_run",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28943,
+        "images": 1,
+        "at": 1793653795843
+      }
+    ],
+    "totals": {
+      "calls": 2,
+      "inputTokens": 4936,
+      "outputTokens": 351,
+      "images": 1,
+      "audioSec": 0,
+      "models": 0,
+      "estimatedUsd": 0.11673200000000002,
+      "ms": 33227
+    },
+    "finishedAt": 1793653795866
+  },
+  "usage": {
+    "startedAt": 1793647757081,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 17,
+        "inputTokens": 204354,
+        "outputTokens": 206552,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 4.703660000000001,
+        "ms": 1670623
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 8,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 94.37142857142857,
+        "models": 0,
+        "estimatedUsd": 0.0342,
+        "ms": 107310,
+        "credits": 944
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 33,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 47,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 2.1469,
+        "ms": 988367
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "director",
+        "calls": 1,
+        "inputTokens": 4323,
+        "outputTokens": 4876,
+        "estimatedUsd": 0.057406,
+        "ms": 30408,
+        "model": "claude-sonnet-5-5",
+        "at": 1793647788047
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:music_main",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 11850,
+        "audioSec": 75,
+        "credits": 0,
+        "at": 1793647800369
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2526,
+        "outputTokens": 1575,
+        "estimatedUsd": 0.020802,
+        "ms": 14037,
+        "model": "claude-sonnet-5-5",
+        "at": 1793647802657
+      },
+      {
+        "provider": "openai",
+        "label": "img:high_barrier",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 15492,
+        "images": 1,
+        "at": 1793647804173
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_jump",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 15633,
+        "audioSec": 0.6,
+        "credits": 0,
+        "at": 1793647804275
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_slide",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 20420,
+        "audioSec": 0.7,
+        "credits": 944,
+        "at": 1793647808964
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_coin",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 12232,
+        "audioSec": 0.5,
+        "credits": 0,
+        "at": 1793647812651
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_powerup",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 12376,
+        "audioSec": 1.2,
+        "credits": 0,
+        "at": 1793647816772
+      },
+      {
+        "provider": "openai",
+        "label": "img:low_barrier",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 29373,
+        "images": 2,
+        "at": 1793647818423
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_shield_break",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 11797,
+        "audioSec": 1,
+        "credits": 0,
+        "at": 1793647820865
+      },
+      {
+        "provider": "openai",
+        "label": "img:hero_kiko",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 32332,
+        "images": 1,
+        "at": 1793647820934
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_crash",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 12262,
+        "audioSec": 1.8,
+        "credits": 0,
+        "at": 1793647825017
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.0342,
+        "ms": 10740,
+        "audioSec": 13.571428571428571,
+        "at": 1793647827556
+      },
+      {
+        "provider": "openai",
+        "label": "img:train_car",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 30552,
+        "images": 2,
+        "at": 1793647835318
+      },
+      {
+        "provider": "openai",
+        "label": "img:cone_crate",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 28822,
+        "images": 2,
+        "at": 1793647847578
+      },
+      {
+        "provider": "openai",
+        "label": "img:coin",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 29808,
+        "images": 2,
+        "at": 1793647851316
+      },
+      {
+        "provider": "openai",
+        "label": "img:powerups",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 31395,
+        "images": 2,
+        "at": 1793647867306
+      },
+      {
+        "provider": "openai",
+        "label": "img:sky_clouds",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 25507,
+        "images": 1,
+        "at": 1793647873521
+      },
+      {
+        "provider": "openai",
+        "label": "img:asphalt_ground",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 29211,
+        "images": 2,
+        "at": 1793647881598
+      },
+      {
+        "provider": "openai",
+        "label": "img:prop_building",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 32325,
+        "images": 2,
+        "at": 1793647900076
+      },
+      {
+        "provider": "openai",
+        "label": "img:prop_tree",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 28998,
+        "images": 2,
+        "at": 1793647903072
+      },
+      {
+        "provider": "openai",
+        "label": "img:prop_billboard",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 26674,
+        "images": 2,
+        "at": 1793647908815
+      },
+      {
+        "provider": "openai",
+        "label": "img:scenery_fence",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 28633,
+        "images": 2,
+        "at": 1793647929139
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 31056,
+        "images": 1,
+        "at": 1793647961375
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:create",
+        "calls": 1,
+        "inputTokens": 11936,
+        "outputTokens": 77511,
+        "estimatedUsd": 1.597964,
+        "ms": 736400,
+        "model": "claude-opus-5-5",
+        "at": 1793648539201
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:repair",
+        "calls": 1,
+        "inputTokens": 33687,
+        "outputTokens": 22560,
+        "estimatedUsd": 0.585948,
+        "ms": 148725,
+        "model": "claude-opus-5-5",
+        "at": 1793648744761
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 3955,
+        "outputTokens": 1332,
+        "estimatedUsd": 0.02123,
+        "ms": 15396,
+        "model": "claude-sonnet-5-5",
+        "at": 1793649563252
+      },
+      {
+        "provider": "openai",
+        "label": "img:side_ground",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 18577,
+        "images": 1,
+        "at": 1793649582247
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 29637,
+        "images": 1,
+        "at": 1793649612874
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 33686,
+        "outputTokens": 33345,
+        "estimatedUsd": 0.801644,
+        "ms": 252534,
+        "model": "claude-opus-5-5",
+        "at": 1793649815969
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4111,
+        "outputTokens": 914,
+        "estimatedUsd": 0.017362,
+        "ms": 9534,
+        "model": "claude-sonnet-5-5",
+        "at": 1793650777801
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 62796,
+        "images": 2,
+        "at": 1793650842046
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 35786,
+        "outputTokens": 25847,
+        "estimatedUsd": 0.660084,
+        "ms": 171853,
+        "model": "claude-opus-5-5",
+        "at": 1793650949773
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4213,
+        "outputTokens": 1707,
+        "estimatedUsd": 0.025496,
+        "ms": 14245,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651031372
+      },
+      {
+        "provider": "openai",
+        "label": "img:powerup_multiplier",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 15022,
+        "images": 1,
+        "at": 1793651046735
+      },
+      {
+        "provider": "openai",
+        "label": "img:powerup_magnet",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 30981,
+        "images": 2,
+        "at": 1793651062805
+      },
+      {
+        "provider": "openai",
+        "label": "img:powerup_shield",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 32618,
+        "images": 2,
+        "at": 1793651064397
+      },
+      {
+        "provider": "openai",
+        "label": "img:powerup_jump",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 32730,
+        "images": 2,
+        "at": 1793651079889
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 33995,
+        "images": 1,
+        "at": 1793651114847
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 36576,
+        "outputTokens": 33346,
+        "estimatedUsd": 0.813224,
+        "ms": 237746,
+        "model": "claude-opus-5-5",
+        "at": 1793651269244
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4589,
+        "outputTokens": 509,
+        "estimatedUsd": 0.014268,
+        "ms": 8927,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651355081
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_cover",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 42011,
+        "images": 1,
+        "at": 1793651397752
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4720,
+        "outputTokens": 376,
+        "estimatedUsd": 0.0132,
+        "ms": 4114,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651446666
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_cover",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 37894,
+        "images": 1,
+        "at": 1793651485175
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4723,
+        "outputTokens": 160,
+        "estimatedUsd": 0.011046,
+        "ms": 2423,
+        "model": "claude-sonnet-5-5",
+        "at": 1793652051324
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_run",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30103,
+        "images": 1,
+        "at": 1793652082651
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4845,
+        "outputTokens": 305,
+        "estimatedUsd": 0.01274,
+        "ms": 4477,
+        "model": "claude-sonnet-5-5",
+        "at": 1793652111055
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_slide",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 27071,
+        "images": 1,
+        "at": 1793652138694
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4856,
+        "outputTokens": 1162,
+        "estimatedUsd": 0.021332,
+        "ms": 10308,
+        "model": "claude-sonnet-5-5",
+        "at": 1793653486657
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28169,
+        "images": 1,
+        "at": 1793653515434
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_run",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30947,
+        "images": 1,
+        "at": 1793653518064
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_jump",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 25980,
+        "images": 1,
+        "at": 1793653541991
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_slide",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 26249,
+        "images": 1,
+        "at": 1793653544615
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 26062,
+        "images": 1,
+        "at": 1793653568403
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4886,
+        "outputTokens": 676,
+        "estimatedUsd": 0.016532,
+        "ms": 5644,
+        "model": "claude-sonnet-5-5",
+        "at": 1793653659004
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_run",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28404,
+        "images": 1,
+        "at": 1793653688204
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4936,
+        "outputTokens": 351,
+        "estimatedUsd": 0.013382,
+        "ms": 3852,
+        "model": "claude-sonnet-5-5",
+        "at": 1793653766513
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kiko_sheet_run",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28943,
+        "images": 1,
+        "at": 1793653795845
+      }
+    ],
+    "totals": {
+      "calls": 58,
+      "inputTokens": 204354,
+      "outputTokens": 206552,
+      "images": 47,
+      "audioSec": 94.37142857142857,
+      "models": 0,
+      "estimatedUsd": 6.884760000000002,
+      "ms": 6038785
+    },
+    "finishedAt": 1793653795866
+  },
+  "job": {
+    "kind": "chat",
+    "startedAt": 1793653762639,
+    "stages": [
+      {
+        "id": "plan",
+        "label": "Director",
+        "status": "ok",
+        "detail": "Entendiendo el cambio"
+      },
+      {
+        "id": "assets",
+        "label": "Recursos",
+        "status": "ok",
+        "detail": "1 actualizados"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "skip"
+      }
+    ],
+    "finishedAt": 1793653795866,
+    "reload": true
+  },
+  "design": {
+    "title": "Carril Cometa",
+    "tagline": "Corre, salta y desliza por la ciudad sin frenar",
+    "genre": "Endless runner de 3 carriles en 2D (vista trasera)",
+    "dimension": "2d",
+    "engine": "phaser",
+    "camera": "Vista trasera vertical 2D: el jugador abajo, el mundo baja hacia él con carriles convergiendo al horizonte; los objetos crecen al acercarse y llevan sombras simples.",
+    "artStyle": "Bright cartoon 2D vector-like illustration with thick clean dark-blue outlines, flat cel shading with one soft highlight band, saturated candy colors, simple oval drop shadows, slightly exaggerated chunky proportions. Warm late-afternoon sunlight, cheerful energetic mood, no gradients noise, no text, consistent line weight across all assets.",
+    "palette": [
+      "#FF6B35",
+      "#FFD23F",
+      "#2EC4B6",
+      "#3A86FF",
+      "#8338EC",
+      "#1B1F3B",
+      "#F7F7F2"
+    ],
+    "setting": "Una ciudad costera colorida al atardecer, con una gran vía de tren y asfalto flanqueada por edificios, vallas, carteles y árboles que pasan veloces.",
+    "hero": {
+      "name": "Kiko",
+      "description": "Chico mapache mensajero original con sudadera naranja, mochila amarilla y zapatillas azules; visto desde atrás, corre con brazos balanceándose y cola rayada."
+    },
+    "mechanics": [
+      "3 carriles: cambiar de carril con movimiento suave; el mundo acelera gradualmente (velocidad base 420 px/s hasta 900 px/s) con escalado por profundidad y sombras.",
+      "Obstáculos: barrera baja (saltar), barrera alta (deslizarse), vagón/bloque que ocupa un carril (cambiar de carril), conos y cajas (esquivar o saltar). Un golpe sin escudo termina la partida.",
+      "Monedas en filas rectas y arcos que requieren saltar; contador de monedas y puntuación por distancia.",
+      "Power-ups de 8 s: imán (atrae monedas cercanas), escudo (absorbe un golpe), multiplicador x2 (monedas y puntos), salto alto (salto más largo para pasar sobre vagones).",
+      "Generación por patrones: segmentos prediseñados de obstáculos y monedas, siempre con al menos un carril libre, mezclados según la dificultad.",
+      "Parallax lateral: edificios, vallas, carteles y árboles escalan y se desplazan a los lados con distintas velocidades."
+    ],
+    "controls": [
+      {
+        "input": "Flechas ←/→ o A/D (o deslizar horizontal)",
+        "action": "Cambiar de carril"
+      },
+      {
+        "input": "Flecha ↑ / W / Espacio (o deslizar arriba)",
+        "action": "Saltar"
+      },
+      {
+        "input": "Flecha ↓ / S (o deslizar abajo)",
+        "action": "Deslizarse"
+      },
+      {
+        "input": "P / Esc",
+        "action": "Pausar"
+      }
+    ],
+    "objective": "Corre lo más lejos posible, recoge monedas y power-ups para batir tu récord de puntuación.",
+    "loseCondition": "Chocar contra un obstáculo sin escudo activo.",
+    "levelOutline": "Carrera infinita en una sola ciudad. 0-15 s: tutorial implícito con obstáculos bajos aislados y filas de monedas fáciles. 15-45 s: se añaden barreras altas y vagones, patrones de dos obstáculos combinados, primer power-up. 45-90 s: velocidad alta, vagones en dos carriles, arcos de monedas sobre obstáculos, secuencias salto-deslizamiento rápidas. Después: velocidad máxima constante y patrones más densos. Aparece un power-up cada 20-30 s. Siempre debe quedar un carril o ruta posible.",
+    "tuning": [
+      {
+        "key": "baseSpeed",
+        "label": "Velocidad inicial",
+        "min": 250,
+        "max": 700,
+        "value": 420
+      },
+      {
+        "key": "maxSpeed",
+        "label": "Velocidad máxima",
+        "min": 500,
+        "max": 1400,
+        "value": 900
+      },
+      {
+        "key": "acceleration",
+        "label": "Aceleración",
+        "min": 2,
+        "max": 30,
+        "value": 8
+      },
+      {
+        "key": "jumpDuration",
+        "label": "Duración del salto (s)",
+        "min": 0.4,
+        "max": 1,
+        "value": 0.6
+      },
+      {
+        "key": "laneChangeTime",
+        "label": "Cambio de carril (s)",
+        "min": 0.06,
+        "max": 0.3,
+        "value": 0.12
+      },
+      {
+        "key": "obstacleDensity",
+        "label": "Densidad de obstáculos",
+        "min": 0.5,
+        "max": 2,
+        "value": 1
+      },
+      {
+        "key": "powerupDuration",
+        "label": "Duración power-ups (s)",
+        "min": 3,
+        "max": 20,
+        "value": 8
+      },
+      {
+        "key": "coinMagnetRadius",
+        "label": "Radio del imán",
+        "min": 100,
+        "max": 500,
+        "value": 260
+      }
+    ],
+    "ui": {
+      "hud": [
+        {
+          "id": "score",
+          "label": "Puntos",
+          "kind": "value",
+          "shows": "Puntuación por distancia recorrida"
+        },
+        {
+          "id": "coins",
+          "label": "Monedas",
+          "kind": "value",
+          "shows": "Monedas recogidas en la partida"
+        },
+        {
+          "id": "multiplier",
+          "label": "Multiplicador",
+          "kind": "icon",
+          "shows": "Icono x2 cuando está activo"
+        },
+        {
+          "id": "powerup",
+          "label": "Poder activo",
+          "kind": "bar",
+          "shows": "Tiempo restante del power-up activo"
+        },
+        {
+          "id": "shield",
+          "label": "Escudo",
+          "kind": "icon",
+          "shows": "Escudo disponible o no"
+        },
+        {
+          "id": "best",
+          "label": "Récord",
+          "kind": "value",
+          "shows": "Mejor puntuación guardada"
+        }
+      ],
+      "pauseMenu": [
+        {
+          "id": "resume",
+          "label": "Continuar",
+          "action": "resume"
+        },
+        {
+          "id": "settings",
+          "label": "Ajustes",
+          "action": "settings"
+        },
+        {
+          "id": "restart",
+          "label": "Reiniciar",
+          "action": "restart"
+        },
+        {
+          "id": "quit",
+          "label": "Salir",
+          "action": "quit"
+        }
+      ],
+      "settings": [
+        {
+          "key": "masterVolume",
+          "label": "Volumen general",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "musicVolume",
+          "label": "Volumen de música",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.6
+        },
+        {
+          "key": "sfxVolume",
+          "label": "Volumen de efectos",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "screenShake",
+          "label": "Sacudida de pantalla",
+          "type": "toggle",
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "options": [],
+          "defaultValue": true
+        },
+        {
+          "key": "difficulty",
+          "label": "Dificultad",
+          "type": "select",
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "options": [
+            "Fácil",
+            "Normal",
+            "Difícil"
+          ],
+          "defaultValue": "Normal"
+        }
+      ],
+      "gameOverActions": [
+        "Jugar de nuevo",
+        "Menú principal"
+      ],
+      "startActions": [
+        "Jugar",
+        "Ajustes"
+      ]
+    },
+    "cinematic": {
+      "style": "comica",
+      "lines": [
+        "Kiko, el mapache mensajero, llega tarde a su entrega más importante.",
+        "¡La ciudad está llena de vagones, vallas y conos traviesos!",
+        "Salta, desliza y recoge monedas: ¡no hay tiempo que perder!"
+      ],
+      "direction": {
+        "approach": "character_focus",
+        "rationale": "Carril Cometa es un runner 2D de vista trasera con tono cómico. La intro funciona mejor centrada en Kiko, visto de espaldas, con cortes enérgicos tipo caricatura. Primero se muestra la prisa del personaje, luego los obstáculos traviesos que asoman al fondo y por último el arranque hacia el gameplay. Así la cámara coincide con la vista final del juego (jugador abajo, carriles convergiendo al horizo",
+        "mood": "Cheerful, frantic and slapstick: warm late-afternoon coastal sunlight, candy colors, comic timing with squash-and-stretch and quick punch-ins.",
+        "notes": "Idle: Kiko starts in a panicked jog-in-place (arms swinging, striped tail wagging, backpack bouncing) at the bottom-center of lane 2. Obstacles (cones, low fences, train cars) stay static with a gentle wobble and each gets a comic 'pop-in' scale bounce when the camera passes it. Keep the three-lane road, vanishing point and parallax buildings, fences, billboards and palm trees in the same layout as gameplay so no scene swap is needed. Handoff: in the final shot, ease the camera to the gameplay f",
+        "shots": [
+          {
+            "lineIndex": 0,
+            "durationSec": 4.2,
+            "staging": "Start with a tight rear close-up of Kiko's backpack and striped tail as he checks an oversized wristwatch with a comic double-take (a squash-and-stretch jump). The camera pulls back and up to reveal the full 3-lane road converging to a sunset horizon. Kiko then bursts into a run ",
+            "camera": {
+              "from": [
+                0,
+                -60,
+                2.2
+              ],
+              "to": [
+                0,
+                0,
+                1
+              ],
+              "lookAt": [
+                0,
+                40,
+                0
+              ],
+              "fov": 50,
+              "ease": "easeOut"
+            },
+            "fx": [
+              "sweat_drop_pop",
+              "watch_shake",
+              "speed_lines_soft",
+              "parallax_slow",
+              "sun_glow_warm"
+            ]
+          },
+          {
+            "lineIndex": 1,
+            "durationSec": 4.5,
+            "staging": "Quick comic tour of the dangers: the camera pans up the road from Kiko to the horizon and punches in on each obstacle in turn. A cone wobbles, a low fence tilts with a squeak, and a big train car slides into a lane with a cartoon honk. Each obstacle gets a small scale-bounce as t",
+            "camera": {
+              "from": [
+                0,
+                -20,
+                1
+              ],
+              "to": [
+                0,
+                70,
+                1.4
+              ],
+              "lookAt": [
+                0,
+                90,
+                0
+              ],
+              "fov": 42,
+              "ease": "smooth"
+            },
+            "fx": [
+              "obstacle_pop_bounce",
+              "cartoon_honk_puff",
+              "dust_puff_small",
+              "parallax_medium",
+              "gulp_sweat_drop"
+            ]
+          },
+          {
+            "lineIndex": -1,
+            "durationSec": 2.4,
+            "staging": "Bridge gag: a row of coins appears in an arc over the middle lane, each with a sparkle. Kiko's eyes turn to coin shapes and the camera does a quick whip-zoom toward the arc. A magnet and a shield icon flash briefly in the sky as a power-up teaser.",
+            "camera": {
+              "from": [
+                0,
+                10,
+                1.2
+              ],
+              "to": [
+                0,
+                35,
+                0.9
+              ],
+              "lookAt": [
+                0,
+                60,
+                0
+              ],
+              "fov": 38,
+              "ease": "easeIn"
+            },
+            "fx": [
+              "coin_sparkle_chain",
+              "powerup_teaser_flash",
+              "zoom_whip_blur"
+            ]
+          },
+          {
+            "lineIndex": 2,
+            "durationSec": 4.4,
+            "staging": "Camera drops behind Kiko into the gameplay framing. He dashes forward, does a jump over a low barrier, then a slide under a high one, then swerves into the next lane while collecting a coin arc. Parallax accelerates and the lane lines speed up. On the last beat he lands center-la",
+            "camera": {
+              "from": [
+                0,
+                -10,
+                1.4
+              ],
+              "to": [
+                0,
+                0,
+                1
+              ],
+              "lookAt": [
+                0,
+                40,
+                0
+              ],
+              "fov": 48,
+              "ease": "smooth"
+            },
+            "fx": [
+              "speed_lines_strong",
+              "coin_collect_burst",
+              "jump_squash_stretch",
+              "slide_dust_trail",
+              "parallax_fast",
+              "fade_to_gameplay"
+            ]
+          }
+        ]
+      }
+    },
+    "assets": {
+      "images": [
+        {
+          "id": "hero_kiko",
+          "name": "Kiko",
+          "role": "hero",
+          "prompt": "Cartoon raccoon courier kid seen from behind, back to the camera, mid-run pose, orange hoodie, yellow backpack, blue sneakers, striped tail, thick outline, isolated subject",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Personaje jugador en la parte inferior; base para spritesheet.",
+          "seamless": false
+        },
+        {
+          "id": "low_barrier",
+          "name": "Barrera baja",
+          "role": "hazard",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Low striped construction barrier with two orange and white bars on small legs, seen from behind, cartoon style, isolated object",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Obstáculo que se salta.",
+          "seamless": false
+        },
+        {
+          "id": "high_barrier",
+          "name": "Barrera alta",
+          "role": "hazard",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Tall overhead gantry sign barrier with two posts and a high crossbar with hazard stripes, seen from behind, cartoon style, isolated object",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Obstáculo que se esquiva deslizándose.",
+          "seamless": false
+        },
+        {
+          "id": "train_car",
+          "name": "Vagón",
+          "role": "hazard",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Blue and teal train car block rear view, flat back face with ladder and lights, boxy chunky cartoon design, isolated object",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Bloquea un carril completo; cambiar de carril.",
+          "seamless": false
+        },
+        {
+          "id": "cone_crate",
+          "name": "Cono y caja",
+          "role": "hazard",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Orange traffic cone next to a small wooden crate, seen from behind, cartoon style, isolated objects",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Obstáculos pequeños, saltar o esquivar.",
+          "seamless": false
+        },
+        {
+          "id": "coin",
+          "name": "Moneda",
+          "role": "collectible",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Shiny golden coin with star emblem, front view, cartoon style with highlight, isolated object",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Monedas en filas y arcos.",
+          "seamless": false
+        },
+        {
+          "id": "powerups",
+          "name": "Power-up orbe",
+          "role": "collectible",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Glowing round power-up orb with a white lightning bolt icon in the center, magenta and cyan rim, cartoon style, isolated object",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Base para power-ups; se tiñe por tipo (imán, escudo, x2, salto).",
+          "seamless": false
+        },
+        {
+          "id": "sky_clouds",
+          "name": "Cielo",
+          "role": "background",
+          "prompt": "Seamless warm sunset sky with soft puffy cartoon clouds only, orange to pink to blue, no buildings, no sun disc",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Fondo del cielo en el horizonte con scroll lento.",
+          "seamless": true
+        },
+        {
+          "id": "asphalt_ground",
+          "name": "Asfalto",
+          "role": "texture",
+          "prompt": "Seamless abstract ground surface only: flat cartoon asphalt grain with subtle speckle, no rails, no sleepers, no lane markings, no objects, no perspective, tileable vertically and horizontally",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Superficie del suelo; el código dibuja carriles y vías.",
+          "seamless": true
+        },
+        {
+          "id": "prop_building",
+          "name": "Edificio",
+          "role": "prop",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Colorful cartoon city apartment building with rows of windows and awning, front facade, single subject, isolated",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Decoración lateral con parallax.",
+          "seamless": false
+        },
+        {
+          "id": "prop_tree",
+          "name": "Árbol",
+          "role": "prop",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Round bushy cartoon tree with green foliage and brown trunk, single subject, isolated",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Decoración lateral con parallax.",
+          "seamless": false
+        },
+        {
+          "id": "prop_billboard",
+          "name": "Cartel",
+          "role": "prop",
+          "prompt": "Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: Blank cartoon billboard on two metal posts with colorful abstract shapes, no text, single subject, isolated",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Decoración lateral con parallax.",
+          "seamless": false
+        },
+        {
+          "id": "scenery_fence",
+          "name": "Valla",
+          "role": "prop",
+          "prompt": "Short stretch of cartoon picket fence, front view, bold outline, flat colors, isolated cutout on a transparent background, no ground, no sky",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Escenario: Valla. Colócalo a escala según la distancia; no lo dibujes con rectángulos.",
+          "seamless": false
+        },
+        {
+          "id": "hero_kiko_sheet",
+          "name": "Kiko · anim",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Animation spritesheet of hero_kiko (slide, jump, run, hurt, idle). Use forge.phaser.animate(sprite) on the hero_kiko sprite.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "slide",
+                "frames": 2
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "run",
+                "frames": 4
+              },
+              {
+                "name": "hurt",
+                "frames": 2
+              },
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "side_ground",
+          "name": "Piso lateral",
+          "role": "texture",
+          "prompt": "Seamless tileable top-down-perspective ground texture for the roadside scenery: bright candy-green grass patches with a light beige sidewalk paving strip, small flat cel-shaded details, thick dark-blue outlines, warm late-afternoon light, clearly different in color and pattern from gray asphalt, no text, no gradients",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Tiled floor on the left and right sides of the track, outside the asphalt lanes, scrolling with the world and perspective."
+        },
+        {
+          "id": "powerup_magnet",
+          "name": "Icono imán",
+          "role": "collectible",
+          "prompt": "Game pickup icon: a chunky red horseshoe magnet with silver tips inside a round glowing cyan orb, small sparkle lines being attracted toward it, no text",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Pickup icon for the magnet power-up on the lanes and in the active power-up HUD"
+        },
+        {
+          "id": "powerup_shield",
+          "name": "Icono escudo",
+          "role": "collectible",
+          "prompt": "Game pickup icon: a chunky blue heroic shield with a white star in the center and gold rim, inside a round glowing translucent bubble orb, no text",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Pickup icon for the shield power-up on the lanes and in the active power-up HUD"
+        },
+        {
+          "id": "powerup_multiplier",
+          "name": "Icono multiplicador x2",
+          "role": "collectible",
+          "prompt": "Game pickup icon: two overlapping shiny golden stars, one big and one smaller, with a purple glowing round orb behind them and small sparkles, conveying a double score bonus, no text or numbers",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Pickup icon for the x2 multiplier power-up on the lanes and in the active power-up HUD"
+        },
+        {
+          "id": "powerup_jump",
+          "name": "Icono salto alto",
+          "role": "collectible",
+          "prompt": "Game pickup icon: a chunky green coiled spring with an upward arrow and small motion lines, inside a round glowing lime orb, no text",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Pickup icon for the high jump power-up on the lanes and in the active power-up HUD"
+        },
+        {
+          "id": "keyart_cover",
+          "name": "Portada Carril Cometa",
+          "role": "keyart",
+          "prompt": "Square game cover poster for an endless runner called \"Carril Cometa\". Kiko, a cheerful chunky cartoon kid hero, sprinting toward the viewer seen from behind-three-quarter on a 3-lane city road, mid-stride with a comet-like streak of light trailing behind, spinning gold coins and glowing power-up orbs floating around. Colorful buildings, trees and billboards receding toward a warm late-afternoon sky with fluffy clouds. Bold chunky title lettering \"CARRIL COMETA\" at the top in candy colors with thick dark-blue outline. Bright cartoon vector-like illustration, thick clean dark-blue outlines, flat cel shading with one soft highlight band, saturated candy colors, simple oval drop shadows, cheerful energetic mood.",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Portada cuadrada para la biblioteca del proyecto; no se usa dentro del juego."
+        },
+        {
+          "id": "hero_kiko_sheet_slide",
+          "name": "Kiko · slide",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"slide\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "slide",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "hero_kiko_sheet_jump",
+          "name": "Kiko · jump",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"jump\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "hero_kiko_sheet_run",
+          "name": "Kiko · run",
+          "role": "hero",
+          "prompt": " run",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Animation clip \"run\" of hero_kiko, 4 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "run",
+                "frames": 4
+              }
+            ]
+          }
+        },
+        {
+          "id": "hero_kiko_sheet_hurt",
+          "name": "Kiko · hurt",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"hurt\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "hero_kiko_sheet_idle",
+          "name": "Kiko · idle",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of hero_kiko, 2 frames on its own sheet. forge.phaser.animate() plays it from the hero_kiko sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kiko",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      ],
+      "audio": [
+        {
+          "id": "music_main",
+          "name": "Música principal",
+          "kind": "music",
+          "prompt": "Upbeat energetic chiptune-pop electronic loop, driving drums, bouncy bass, bright synth arpeggios, playful runner game soundtrack, 140 bpm",
+          "durationSec": 75,
+          "loop": true,
+          "usage": "Música de fondo durante la partida."
+        },
+        {
+          "id": "sfx_jump",
+          "name": "Salto",
+          "kind": "sfx",
+          "prompt": "Short cartoon jump whoosh with rising boing",
+          "durationSec": 0.6,
+          "loop": false,
+          "usage": "Al saltar."
+        },
+        {
+          "id": "sfx_slide",
+          "name": "Deslizamiento",
+          "kind": "sfx",
+          "prompt": "Quick sliding swoosh on pavement, cartoon",
+          "durationSec": 0.7,
+          "loop": false,
+          "usage": "Al deslizarse."
+        },
+        {
+          "id": "sfx_coin",
+          "name": "Moneda",
+          "kind": "sfx",
+          "prompt": "Bright sparkly coin pickup ding, short arcade chime",
+          "durationSec": 0.5,
+          "loop": false,
+          "usage": "Al recoger moneda."
+        },
+        {
+          "id": "sfx_powerup",
+          "name": "Power-up",
+          "kind": "sfx",
+          "prompt": "Magical rising power-up chime with sparkle, arcade",
+          "durationSec": 1.2,
+          "loop": false,
+          "usage": "Al recoger power-up."
+        },
+        {
+          "id": "sfx_shield_break",
+          "name": "Escudo roto",
+          "kind": "sfx",
+          "prompt": "Glassy energy shield shattering with soft zap",
+          "durationSec": 1,
+          "loop": false,
+          "usage": "Cuando el escudo absorbe un golpe."
+        },
+        {
+          "id": "sfx_crash",
+          "name": "Choque",
+          "kind": "sfx",
+          "prompt": "Cartoon crash impact with thud and clatter, then sad descending tone",
+          "durationSec": 1.8,
+          "loop": false,
+          "usage": "Al chocar y perder."
+        },
+        {
+          "id": "narration",
+          "name": "Narración",
+          "kind": "voice",
+          "prompt": "Kiko, el mapache mensajero, llega tarde a su entrega más importante.\n\n¡La ciudad está llena de vagones, vallas y conos traviesos!\n\nSalta, desliza y recoge monedas: ¡no hay tiempo que perder!",
+          "durationSec": 12,
+          "loop": false,
+          "usage": "Narración de la cinemática inicial."
+        }
+      ],
+      "models": []
+    }
+  },
+  "playCopy": {
+    "es": {
+      "sourceKey": "Endless runner de 3 carriles en 2D (vista trasera)\nCorre, salta y desliza por la ciudad sin frenar\nCorre lo más lejos posible, recoge monedas y power-ups para batir tu récord de puntuación.",
+      "genre": "Endless runner 2D de 3 carriles (vista trasera)",
+      "tagline": "Corre, salta y desliza por la ciudad sin parar",
+      "objective": "Corre lo más lejos que puedas, recoge monedas y potenciadores para batir tu récord de puntuación."
+    }
+  }
+}

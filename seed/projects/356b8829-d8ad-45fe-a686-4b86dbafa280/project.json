@@ -1,7 +1,7 @@
 {
   "id": "356b8829-d8ad-45fe-a686-4b86dbafa280",
   "createdAt": 1793318202257,
-  "updatedAt": 1793386424339,
+  "updatedAt": 1793651905924,
   "idea": "Un plateformeur 2.5D dans une forêt enchantée avec des lucioles et des champignons rebondissants les personnages doivent être en 3D et le décor en 2D avec parallaxe.",
   "dimension": "2.5d",
   "imageProvider": "openai",
@@ -702,6 +702,28 @@
       "file": "assets/checkpoint_stone_3d.r1.glb",
       "mime": "model/gltf-binary",
       "provider": "Tripo"
+    },
+    "cover_keyart": {
+      "id": "cover_keyart",
+      "type": "image",
+      "name": "Portada",
+      "spec": {
+        "id": "cover_keyart",
+        "name": "Portada",
+        "role": "keyart",
+        "prompt": "Square storybook fantasy cover poster: Lumi, a cute chunky rounded little FOX (orange fur, white-tipped fluffy tail, pointed fox ears, small glowing lantern), NOT a rabbit, no long rabbit ears. He stands on a mossy ground in a dreamy twilight forest with deep teal and indigo shadows, glowing golden-green fireflies, floating pollen, bounce mushrooms and a softly glowing Heart Tree in the background. Hand-painted gouache look, soft painterly brush strokes, no hard black outlines, warm light bloom and rim light. Bold decorative title lettering: 'Lumi et la Forêt des Lucioles'.",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Cover art for the library card only; not used in the game."
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793651905849,
+      "file": "assets/cover_keyart.r2.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
     }
   },
   "versions": [
@@ -804,38 +826,108 @@
         "Code 3D unifié"
       ],
       "at": 1793385977775
+    },
+    {
+      "who": "you",
+      "text": "Genera una portada cuadrada del juego, con el personaje y el título. No la pongas dentro del juego.",
+      "at": 1793651741816
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Estoy generando una portada cuadrada con Lumi y el título «Lumi et la Forêt des Lucioles»; queda solo en la biblioteca, sin tocar el juego.",
+      "tags": [
+        "Portada"
+      ],
+      "at": 1793651790789
+    },
+    {
+      "who": "you",
+      "text": "arregla la imagen de la portada, en ella es un conejo y en el juego es un zorro",
+      "at": 1793651855030
+    },
+    {
+      "who": "forge",
+      "text": "Tienes razón, ¡Lumi es un zorro! Estoy regenerando la portada con un zorrito y el título, sin tocar el juego.",
+      "tags": [
+        "Portada corregida"
+      ],
+      "at": 1793651905922
     }
   ],
   "repairs": 0,
   "jobUsage": {
-    "startedAt": 1793386334879,
-    "byProvider": {},
-    "events": [],
+    "startedAt": 1793651855048,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 1,
+        "inputTokens": 5298,
+        "outputTokens": 516,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.015756,
+        "ms": 4264
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 1,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.053,
+        "ms": 45931
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 5298,
+        "outputTokens": 516,
+        "estimatedUsd": 0.015756,
+        "ms": 4264,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651859402
+      },
+      {
+        "provider": "openai",
+        "label": "img:cover_keyart",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 45931,
+        "images": 1,
+        "at": 1793651905854
+      }
+    ],
     "totals": {
-      "calls": 0,
-      "inputTokens": 0,
-      "outputTokens": 0,
-      "images": 0,
+      "calls": 2,
+      "inputTokens": 5298,
+      "outputTokens": 516,
+      "images": 1,
       "audioSec": 0,
       "models": 0,
-      "estimatedUsd": 0,
-      "ms": 89457
+      "estimatedUsd": 0.068756,
+      "ms": 50861
     },
-    "finishedAt": 1793386424336
+    "finishedAt": 1793651905909
   },
   "usage": {
     "startedAt": 1793318202261,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
-        "calls": 14,
-        "inputTokens": 234053,
-        "outputTokens": 324287,
+        "calls": 16,
+        "inputTokens": 244750,
+        "outputTokens": 325242,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 26.518344,
-        "ms": 2770407
+        "estimatedUsd": 26.549287999999997,
+        "ms": 2778603
       },
       "elevenlabs": {
         "provider": "elevenlabs",
@@ -850,14 +942,14 @@
       },
       "openai": {
         "provider": "openai",
-        "calls": 21,
+        "calls": 23,
         "inputTokens": 0,
         "outputTokens": 0,
-        "images": 36,
+        "images": 38,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 0.8785000000000004,
-        "ms": 816202
+        "estimatedUsd": 0.9845000000000005,
+        "ms": 906776
       },
       "tripo": {
         "provider": "tripo",
@@ -1385,21 +1477,85 @@
         "ms": 74793,
         "models": 1,
         "at": 1793385881136
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 5399,
+        "outputTokens": 439,
+        "estimatedUsd": 0.015188,
+        "ms": 3932,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651745835
+      },
+      {
+        "provider": "openai",
+        "label": "img:cover_keyart",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 44643,
+        "images": 1,
+        "at": 1793651790710
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 5298,
+        "outputTokens": 516,
+        "estimatedUsd": 0.015756,
+        "ms": 4264,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651859404
+      },
+      {
+        "provider": "openai",
+        "label": "img:cover_keyart",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 45931,
+        "images": 1,
+        "at": 1793651905856
       }
     ],
     "totals": {
-      "calls": 54,
-      "inputTokens": 234053,
-      "outputTokens": 324287,
-      "images": 36,
+      "calls": 58,
+      "inputTokens": 244750,
+      "outputTokens": 325242,
+      "images": 38,
       "audioSec": 134.95714285714286,
       "models": 8,
-      "estimatedUsd": 30.089004,
-      "ms": 68222075
+      "estimatedUsd": 30.225948,
+      "ms": 333703648
     },
-    "finishedAt": 1793386424336
+    "finishedAt": 1793651905909
   },
-  "job": null,
+  "job": {
+    "kind": "chat",
+    "startedAt": 1793651855048,
+    "stages": [
+      {
+        "id": "plan",
+        "label": "Director",
+        "status": "ok",
+        "detail": "Entendiendo el cambio"
+      },
+      {
+        "id": "assets",
+        "label": "Recursos",
+        "status": "ok",
+        "detail": "1 actualizados"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "skip"
+      }
+    ],
+    "finishedAt": 1793651905909,
+    "reload": true
+  },
   "design": {
     "title": "Lumi et la Forêt des Lucioles",
     "tagline": "Rebondis sur les champignons, rattrape les lucioles, rallume le cœur de la forêt.",
@@ -1785,6 +1941,15 @@
           "transparent": true,
           "aspect": "2:3",
           "usage": "Checkpoint prop: lights up when Lumi passes and sets the respawn point."
+        },
+        {
+          "id": "cover_keyart",
+          "name": "Portada",
+          "role": "keyart",
+          "prompt": "Square storybook fantasy poster: Lumi, the small chunky rounded hero holding a glowing golden-green lantern, standing in a dreamy twilight forest with deep teal and indigo shadows, floating fireflies, pollen specks and soft light bloom, a glowing Heart Tree in the misty background, bouncy mushrooms in the foreground. Hand-painted soft gouache textures, gentle painterly brush strokes, no hard black outlines, warm rim light, magical cozy slightly mysterious mood. Bold hand-lettered title text 'Lumi et la Forêt des Lucioles' at the top, clearly legible, integrated in the composition.",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Cover art for the library card only; not used in the game."
         }
       ],
       "audio": [

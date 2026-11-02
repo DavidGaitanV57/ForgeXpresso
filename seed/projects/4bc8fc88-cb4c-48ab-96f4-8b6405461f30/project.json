@@ -1,7 +1,7 @@
 {
   "id": "4bc8fc88-cb4c-48ab-96f4-8b6405461f30",
   "createdAt": 1793309899491,
-  "updatedAt": 1793389727033,
+  "updatedAt": 1793652694164,
   "idea": "Un shoot'em up espacial con jefes gigantes y power-ups de colores",
   "dimension": "2d",
   "imageProvider": "openai",
@@ -471,6 +471,28 @@
       "mime": "audio/mpeg",
       "provider": "ElevenLabs",
       "custom": false
+    },
+    "keyart_cover": {
+      "id": "keyart_cover",
+      "type": "image",
+      "name": "Portada Nova Rebelión",
+      "spec": {
+        "id": "keyart_cover",
+        "name": "Portada Nova Rebelión",
+        "role": "keyart",
+        "prompt": "Square game cover poster for a space shoot'em up titled 'NOVA REBELIÓN' in bold chunky neon cyan and magenta retro-arcade lettering with dark outlines. In the foreground the small heroic fighter ship Colibrí-9 flying right with glowing cyan engines and rim lighting, firing bright cyan bullets. Behind it a giant crimson dreadnought boss looms with glowing weak points, a rebel planet and swirling nebula in deep indigo cosmic darkness. Vibrant hand-painted 2D sci-fi illustration, bold dark outlines, cel-shaded highlights, saturated cyan, magenta and orange accents, painterly texture, epic yet playful retro-arcade mood, dramatic composition with the title at the top.",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Portada cuadrada para la tarjeta de la biblioteca; no se usa dentro del juego."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793652694114,
+      "file": "assets/keyart_cover.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
     }
   },
   "versions": [
@@ -518,12 +540,25 @@
         "Narración sincronizada"
       ],
       "at": 1793389727032
+    },
+    {
+      "who": "you",
+      "text": "Genera una portada cuadrada del juego, con el personaje y el título. No la pongas dentro del juego.",
+      "at": 1793652641313
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Genero una portada cuadrada con Colibrí-9 y el título «Nova Rebelión». Se guarda en la biblioteca y no aparece dentro del juego.",
+      "tags": [
+        "Portada cuadrada"
+      ],
+      "at": 1793652694155
     }
   ],
   "repairs": 0,
   "job": {
     "kind": "chat",
-    "startedAt": 1793389332294,
+    "startedAt": 1793652641333,
     "stages": [
       {
         "id": "plan",
@@ -540,11 +575,10 @@
       {
         "id": "code",
         "label": "Programador",
-        "status": "ok",
-        "detail": "Nueva versión"
+        "status": "skip"
       }
     ],
-    "finishedAt": 1793389727001,
+    "finishedAt": 1793652694137,
     "reload": true
   },
   "design": {
@@ -911,6 +945,15 @@
           "aspect": "16:9",
           "usage": "Capa de parallax media",
           "seamless": false
+        },
+        {
+          "id": "keyart_cover",
+          "name": "Portada Nova Rebelión",
+          "role": "keyart",
+          "prompt": "Square game cover poster for a space shoot'em up titled 'NOVA REBELIÓN' in bold chunky neon cyan and magenta retro-arcade lettering with dark outlines. In the foreground the small heroic fighter ship Colibrí-9 flying right with glowing cyan engines and rim lighting, firing bright cyan bullets. Behind it a giant crimson dreadnought boss looms with glowing weak points, a rebel planet and swirling nebula in deep indigo cosmic darkness. Vibrant hand-painted 2D sci-fi illustration, bold dark outlines, cel-shaded highlights, saturated cyan, magenta and orange accents, painterly texture, epic yet playful retro-arcade mood, dramatic composition with the title at the top.",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Portada cuadrada para la tarjeta de la biblioteca; no se usa dentro del juego."
         }
       ],
       "audio": [
@@ -1108,29 +1151,29 @@
     }
   },
   "jobUsage": {
-    "startedAt": 1793389332294,
+    "startedAt": 1793652641333,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
-        "calls": 3,
-        "inputTokens": 39537,
-        "outputTokens": 50291,
+        "calls": 1,
+        "inputTokens": 4384,
+        "outputTokens": 504,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 4.085184,
-        "ms": 394471
+        "estimatedUsd": 0.013808,
+        "ms": 5857
       },
-      "elevenlabs": {
-        "provider": "elevenlabs",
+      "openai": {
+        "provider": "openai",
         "calls": 1,
         "inputTokens": 0,
         "outputTokens": 0,
-        "images": 0,
-        "audioSec": 13.5,
+        "images": 1,
+        "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 0.03402,
-        "ms": 1274
+        "estimatedUsd": 0.0689,
+        "ms": 46210
       }
     },
     "events": [
@@ -1138,70 +1181,48 @@
         "provider": "anthropic",
         "label": "chat:plan",
         "calls": 1,
-        "inputTokens": 3674,
-        "outputTokens": 1688,
-        "estimatedUsd": 0.036342,
-        "ms": 13818,
+        "inputTokens": 4384,
+        "outputTokens": 504,
+        "estimatedUsd": 0.013808,
+        "ms": 5857,
         "model": "claude-sonnet-5-5",
-        "at": 1793389346119
+        "at": 1793652647274
       },
       {
-        "provider": "anthropic",
-        "label": "cinematic",
+        "provider": "openai",
+        "label": "img:keyart_cover",
         "calls": 1,
-        "inputTokens": 2399,
-        "outputTokens": 1759,
-        "estimatedUsd": 0.033582,
-        "ms": 14657,
-        "model": "claude-sonnet-5-5",
-        "at": 1793389360950
-      },
-      {
-        "provider": "elevenlabs",
-        "label": "audio:narration",
-        "calls": 1,
-        "estimatedUsd": 0.03402,
-        "ms": 1274,
-        "audioSec": 13.5,
-        "at": 1793389362244
-      },
-      {
-        "provider": "anthropic",
-        "label": "code:edit",
-        "calls": 1,
-        "inputTokens": 33464,
-        "outputTokens": 46844,
-        "estimatedUsd": 4.01526,
-        "ms": 365996,
-        "model": "claude-opus-5-5",
-        "at": 1793389726959
+        "estimatedUsd": 0.0689,
+        "ms": 46210,
+        "images": 1,
+        "at": 1793652694118
       }
     ],
     "totals": {
-      "calls": 4,
-      "inputTokens": 39537,
-      "outputTokens": 50291,
-      "images": 0,
-      "audioSec": 13.5,
+      "calls": 2,
+      "inputTokens": 4384,
+      "outputTokens": 504,
+      "images": 1,
+      "audioSec": 0,
       "models": 0,
-      "estimatedUsd": 4.119204,
-      "ms": 395745
+      "estimatedUsd": 0.082708,
+      "ms": 52804
     },
-    "finishedAt": 1793389727001
+    "finishedAt": 1793652694137
   },
   "usage": {
     "startedAt": 1793389332294,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
-        "calls": 3,
-        "inputTokens": 39537,
-        "outputTokens": 50291,
+        "calls": 4,
+        "inputTokens": 43921,
+        "outputTokens": 50795,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 4.085184,
-        "ms": 394471
+        "estimatedUsd": 4.098992,
+        "ms": 400328
       },
       "elevenlabs": {
         "provider": "elevenlabs",
@@ -1213,6 +1234,17 @@
         "models": 0,
         "estimatedUsd": 0.03402,
         "ms": 1274
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 1,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.0689,
+        "ms": 46210
       }
     },
     "events": [
@@ -1257,18 +1289,38 @@
         "ms": 365996,
         "model": "claude-opus-5-5",
         "at": 1793389726989
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4384,
+        "outputTokens": 504,
+        "estimatedUsd": 0.013808,
+        "ms": 5857,
+        "model": "claude-sonnet-5-5",
+        "at": 1793652647276
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_cover",
+        "calls": 1,
+        "estimatedUsd": 0.0689,
+        "ms": 46210,
+        "images": 1,
+        "at": 1793652694119
       }
     ],
     "totals": {
-      "calls": 4,
-      "inputTokens": 39537,
-      "outputTokens": 50291,
-      "images": 0,
+      "calls": 6,
+      "inputTokens": 43921,
+      "outputTokens": 50795,
+      "images": 1,
       "audioSec": 13.5,
       "models": 0,
-      "estimatedUsd": 4.119204,
-      "ms": 395745
+      "estimatedUsd": 4.201912,
+      "ms": 263361843
     },
-    "finishedAt": 1793389727001
+    "finishedAt": 1793652694137
   }
 }

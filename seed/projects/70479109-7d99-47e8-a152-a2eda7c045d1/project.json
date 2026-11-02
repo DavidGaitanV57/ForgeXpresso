@@ -1,7 +1,7 @@
 {
   "id": "70479109-7d99-47e8-a152-a2eda7c045d1",
   "createdAt": 1793400235265,
-  "updatedAt": 1793406092160,
+  "updatedAt": 1793651571176,
   "idea": "Un plataformero de un gato ninja que cruza una ciudad neón saltando entre azoteas",
   "dimension": "2d",
   "imageProvider": "openai",
@@ -495,6 +495,28 @@
       "mime": "image/png",
       "provider": "OpenAI",
       "custom": false
+    },
+    "keyart_neko_neon_cover": {
+      "id": "keyart_neko_neon_cover",
+      "type": "image",
+      "name": "Portada Neko Neón",
+      "spec": {
+        "id": "keyart_neko_neon_cover",
+        "name": "Portada Neko Neón",
+        "role": "keyart",
+        "prompt": "Square game cover poster, stylized 2D cyberpunk illustration with bold clean dark outlines and flat cel-shaded color blocks. A sleek black ninja cat with a flowing magenta scarf, glowing cyan eyes and a small katana on its back, leaping in a dynamic pose across neon rooftops, cyan and magenta rim light from the upper left. Behind it a glowing neon city skyline at night with a tall master antenna tower, deep indigo sky, rain-slick rooftops, floating neon fish and a small patrol drone. Bold neon title lettering 'NEKO NEÓN' at the top or bottom, chunky readable letters with glow halo, high contrast, playful but cool tone, composed as a polished poster",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Portada cuadrada para la biblioteca del juego; no se usa dentro del juego."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793651571050,
+      "file": "assets/keyart_neko_neon_cover.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
     }
   },
   "versions": [
@@ -548,12 +570,37 @@
         "6 animaciones"
       ],
       "at": 1793405115981
+    },
+    {
+      "who": "you",
+      "text": "Genera una portada cuadrada del juego, con el personaje y el título. No la pongas dentro del juego.",
+      "at": 1793651523659
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Creo una portada cuadrada con Kuro y el título «Neko Neón» sobre la ciudad neón; queda en la biblioteca y no se usa dentro del juego.",
+      "tags": [
+        "Portada",
+        "Key art"
+      ],
+      "at": 1793651571173
     }
   ],
   "repairs": 0,
   "jobUsage": {
-    "startedAt": 1793405872871,
+    "startedAt": 1793651523682,
     "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 1,
+        "inputTokens": 4600,
+        "outputTokens": 490,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.0141,
+        "ms": 3981
+      },
       "openai": {
         "provider": "openai",
         "calls": 1,
@@ -562,46 +609,57 @@
         "images": 1,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 0.10335000000000001,
-        "ms": 28725
+        "estimatedUsd": 0.053,
+        "ms": 42635
       }
     },
     "events": [
       {
-        "provider": "openai",
-        "label": "sheet:hero_kuro_sheet",
+        "provider": "anthropic",
+        "label": "chat:plan",
         "calls": 1,
-        "estimatedUsd": 0.10335000000000001,
-        "ms": 28725,
+        "inputTokens": 4600,
+        "outputTokens": 490,
+        "estimatedUsd": 0.0141,
+        "ms": 3981,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651527806
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_neko_neon_cover",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 42635,
         "images": 1,
-        "at": 1793405901948
+        "at": 1793651571056
       }
     ],
     "totals": {
-      "calls": 1,
-      "inputTokens": 0,
-      "outputTokens": 0,
+      "calls": 2,
+      "inputTokens": 4600,
+      "outputTokens": 490,
       "images": 1,
       "audioSec": 0,
       "models": 0,
-      "estimatedUsd": 0.10335000000000001,
-      "ms": 29080
+      "estimatedUsd": 0.06709999999999999,
+      "ms": 47456
     },
-    "finishedAt": 1793405901951
+    "finishedAt": 1793651571138
   },
   "usage": {
     "startedAt": 1793400235268,
     "byProvider": {
       "anthropic": {
         "provider": "anthropic",
-        "calls": 7,
-        "inputTokens": 68236,
-        "outputTokens": 141176,
+        "calls": 8,
+        "inputTokens": 72836,
+        "outputTokens": 141666,
         "images": 0,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 10.96914,
-        "ms": 1273400
+        "estimatedUsd": 10.983239999999999,
+        "ms": 1277381
       },
       "elevenlabs": {
         "provider": "elevenlabs",
@@ -616,14 +674,14 @@
       },
       "openai": {
         "provider": "openai",
-        "calls": 18,
+        "calls": 19,
         "inputTokens": 0,
         "outputTokens": 0,
-        "images": 26,
+        "images": 27,
         "audioSec": 0,
         "models": 0,
-        "estimatedUsd": 1.0805500000000001,
-        "ms": 625094
+        "estimatedUsd": 1.13355,
+        "ms": 667729
       }
     },
     "events": [
@@ -973,32 +1031,63 @@
         "ms": 28725,
         "images": 1,
         "at": 1793405901948
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4600,
+        "outputTokens": 490,
+        "estimatedUsd": 0.0141,
+        "ms": 3981,
+        "model": "claude-sonnet-5-5",
+        "at": 1793651527811
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart_neko_neon_cover",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 42635,
+        "images": 1,
+        "at": 1793651571060
       }
     ],
     "totals": {
-      "calls": 37,
-      "inputTokens": 68236,
-      "outputTokens": 141176,
-      "images": 26,
+      "calls": 39,
+      "inputTokens": 72836,
+      "outputTokens": 141666,
+      "images": 27,
       "audioSec": 130.14285714285714,
       "models": 0,
-      "estimatedUsd": 13.06975,
-      "ms": 5666683
+      "estimatedUsd": 13.136849999999999,
+      "ms": 251335870
     },
-    "finishedAt": 1793405901951
+    "finishedAt": 1793651571138
   },
   "job": {
-    "kind": "asset",
-    "startedAt": 1793405872871,
+    "kind": "chat",
+    "startedAt": 1793651523682,
     "stages": [
       {
-        "id": "assets",
-        "label": "Kuro el gato ninja · anim",
+        "id": "plan",
+        "label": "Director",
         "status": "ok",
-        "detail": "Generando"
+        "detail": "Entendiendo el cambio"
+      },
+      {
+        "id": "assets",
+        "label": "Recursos",
+        "status": "ok",
+        "detail": "1 actualizados"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "skip"
       }
     ],
-    "finishedAt": 1793405901951,
+    "finishedAt": 1793651571138,
     "reload": true
   },
   "design": {
@@ -1507,6 +1596,15 @@
               }
             ]
           }
+        },
+        {
+          "id": "keyart_neko_neon_cover",
+          "name": "Portada Neko Neón",
+          "role": "keyart",
+          "prompt": "Square game cover poster, stylized 2D cyberpunk illustration with bold clean dark outlines and flat cel-shaded color blocks. A sleek black ninja cat with a flowing magenta scarf, glowing cyan eyes and a small katana on its back, leaping in a dynamic pose across neon rooftops, cyan and magenta rim light from the upper left. Behind it a glowing neon city skyline at night with a tall master antenna tower, deep indigo sky, rain-slick rooftops, floating neon fish and a small patrol drone. Bold neon title lettering 'NEKO NEÓN' at the top or bottom, chunky readable letters with glow halo, high contrast, playful but cool tone, composed as a polished poster",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Portada cuadrada para la biblioteca del juego; no se usa dentro del juego."
         }
       ],
       "audio": [
