@@ -1,0 +1,16 @@
+# Publish the Render service (forgexpresso) on every push to despliegue-render.
+# The Deploy Hook URL lives in the repo secret RENDER_DEPLOY_HOOK; anyone with it can trigger deploys.
+# A deploy restarts the app for about a minute: merge when nobody is generating a game.
+name: Deploy to Render
+on:
+  push:
+    branches: [despliegue-render]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
