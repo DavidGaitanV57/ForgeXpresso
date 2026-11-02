@@ -9,6 +9,10 @@ export const config = {
     key: () => env("ANTHROPIC_API_KEY"),
     codeModel: () => env("ANTHROPIC_MODEL_CODE", "claude-opus-5-5"),
     fastModel: () => env("ANTHROPIC_MODEL_FAST", "claude-sonnet-5-5"),
+    codeEffort: (): "low" | "medium" | "high" => {
+      const v = env("ANTHROPIC_CODE_EFFORT", "medium");
+      return v === "low" || v === "high" ? v : "medium";
+    },
   },
   /** Prefer OpenAI when both keys exist; otherwise the only configured image API. */
   imageProvider: (): ImageProvider => {

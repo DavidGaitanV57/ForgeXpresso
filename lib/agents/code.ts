@@ -122,18 +122,36 @@ export async function codeAgent(input: CodeInput): Promise<string> {
 
   const messages: { role: "user" | "assistant"; content: string }[] = [{ role: "user", content: `${header}\n${task}` }];
   let lastErr = "";
+  let think = true;
   for (let attempt = 0; attempt < 3; attempt++) {
-    input.onProgress?.(attempt === 0 ? (input.mode === "repair" ? "Corrigiendo el error" : "Escribiendo el código") : `Corrigiendo validación (intento ${attempt + 1})`);
+    input.onProgress?.(
+      attempt === 0
+        ? input.mode === "repair"
+          ? "Corrigiendo el error"
+          : "Escribiendo el código"
+        : !think
+          ? `Reescribiendo sin razonamiento extendido (intento ${attempt + 1})`
+          : `Corrigiendo validación (intento ${attempt + 1})`,
+    );
     const { text, stop, usage } = await generateText({
       model: config.anthropic.codeModel(),
       system: SYSTEM(engine),
       messages,
       maxTokens: 128000,
-      think: true,
+      think,
+      effort: config.anthropic.codeEffort(),
     });
     input.onUsage?.(usage, attempt === 0 ? `code:${input.mode}` : `code:fix${attempt + 1}`);
+    if (stop === "max_tokens") {
+      // Usually the thinking ate the whole budget and the module is empty or partial; feeding that back
+      // as a draft wastes another full call, so retry the same request without extended thinking.
+      lastErr = "The response was cut off at the output token limit.";
+      console.warn(`[forge] code agent hit max_tokens (${usage.outputTokens} out, think=${think}); retrying without thinking`);
+      think = false;
+      continue;
+    }
     const code = extractCode(text);
-    const err = stop === "max_tokens" ? "The response was cut off (too long). Write a more compact version of the module." : validateCode(code, engine, meshValidate);
+    const err = validateCode(code, engine, meshValidate);
     if (!err) return code;
     lastErr = err;
     messages.push({ role: "assistant", content: "```js\n" + code + "\n```" }, { role: "user", content: `Validation failed: ${err}\nReturn the full corrected module.` });
