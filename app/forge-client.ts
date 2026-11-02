@@ -6,7 +6,7 @@ import { sheetAnimsFor, sheetLayout, type SheetAnimSpec } from "@/lib/sheets";
 import { IDEA_MAX_CHARS } from "@/lib/limits";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
-type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null };
+type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null; thumbFit?: "cover" | "contain" };
 type GameMsg = { source: "forge-game"; projectId: string; version: number; type: string; screen?: string; message?: string; stack?: string; phase?: string; reason?: string };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -37,11 +37,11 @@ const IC_VOICE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const IC_SFX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 const IC_CUBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>';
 
-const ROLE_KEYS = ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait"] as const;
+const ROLE_KEYS = ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait", "keyart"] as const;
 const roleLabel = (role: string) => (ROLE_KEYS.includes(role as (typeof ROLE_KEYS)[number]) ? t(`role.${role}`) : t("role.image"));
 const audioLabel = (kind: string) => (kind === "music" || kind === "sfx" || kind === "voice" ? t(`audio.${kind}`) : kind);
-const ORDER = ["hero", "enemy", "npc", "collectible", "hazard", "goal", "platform", "tile", "prop", "background", "texture", "portrait", "ui", "model", "music", "voice", "sfx"];
-const COVER_ROLES = new Set(["background", "texture", "portrait"]);
+const ORDER = ["hero", "enemy", "npc", "collectible", "hazard", "goal", "platform", "tile", "prop", "keyart", "background", "texture", "portrait", "ui", "model", "music", "voice", "sfx"];
+const COVER_ROLES = new Set(["background", "texture", "portrait", "keyart"]);
 const DIM_LABEL: Record<Dimension, string> = { "2d": "2D", "2.5d": "2.5D", "3d": "3D" };
 function setScreen(next: typeof S.screen) {
   S.screen = next;
@@ -563,17 +563,34 @@ async function loadProjects() {
     box.hidden = !list.length;
     $("#projGrid").innerHTML = list
       .slice(0, 12)
-      .map(
-        (p, j) => `<div class="pj" role="button" tabindex="0" data-id="${esc(p.id)}" style="--j:${j}">
-        <div class="th" style="${p.thumb ? `background-image:url('${esc(p.thumb)}');background-size:contain` : ""}">${p.thumb ? "" : DIM_LABEL[p.dimension]}</div>
+      .map((p, j) => {
+        const fit = p.thumbFit === "contain" ? "contain" : "cover";
+        const thumb = p.thumb
+          ? `<div class="th" style="background-image:url('${esc(p.thumb)}');background-size:${fit}"><button type="button" class="zoom-ico" data-zoom="${esc(p.thumb)}" data-title="${esc(p.title)}" aria-label="${esc(t("intro.expand"))}: ${esc(p.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button></div>`
+          : `<div class="th">${DIM_LABEL[p.dimension]}</div>`;
+        return `<div class="pj" tabindex="0" data-id="${esc(p.id)}" style="--j:${j}">
+        ${thumb}
         <b title="${esc(p.idea)}">${esc(p.title)}</b><small>${DIM_LABEL[p.dimension]} · ${p.status === "generating" ? t("intro.generating") : p.status === "error" ? t("intro.error") : new Date(p.updatedAt).toLocaleDateString(getLocale())}</small>
-        <button type="button" class="del" data-del="${esc(p.id)}" title="${esc(t("intro.delete"))}" aria-label="${esc(t("intro.delete"))}">×</button></div>`,
-      )
+        <button type="button" class="del" data-del="${esc(p.id)}" title="${esc(t("intro.delete"))}" aria-label="${esc(t("intro.delete"))}">×</button></div>`;
+      })
       .join("");
   } catch (e) {
     console.warn("[forge] loadProjects", e);
     toast(esc((e as Error).message || t("intro.loadFail")), 4000);
   }
+}
+function openZoom(url: string, title: string) {
+  const img = $<HTMLImageElement>("#zoomImg");
+  img.src = url;
+  img.alt = title;
+  $("#zoomTitle").textContent = title;
+  $("#zoom").hidden = false;
+}
+function closeZoom() {
+  const z = $("#zoom");
+  if (!z || z.hidden) return;
+  z.hidden = true;
+  $<HTMLImageElement>("#zoomImg").removeAttribute("src");
 }
 async function createGame(idea: string) {
   if (S.caps && !S.caps.code) {
@@ -1064,7 +1081,7 @@ function changelogUnseen() {
   }
 }
 function paintChangelogBadge() {
-  for (const id of ["#logBtn", "#logBtnIntro"]) document.querySelector(id)?.classList.toggle("has-new", changelogUnseen());
+  document.querySelector("#logBtnCorner")?.classList.toggle("has-new", changelogUnseen());
 }
 async function loadChangelog() {
   try {
@@ -1210,7 +1227,7 @@ const PTABS = (): [typeof S.ptab, string][] => [
 const LIBTABS = (): [string, string, (a: AssetRecord) => boolean][] => [
   ["chars", t("lib.chars"), (a) => a.type === "image" && ["hero", "enemy", "npc", "portrait"].includes(roleOf(a))],
   ["objs", t("lib.objs"), (a) => a.type === "image" && ["collectible", "hazard", "prop", "goal", "platform", "tile", "ui"].includes(roleOf(a))],
-  ["bgs", t("lib.bgs"), (a) => a.type === "image" && ["background", "texture"].includes(roleOf(a))],
+  ["bgs", t("lib.bgs"), (a) => a.type === "image" && ["background", "texture", "keyart"].includes(roleOf(a))],
   ["m3d", t("lib.m3d"), (a) => a.type === "model"],
   ["audio", t("lib.audio"), (a) => a.type === "audio"],
 ];
@@ -2357,12 +2374,192 @@ export function mount() {
     },
     { signal },
   );
-  $("#projGrid").addEventListener(
+  const projGrid = $("#projGrid");
+  let projScrub: { x: number; left: number; moved: boolean; lastX: number; lastT: number; vx: number; pointerId: number } | null = null;
+  let projPress: HTMLElement | null = null;
+  let glide = 0;
+  let glideMode: "follow" | "settle" | null = null;
+  let glideTarget = 0;
+  let settleFrom = 0;
+  let settleTo = 0;
+  let settleStart = 0;
+  let settleTimer = 0;
+  let wheeling = false;
+  let wheelFrom = 0;
+  let wheelDelta = 0;
+  const rowMax = (el: HTMLElement) => Math.max(0, el.scrollWidth - el.clientWidth);
+  const rowClamp = (el: HTMLElement, left: number) => Math.max(0, Math.min(rowMax(el), left));
+  const rowPitch = (el: HTMLElement) => {
+    const card = el.querySelector<HTMLElement>(".pj");
+    if (!card) return 176;
+    const gap = parseFloat(getComputedStyle(el).columnGap || getComputedStyle(el).gap) || 0;
+    return card.offsetWidth + gap;
+  };
+  const rowSnap = (el: HTMLElement, left: number) => {
+    const pitch = rowPitch(el);
+    if (pitch <= 1) return rowClamp(el, left);
+    return rowClamp(el, Math.round(left / pitch) * pitch);
+  };
+  const stopGlide = () => {
+    if (glide) cancelAnimationFrame(glide);
+    glide = 0;
+    glideMode = null;
+  };
+  const glideFrame = (now: number) => {
+    const el = projGrid;
+    if (glideMode === "settle") {
+      const t = Math.min(1, (now - settleStart) / 520);
+      const eased = 1 - (1 - t) ** 3;
+      el.scrollLeft = settleFrom + (settleTo - settleFrom) * eased;
+      if (t < 1) glide = requestAnimationFrame(glideFrame);
+      else {
+        el.scrollLeft = settleTo;
+        glide = 0;
+        glideMode = null;
+      }
+      return;
+    }
+    const diff = glideTarget - el.scrollLeft;
+    if (Math.abs(diff) < 0.5) {
+      el.scrollLeft = glideTarget;
+      glide = 0;
+      glideMode = null;
+      return;
+    }
+    el.scrollLeft += diff * 0.16;
+    glide = requestAnimationFrame(glideFrame);
+  };
+  const followRow = (left: number) => {
+    glideTarget = rowClamp(projGrid, left);
+    glideMode = "follow";
+    if (!glide) glide = requestAnimationFrame(glideFrame);
+  };
+  const settleRow = (left: number) => {
+    settleFrom = projGrid.scrollLeft;
+    settleTo = rowClamp(projGrid, left);
+    settleStart = performance.now();
+    glideMode = "settle";
+    if (!glide) glide = requestAnimationFrame(glideFrame);
+  };
+  signal.addEventListener("abort", () => {
+    stopGlide();
+    window.clearTimeout(settleTimer);
+  });
+  projGrid.addEventListener(
+    "wheel",
+    (e) => {
+      const el = e.currentTarget as HTMLElement;
+      if (rowMax(el) <= 1 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      else if (e.deltaMode === 2) dy *= el.clientWidth;
+      if (!wheeling) {
+        wheeling = true;
+        wheelFrom = glideMode === "settle" ? settleTo : glideMode === "follow" ? glideTarget : el.scrollLeft;
+        wheelDelta = 0;
+      }
+      wheelDelta += dy;
+      const next = rowClamp(el, wheelFrom + wheelDelta);
+      if (next === wheelFrom) return;
+      e.preventDefault();
+      followRow(next);
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        wheeling = false;
+        const pitch = rowPitch(el);
+        const steps = Math.round(wheelDelta / (pitch * 0.62)) || Math.sign(wheelDelta);
+        settleRow(wheelFrom + steps * pitch);
+      }, 160);
+    },
+    { signal, passive: false },
+  );
+  projGrid.addEventListener(
+    "scroll",
+    () => {
+      if (glideMode || projScrub) return;
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        if (glideMode || projScrub) return;
+        const dest = rowSnap(projGrid, projGrid.scrollLeft);
+        if (Math.abs(dest - projGrid.scrollLeft) > 1) settleRow(dest);
+      }, 140);
+    },
+    { signal, passive: true },
+  );
+  projGrid.addEventListener(
+    "pointerdown",
+    (e) => {
+      const el = e.currentTarget as HTMLElement;
+      if (e.pointerType === "touch" || rowMax(el) <= 1) return;
+      const press = (e.target as HTMLElement).closest("button");
+      if (press) return;
+      stopGlide();
+      window.clearTimeout(settleTimer);
+      wheeling = false;
+      projPress = (e.target as HTMLElement).closest<HTMLElement>(".pj");
+      projScrub = { x: e.clientX, left: el.scrollLeft, moved: false, lastX: e.clientX, lastT: performance.now(), vx: 0, pointerId: e.pointerId };
+    },
+    { signal },
+  );
+  projGrid.addEventListener(
+    "pointermove",
+    (e) => {
+      const el = e.currentTarget as HTMLElement;
+      if (!projScrub || e.pointerId !== projScrub.pointerId) return;
+      const now = performance.now();
+      const dt = Math.max(now - projScrub.lastT, 8);
+      projScrub.vx = (e.clientX - projScrub.lastX) / dt;
+      projScrub.lastX = e.clientX;
+      projScrub.lastT = now;
+      const dx = e.clientX - projScrub.x;
+      if (Math.abs(dx) <= 5) return;
+      projScrub.moved = true;
+      el.classList.add("is-drag");
+      if (!el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId);
+      el.scrollLeft = projScrub.left - dx;
+    },
+    { signal },
+  );
+  const endProjScrub = (e: PointerEvent) => {
+    (e.currentTarget as HTMLElement).classList.remove("is-drag");
+  };
+  projGrid.addEventListener(
+    "pointerup",
+    (e) => {
+      endProjScrub(e);
+      if (!projScrub?.moved) return;
+      const el = e.currentTarget as HTMLElement;
+      settleRow(rowSnap(el, el.scrollLeft - projScrub.vx * 340));
+    },
+    { signal },
+  );
+  projGrid.addEventListener("pointercancel", (e) => {
+    projScrub = null;
+    projPress = null;
+    endProjScrub(e);
+  }, { signal });
+  projGrid.addEventListener(
     "click",
     async (e) => {
+      const moved = projScrub?.moved;
+      projScrub = null;
+      if (moved) {
+        projPress = null;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       const el = e.target as HTMLElement;
+      const zoom = el.closest<HTMLElement>("[data-zoom]");
+      if (zoom?.dataset.zoom) {
+        projPress = null;
+        e.stopPropagation();
+        openZoom(zoom.dataset.zoom, zoom.dataset.title || "");
+        return;
+      }
       const del = el.closest<HTMLElement>("[data-del]");
       if (del) {
+        projPress = null;
         e.stopPropagation();
         if (!confirm(t("intro.deleteConfirm"))) return;
         try {
@@ -2373,7 +2570,8 @@ export function mount() {
         }
         return;
       }
-      const card = el.closest<HTMLElement>(".pj");
+      const card = el.closest<HTMLElement>(".pj") || projPress;
+      projPress = null;
       if (card) {
         $("#intro").classList.add("leaving");
         await sleep(380);
@@ -2382,10 +2580,22 @@ export function mount() {
     },
     { signal },
   );
+  $("#zoomBack").addEventListener("click", closeZoom, { signal });
+  $("#zoomX").addEventListener("click", closeZoom, { signal });
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape" && !$("#zoom").hidden) {
+        e.preventDefault();
+        closeZoom();
+      }
+    },
+    { signal },
+  );
   $("#projGrid").addEventListener(
     "keydown",
     (e) => {
-      if (e.key === "Enter") (e.target as HTMLElement).closest<HTMLElement>(".pj")?.click();
+      if (e.key === "Enter" && !(e.target as HTMLElement).closest("[data-zoom]")) (e.target as HTMLElement).closest<HTMLElement>(".pj")?.click();
     },
     { signal },
   );
@@ -2642,7 +2852,7 @@ export function mount() {
   );
 
   void loadChangelog();
-  for (const id of ["#logBtn", "#logBtnIntro"]) document.querySelector(id)?.addEventListener("click", () => openChangelog(), { signal });
+  document.querySelector("#logBtnCorner")?.addEventListener("click", () => openChangelog(), { signal });
   $("#logPopX")?.addEventListener("click", () => closeChangelog(), { signal });
   $("#logPop")?.addEventListener("click", (e) => { if (e.target === $("#logPop")) closeChangelog(); }, { signal });
   $("#usageBtn")?.addEventListener("click", () => openUsagePop(), { signal });

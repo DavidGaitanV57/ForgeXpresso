@@ -226,6 +226,19 @@ export async function createHost(createGame, ctx) {
 
 const manifestHasSheets = (forge) => forge.assets.list("image").some((i) => i.sheet && i.ready);
 
+/** Dedicated clip sheets win. A combined `<id>_sheet` only fills animations that don't have their own image yet. */
+function clipMap(forge, key) {
+  const list = forge.assets.list("image").filter((i) => i && i.sheet && i.ready && i.sheet.of === key);
+  const map = new Map();
+  for (const meta of list) {
+    if (meta.id === `${key}_sheet`) continue;
+    for (const a of meta.sheet.anims) if (!map.has(a.name)) map.set(a.name, { meta, spec: a });
+  }
+  const legacy = list.find((i) => i.id === `${key}_sheet`);
+  if (legacy) for (const a of legacy.sheet.anims) if (!map.has(a.name)) map.set(a.name, { meta: legacy, spec: a });
+  return map;
+}
+
 /** Register `${sheetId}:${anim}` animations for a ready spritesheet (re-creates them on hot swap). */
 function makeSheetAnims(anims, img) {
   for (const a of img.sheet.anims) {
@@ -245,31 +258,36 @@ function helpers(Phaser, forge) {
   return {
     animate(sprite, o = {}) {
       const scene = sprite.scene;
-      const key = String(sprite.texture.key);
-      const sheetId = o.sheet || (forge.assets.image(key)?.sheet ? key : `${key}_sheet`);
-      const meta = forge.assets.image(sheetId);
-      const first = meta?.sheet?.anims?.[0]?.name;
+      const key = String(o.character || sprite.texture.key);
+      const map = o.sheet
+        ? new Map(
+            (forge.assets.image(o.sheet)?.sheet?.anims || []).map((a) => [a.name, { meta: forge.assets.image(o.sheet), spec: a }]),
+          )
+        : clipMap(forge, key);
+      const usable = [...map.entries()].filter(([, hit]) => hit.meta && scene.textures.exists(hit.meta.id) && scene.anims.exists(`${hit.meta.id}:${hit.spec.name}`));
       sprite.__forgeAnim = true;
-      if (!meta?.sheet || !meta.ready || !first || !scene.textures.exists(sheetId) || !scene.anims.exists(`${sheetId}:${first}`)) {
+      if (!usable.length) {
         const p = this.puppet(sprite);
         return { animated: false, names: [], current: null, visual: p.visual, has: () => false, play: () => false, update: (s, dt) => p.update(s, dt) };
       }
-      sprite.setTexture(sheetId, 0);
-      const specs = meta.sheet.anims;
-      const names = specs.map((a) => a.name);
-      const has = (n) => names.includes(n);
+      const byName = new Map(usable);
+      const names = [...byName.keys()];
+      const first = byName.has("idle") ? "idle" : names[0];
+      const has = (n) => byName.has(n);
       let cur = null, oneShot = null, wasGrounded = true, wasAttacking = false, landT = 0;
       const play = (n, force) => {
-        if (!has(n)) return false;
+        const hit = byName.get(n);
+        if (!hit) return false;
         if (cur === n && !force) return true;
         cur = n;
-        sprite.anims.play(`${sheetId}:${n}`);
+        if (sprite.texture.key !== hit.meta.id) sprite.setTexture(hit.meta.id, hit.spec.start || 0);
+        sprite.anims.play(`${hit.meta.id}:${n}`);
         return true;
       };
       sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (anim) => {
-        if (oneShot && anim.key === `${sheetId}:${oneShot}`) oneShot = null;
+        if (oneShot && anim.key && anim.key.endsWith(`:${oneShot}`)) oneShot = null;
       });
-      play(has("idle") ? "idle" : first);
+      play(first);
       return {
         animated: true,
         names,
@@ -279,7 +297,7 @@ function helpers(Phaser, forge) {
         },
         play(n) {
           const ok = play(n, true);
-          const a = specs.find((x) => x.name === n);
+          const a = byName.get(n)?.spec;
           if (ok) oneShot = a && !a.loop ? n : null;
           return ok;
         },
@@ -289,7 +307,7 @@ function helpers(Phaser, forge) {
           const grounded = s.grounded !== false;
           const attacking = !!s.attacking;
           if (grounded && !wasGrounded && has("land")) {
-            const l = specs.find((x) => x.name === "land");
+            const l = byName.get("land").spec;
             landT = l.frames / Math.max(1, l.fps);
             play("land", true);
           }
@@ -346,9 +364,11 @@ function helpers(Phaser, forge) {
     },
     /** Ready spritesheet for a character texture key, or null. */
     _sheetFor(scene, key) {
-      const meta = forge.assets.image(`${key}_sheet`);
-      const first = meta?.sheet?.anims?.[0]?.name;
-      return meta?.sheet && meta.ready && first && scene.textures.exists(meta.id) && scene.anims.exists(`${meta.id}:${first}`) ? meta : null;
+      const map = clipMap(forge, key);
+      for (const [, hit] of map) {
+        if (scene.textures.exists(hit.meta.id) && scene.anims.exists(`${hit.meta.id}:${hit.spec.name}`)) return hit.meta;
+      }
+      return null;
     },
     /**
      * Frame-animated visual copy of a physics sprite (body untouched, so it works after fit/body).
@@ -358,7 +378,7 @@ function helpers(Phaser, forge) {
       const scene = sprite.scene;
       sprite.__forgeAnim = true;
       const vis = scene.add.sprite(sprite.x, sprite.y, meta.id, 0).setOrigin(0.5, 1);
-      const ctl = this.animate(vis, { sheet: meta.id });
+      const ctl = this.animate(vis, { character: sprite.texture.key });
       sprite.renderWebGL = noRender;
       sprite.renderCanvas = noRender;
       let manual = null;

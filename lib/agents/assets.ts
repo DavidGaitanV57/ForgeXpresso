@@ -4,11 +4,11 @@ import { availableImageProvider, editImageOpenAI, generateImage } from "../provi
 import { isSafetyRejection } from "../providers/http";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
-import { CHROMA, pickChroma, processSheet, type Chroma } from "../sheetproc";
-import { normalizeSheetAnims, sheetAspect, sheetIdFor, sheetLayout, sheetRows, sheetSpecFor, SHEET_ROLES, type SheetAnimSpec, type SheetLayout } from "../sheets";
+import { CHROMA, pickChroma, processSheet, repackClip, type Chroma } from "../sheetproc";
+import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, normalizeSheetAnims, sheetAspect, sheetAnimsFor, sheetIdFor, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
 import sharp from "sharp";
 import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
-import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec } from "../types";
+import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec, Project } from "../types";
 import { sanitizeVoicePrompt } from "./voice-prompt";
 
 /** Image id paired with a `*_3d` model (lumi_hero_3d → lumi_hero). */
@@ -20,27 +20,121 @@ export function newRecord(type: AssetRecord["type"], spec: ImageAssetSpec | Audi
   return { id: spec.id, type, name: spec.name, spec, status: "pending", rev: 0, liked: 0, updatedAt: Date.now() };
 }
 
-/** Create (or re-scope) the `${baseId}_sheet` asset for a 2D character. Mutates design + assets. */
-export function ensureSheet(design: GameDesign, assets: Record<string, AssetRecord>, baseId: string, anims: (string | SheetAnimSpec)[]): AssetRecord | null {
+export function sheetsForCharacter(assets: Record<string, AssetRecord>, baseId: string): AssetRecord[] {
+  return Object.values(assets).filter((a) => a.type === "image" && (a.spec as ImageAssetSpec).sheet?.of === baseId);
+}
+
+/** Add one sheet per animation that the character does not already have. Existing clips are left untouched. */
+export function ensureClipSheets(design: GameDesign, assets: Record<string, AssetRecord>, baseId: string, anims: (string | SheetAnimSpec)[]): AssetRecord[] {
   const base = assets[baseId];
-  if (!base || base.type !== "image") return null;
+  if (!base || base.type !== "image") return [];
   const bs = base.spec as ImageAssetSpec;
-  if (bs.sheet || !SHEET_ROLES.has(bs.role)) return null;
+  if (bs.sheet || !SHEET_ROLES.has(bs.role)) return [];
   const list = normalizeSheetAnims(anims);
-  const id = sheetIdFor(baseId);
-  const existing = assets[id];
-  if (existing) {
-    const spec = existing.spec as ImageAssetSpec;
-    spec.sheet = { of: baseId, anims: list };
-    spec.usage = sheetSpecFor(bs, list).usage;
-    const inDesign = design.assets.images.find((i) => i.id === id);
-    if (inDesign && inDesign !== spec) Object.assign(inDesign, { sheet: spec.sheet, usage: spec.usage });
-    return existing;
+  const have = new Set<string>();
+  const legacy = assets[sheetIdFor(baseId)];
+  const legacySheet = legacy?.type === "image" ? (legacy.spec as ImageAssetSpec).sheet : undefined;
+  if (legacySheet) for (const a of legacySheet.anims) have.add(a.name);
+  for (const a of list) if (assets[clipSheetId(baseId, a.name)]) have.add(a.name);
+  const created: AssetRecord[] = [];
+  for (const anim of list) {
+    if (have.has(anim.name)) continue;
+    const spec = clipSpecFor(bs, anim);
+    design.assets.images.push(spec);
+    assets[spec.id] = newRecord("image", spec);
+    created.push(assets[spec.id]);
   }
-  const spec = sheetSpecFor(bs, list);
-  design.assets.images.push(spec);
-  assets[id] = newRecord("image", spec);
-  return assets[id];
+  return created;
+}
+
+function characterSpec(project: Project, of: string, fallback: ImageAssetSpec): ImageAssetSpec {
+  const base = project.assets[of];
+  if (base?.type === "image") return base.spec as ImageAssetSpec;
+  return { ...fallback, id: of, name: of };
+}
+
+/** Copy each clip out of a combined sheet so a later redraw of one animation cannot replace the others. */
+export async function peelCombinedSheet(projectId: string, project: Project, rec: AssetRecord): Promise<void> {
+  const spec = rec.spec as ImageAssetSpec;
+  const sheet = spec.sheet;
+  if (!sheet || sheet.anims.length < 2 || rec.status !== "ready" || !rec.file || !project.design) return;
+  let png: Buffer;
+  try {
+    png = await readProjectFile(projectId, rec.file);
+  } catch {
+    return;
+  }
+  const anims = sheetAnimsFor(sheet, rec.file);
+  const base = characterSpec(project, sheet.of, spec);
+  for (const anim of anims) {
+    const id = clipSheetId(sheet.of, anim.name);
+    const existing = project.assets[id];
+    if (existing?.status === "ready" && existing.file) continue;
+    try {
+      const data = await repackClip(png, anims, anim);
+      if (!data) continue;
+      const clip = clipSpecFor(base, anim);
+      const file = `assets/${id}.r1.png`;
+      await writeProjectFile(projectId, file, data);
+      const record = newRecord("image", clip);
+      record.status = "ready";
+      record.file = file;
+      record.mime = "image/png";
+      record.rev = 1;
+      record.provider = rec.provider;
+      project.assets[id] = record;
+      if (!project.design.assets.images.some((i) => i.id === id)) project.design.assets.images.push(clip);
+    } catch (e) {
+      console.warn(`[forge] peel ${id} failed`, e);
+    }
+  }
+}
+
+/**
+ * Redraw one clip. A combined sheet is never sent back to the image model:
+ * its frames are copied aside and only the animations named in the prompt are regenerated.
+ */
+export async function queueClipRedraws(projectId: string, project: Project, rec: AssetRecord, prompt: string): Promise<AssetRecord[]> {
+  const spec = rec.spec as ImageAssetSpec;
+  const sheet = spec.sheet;
+  if (!sheet) return [rec];
+  if (sheet.anims.length <= 1) {
+    if (prompt) spec.prompt = prompt;
+    rec.liked = 0;
+    return [rec];
+  }
+  await peelCombinedSheet(projectId, project, rec);
+  const named = animsMentioned(prompt).filter((n) => sheet.anims.some((a) => a.name === n));
+  if (!named.length || !project.design) return [];
+  const base = characterSpec(project, sheet.of, spec);
+  const out: AssetRecord[] = [];
+  for (const name of named) {
+    const from = sheet.anims.find((a) => a.name === name);
+    if (!from) continue;
+    const id = clipSheetId(sheet.of, name);
+    let clip = project.assets[id];
+    if (!clip) {
+      const clipSpec = clipSpecFor(base, fluidCycles([from])[0]);
+      clipSpec.prompt = prompt;
+      project.design.assets.images.push(clipSpec);
+      clip = newRecord("image", clipSpec);
+      project.assets[id] = clip;
+    } else {
+      (clip.spec as ImageAssetSpec).prompt = prompt;
+    }
+    clip.liked = 0;
+    out.push(clip);
+  }
+  return out;
+}
+
+/** A regenerate id like `hero_sheet_slide` when that clip does not exist yet. */
+export function clipIdParts(id: string): { baseId: string; name: SheetAnimName } | null {
+  const m = /^(.*)_sheet_([a-z]+)$/.exec(id);
+  if (!m) return null;
+  const name = m[2] as SheetAnimName;
+  if (!(SHEET_ANIMS as readonly string[]).includes(name)) return null;
+  return { baseId: m[1], name };
 }
 
 /** Remember which frame list revision `rev` of a sheet was drawn with. */
@@ -80,6 +174,8 @@ const ROLE_FRAMING: Record<ImageRole, string> = {
   texture: "Seamless tileable surface texture, orthographic top-down, flat even lighting, no perspective, no objects, no text, fills the entire image, left edge matches right edge perfectly",
   ui: "Flat game UI icon, centered, isolated, no text, no frame",
   portrait: "Character portrait illustration for a story cutscene, no text",
+  keyart:
+    "Square promotional key art poster, full-bleed splash illustration, the hero large and readable, the game's world behind them, the game title in bold stylized lettering, opaque painted background, not a sprite, not a transparent cutout, no UI buttons, no border, no watermark",
 };
 
 export function imagePrompt(spec: ImageAssetSpec, design: GameDesign, retryNote = "") {
@@ -123,6 +219,28 @@ export type AssetUsage = {
   credits?: number;
 };
 
+const CAST_LOCK = new Set<ImageRole>(["hero"]);
+
+/** Poster first locks the hero; a later poster is locked to the hero that already exists. */
+async function identityReference(projectId: string, spec: ImageAssetSpec): Promise<{ image: Buffer; note: string } | null> {
+  const project = await getProject(projectId);
+  if (!project) return null;
+  const ready = Object.values(project.assets).filter((a) => a.type === "image" && a.status === "ready" && a.file && !(a.spec as ImageAssetSpec).sheet);
+  const pick = (role: ImageRole) => ready.find((a) => (a.spec as ImageAssetSpec).role === role);
+  const source = spec.role === "keyart" ? pick("hero") : CAST_LOCK.has(spec.role) ? pick("keyart") : undefined;
+  if (!source?.file) return null;
+  const png = await sharp(await readProjectFile(projectId, source.file))
+    .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
+    .flatten({ background: "#14151c" })
+    .png()
+    .toBuffer();
+  const note =
+    spec.role === "keyart"
+      ? " IDENTITY LOCK: the reference image is the playable character. Depict that exact character — same species, face, outfit, colors and proportions. Do not redesign them. A new pose, the setting and the title are welcome."
+      : " IDENTITY LOCK: the reference image is this game's key art. Draw that same hero as an isolated full-body sprite — same species, face, outfit, colors and proportions. Discard the poster layout, the title lettering and the scenery. Do not invent a different character.";
+  return { image: png, note };
+}
+
 export async function generateImageAsset(projectId: string, rec: AssetRecord, design: GameDesign, preferred: ImageProvider): Promise<AssetUsage | null> {
   const spec = rec.spec as ImageAssetSpec;
   const provider = availableImageProvider(preferred);
@@ -135,14 +253,22 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
   let spentUsd = 0;
   let spentMs = 0;
   try {
+    const ref = provider === "openai" && (spec.role === "keyart" || CAST_LOCK.has(spec.role)) ? await identityReference(projectId, spec) : null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const raw = await generateImage({
-        prompt: imagePrompt(spec, design, lastErr),
-        aspect: spec.aspect,
-        transparent: spec.transparent,
-        provider,
-        hq: spec.role === "hero" || spec.role === "background" || spec.role === "enemy",
-      });
+      const prompt = imagePrompt(spec, design, lastErr) + (ref ? ref.note : "");
+      const hq = spec.role === "hero" || spec.role === "background" || spec.role === "enemy" || spec.role === "keyart";
+      let raw;
+      if (ref) {
+        try {
+          raw = await editImageOpenAI({ prompt, image: ref.image, aspect: spec.aspect, hq });
+        } catch (e) {
+          if (isSafetyRejection(e)) throw e;
+          console.warn(`[forge] identity reference failed ${rec.id}, text-only fallback`, e);
+          raw = await generateImage({ prompt, aspect: spec.aspect, transparent: spec.transparent, provider, hq });
+        }
+      } else {
+        raw = await generateImage({ prompt, aspect: spec.aspect, transparent: spec.transparent, provider, hq });
+      }
       spentUsd += raw.estimatedUsd;
       spentMs += raw.ms;
       const img = await processImage(raw.data, { role: spec.role, transparent: spec.transparent, needsKeying: raw.needsKeying });
@@ -235,8 +361,10 @@ export async function generateSheetAsset(projectId: string, rec: AssetRecord, de
     await fail(projectId, rec, `El personaje base ${sheet.of} no está listo; genéralo primero.`);
     return null;
   }
-  await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
-  const layout = sheetLayout(sheet.anims);
+  const anims = fluidCycles(sheet.anims);
+  sheet.anims = anims;
+  await patchAsset(projectId, rec.id, { status: "generating", error: undefined, spec: { ...spec, sheet: { ...sheet, anims } } });
+  const layout = sheetLayout(anims);
   const aspect = sheetAspect(layout);
   let spentUsd = 0;
   let spentMs = 0;

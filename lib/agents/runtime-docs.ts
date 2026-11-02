@@ -62,7 +62,7 @@ export default function createGame(forge, Phaser) {
 - Sprites are drawn facing right: use \`setFlipX(true)\` to face left.
 - Animated characters: when the asset list has a \`spritesheet\` whose \`of\` is a character image id, create the sprite with the
   CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
-  — BEFORE fit/body, because it swaps the texture to the \`<id>_sheet\` frames (square cells, feet on the cell bottom). Then fit/body as usual
+  — BEFORE fit/body, because it swaps the texture to that character's clip sheets (\`<id>_sheet_<anim>\`, or the legacy \`<id>_sheet\`). Each animation is its own image; cells are square with feet on the bottom. Then fit/body as usual
   (sheet frames have side margins: use \`forge.phaser.body(sprite, {w:0.42, h:0.88})\`). Every frame call
   \`anim.update({vx, vy, grounded, dashing, sliding, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/slide/dash/attack/hurt.
   Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
@@ -73,7 +73,7 @@ export default function createGame(forge, Phaser) {
   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
   The puppet draws a visual copy that mirrors the sprite's position, flipX, alpha, tint, visibility and depth, so keep controlling the physics sprite as usual.
   Do not scale physics sprites every frame yourself (it resizes the Arcade body); use animate/puppet or tweens on non-physics objects.
-  Never draw a \`*_sheet\` asset as a plain image (it is a grid of frames).
+  Never draw a \`*_sheet\` or \`*_sheet_<anim>\` asset as a plain image (each one is a grid of frames).
 - \`forge.phaser.parallax(scene, imageId, factor, {depth, alpha, tint, y, height, tile})\` → full‑screen parallax layer.
   CRITICAL: only pass \`tile:true\` (or rely on \`forge.assets.image(id).seamless\`) for abstract seamless layers (starfields/clouds).
   Scenic paintings with planets/landmarks are seamless=false — the helper will NOT wrap them (wrapping causes a hard vertical seam).

@@ -108,7 +108,7 @@ export function deliveryGaps(code: string, assets: AssetRecord[]): string | null
   const missing: string[] = [];
   for (const a of assets) {
     if (a.status === "skipped" || a.status === "error") continue;
-    if (a.type === "image" && (a.spec as ImageAssetSpec).sheet) continue;
+    if (a.type === "image" && ((a.spec as ImageAssetSpec).sheet || (a.spec as ImageAssetSpec).role === "keyart")) continue;
     const quoted = [`"${a.id}"`, `'${a.id}'`, `\`${a.id}\``].some((q) => code.includes(q));
     if (!quoted) missing.push(a.id);
   }
@@ -126,7 +126,7 @@ export function deliveryGaps(code: string, assets: AssetRecord[]): string | null
 
 /** Ids and animation states the programmer has to wire, shown in its prompt. */
 export function deliveryBrief(design: GameDesign, assets: AssetRecord[]): string {
-  const ids = assets.filter((a) => !(a.type === "image" && (a.spec as ImageAssetSpec).sheet)).map((a) => a.id);
+  const ids = assets.filter((a) => !(a.type === "image" && ((a.spec as ImageAssetSpec).sheet || (a.spec as ImageAssetSpec).role === "keyart"))).map((a) => a.id);
   const anims = [
     ...new Set(
       assets

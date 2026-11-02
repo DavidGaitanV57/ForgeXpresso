@@ -20,12 +20,45 @@ function withLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function isFileLocked(e: unknown) {
+  const code = (e as NodeJS.ErrnoException)?.code;
+  return code === "EPERM" || code === "EBUSY" || code === "EACCES";
+}
+
+/** Windows denies renaming over a file that a reader (the dev server, an editor, antivirus) still has open. */
+async function replaceFile(tmp: string, file: string) {
+  const attempts = process.platform === "win32" ? 10 : 2;
+  let last: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await fs.rename(tmp, file);
+      return;
+    } catch (e) {
+      last = e;
+      if (!isFileLocked(e)) break;
+    }
+    try {
+      await fs.copyFile(tmp, file);
+      await fs.unlink(tmp).catch(() => {});
+      return;
+    } catch (e) {
+      last = e;
+      if (!isFileLocked(e)) break;
+    }
+    await sleep(40 * (i + 1));
+  }
+  await fs.unlink(tmp).catch(() => {});
+  throw last;
+}
+
 async function writeJsonAtomic(file: string, data: unknown) {
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
   // Explicit UTF-8 without BOM — Windows tools that rewrite project.json with a BOM
   // (or as Windows-1252) corrupt Spanish accents and arrows in the design UI.
   await fs.writeFile(tmp, JSON.stringify(data, null, 2), { encoding: "utf8" });
-  await fs.rename(tmp, file);
+  await replaceFile(tmp, file);
 }
 
 export async function createProject(idea: string, dimension: Dimension, imageProvider: ImageProvider): Promise<Project> {
