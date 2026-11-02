@@ -128,7 +128,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
       model: config.anthropic.codeModel(),
       system: SYSTEM(engine),
       messages,
-      maxTokens: 64000,
+      maxTokens: 128000,
       think: true,
     });
     input.onUsage?.(usage, attempt === 0 ? `code:${input.mode}` : `code:fix${attempt + 1}`);

@@ -36,10 +36,11 @@ function isBadRequest(e: unknown) {
 function packUsage(model: string, msg: Anthropic.Message, ms: number): AnthropicUsage {
   const inputTokens = msg.usage?.input_tokens ?? 0;
   const outputTokens = msg.usage?.output_tokens ?? 0;
+  const cache = { read: msg.usage?.cache_read_input_tokens ?? 0, write: msg.usage?.cache_creation_input_tokens ?? 0 };
   return {
-    inputTokens,
+    inputTokens: inputTokens + cache.read + cache.write,
     outputTokens,
-    estimatedUsd: estimateAnthropicUsd(model, inputTokens, outputTokens),
+    estimatedUsd: estimateAnthropicUsd(model, inputTokens, outputTokens, cache),
     model,
     ms,
   };

@@ -120,6 +120,7 @@ export type AssetUsage = {
   images?: number;
   audioSec?: number;
   models?: number;
+  credits?: number;
 };
 
 export async function generateImageAsset(projectId: string, rec: AssetRecord, design: GameDesign, preferred: ImageProvider): Promise<AssetUsage | null> {
@@ -319,7 +320,7 @@ export async function generateAudioAsset(projectId: string, rec: AssetRecord, de
           ? await eleven.speech(spec.prompt)
           : await eleven.soundEffect(spec.prompt, spec.durationSec, spec.loop);
     await finish(projectId, rec, "mp3", result.data, "audio/mpeg", "ElevenLabs");
-    return { provider: "elevenlabs", label: `audio:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, audioSec: result.audioSec };
+    return { provider: "elevenlabs", label: `audio:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, audioSec: result.audioSec, credits: result.credits };
   } catch (e) {
     await fail(projectId, rec, e);
     return null;

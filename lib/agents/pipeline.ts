@@ -174,6 +174,7 @@ async function generateMany(projectId: string, recs: AssetRecord[], design: Game
         ms: u.ms,
         images: u.images,
         audioSec: u.audioSec,
+        credits: u.credits,
         models: u.models,
       });
     }
@@ -493,6 +494,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
                 ms: u.ms,
                 images: u.images,
                 audioSec: u.audioSec,
+                credits: u.credits,
                 models: u.models,
               });
             }
@@ -630,6 +632,7 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
         ms: u.ms,
         images: u.images,
         audioSec: u.audioSec,
+        credits: u.credits,
         models: u.models,
       });
     }
