@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { emit } from "@/lib/events";
 import { jsonError, loadProject, type Ctx } from "@/lib/http";
+import { withSheetRev } from "@/lib/agents/assets";
 import { BusyError, startAssetRegen } from "@/lib/agents/pipeline";
+import type { ImageAssetSpec } from "@/lib/types";
 import { patchAsset, projectDir, safeJoin, writeProjectFile } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +44,8 @@ export async function POST(req: Request, { params }: P) {
     }
     if (a.file === rel) return NextResponse.json(a);
     const out = await patchAsset(id, assetId, { file: rel, status: "ready", error: undefined });
-    // Client hot-swaps image/audio in the running game; models trigger a reload from the studio.
+    // Client hot-swaps image/audio in the running game; models and spritesheets (frame layout may differ per revision) reload.
+    const isSheet = a.type === "image" && !!(a.spec as ImageAssetSpec).sheet;
     emit(id, {
       type: "job",
       job: {
@@ -50,7 +53,7 @@ export async function POST(req: Request, { params }: P) {
         stages: [{ id: "assets", label: a.name, status: "ok", detail: `r${rev} activa` }],
         startedAt: Date.now(),
         finishedAt: Date.now(),
-        reload: a.type === "model",
+        reload: a.type === "model" || isSheet,
       },
     });
     return NextResponse.json(out);
@@ -103,7 +106,8 @@ export async function PUT(req: Request, { params }: P) {
   const rev = (a.rev || 0) + 1;
   const rel = `assets/${a.id}.r${rev}.${ext}`;
   await writeProjectFile(id, rel, data);
-  const out = await patchAsset(id, assetId, { status: "ready", file: rel, mime, rev, custom: true, provider: "Tú", error: undefined, name: a.name });
+  const spec = a.type === "image" ? withSheetRev(a.spec as ImageAssetSpec, rev) : a.spec;
+  const out = await patchAsset(id, assetId, { status: "ready", file: rel, mime, rev, spec, custom: true, provider: "Tú", error: undefined, name: a.name });
   emit(id, { type: "job", job: { kind: "asset", stages: [{ id: "assets", label: a.name, status: "ok", detail: "Subido" }], startedAt: Date.now(), finishedAt: Date.now(), reload: true } });
   return NextResponse.json(out);
 }

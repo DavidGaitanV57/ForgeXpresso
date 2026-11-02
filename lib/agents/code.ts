@@ -23,6 +23,9 @@ function manifest(assets: AssetRecord[]) {
   return assets.map((a) => {
     if (a.type === "image") {
       const s = a.spec as ImageAssetSpec;
+      if (s.sheet) {
+        return { id: a.id, type: "spritesheet", of: s.sheet.of, animations: s.sheet.anims.map((x) => x.name), usage: s.usage };
+      }
       return { id: a.id, type: "image", role: s.role, name: a.name, aspect: s.aspect, transparent: s.transparent, usage: s.usage };
     }
     if (a.type === "audio") {

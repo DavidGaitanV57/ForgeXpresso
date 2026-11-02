@@ -1,9 +1,12 @@
 import { config } from "../config";
 import { processImage, validateImageQa } from "../imageproc";
-import { availableImageProvider, generateImage } from "../providers/images";
+import { availableImageProvider, editImageOpenAI, generateImage } from "../providers/images";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
-import { patchAsset, writeProjectFile } from "../store";
+import { CHROMA, pickChroma, processSheet, type Chroma } from "../sheetproc";
+import { normalizeSheetAnims, sheetAspect, sheetIdFor, sheetLayout, sheetRows, sheetSpecFor, SHEET_ROLES, type SheetAnimSpec, type SheetLayout } from "../sheets";
+import sharp from "sharp";
+import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec } from "../types";
 import { sanitizeVoicePrompt } from "./voice-prompt";
 
@@ -15,6 +18,37 @@ export function sourceImageIdForModel(modelId: string) {
 export function newRecord(type: AssetRecord["type"], spec: ImageAssetSpec | AudioAssetSpec | ModelAssetSpec): AssetRecord {
   return { id: spec.id, type, name: spec.name, spec, status: "pending", rev: 0, liked: 0, updatedAt: Date.now() };
 }
+
+/** Create (or re-scope) the `${baseId}_sheet` asset for a 2D character. Mutates design + assets. */
+export function ensureSheet(design: GameDesign, assets: Record<string, AssetRecord>, baseId: string, anims: (string | SheetAnimSpec)[]): AssetRecord | null {
+  const base = assets[baseId];
+  if (!base || base.type !== "image") return null;
+  const bs = base.spec as ImageAssetSpec;
+  if (bs.sheet || !SHEET_ROLES.has(bs.role)) return null;
+  const list = normalizeSheetAnims(anims);
+  const id = sheetIdFor(baseId);
+  const existing = assets[id];
+  if (existing) {
+    const spec = existing.spec as ImageAssetSpec;
+    spec.sheet = { of: baseId, anims: list };
+    spec.usage = sheetSpecFor(bs, list).usage;
+    const inDesign = design.assets.images.find((i) => i.id === id);
+    if (inDesign && inDesign !== spec) Object.assign(inDesign, { sheet: spec.sheet, usage: spec.usage });
+    return existing;
+  }
+  const spec = sheetSpecFor(bs, list);
+  design.assets.images.push(spec);
+  assets[id] = newRecord("image", spec);
+  return assets[id];
+}
+
+/** Remember which frame list revision `rev` of a sheet was drawn with. */
+export function withSheetRev(spec: ImageAssetSpec, rev: number): ImageAssetSpec {
+  if (!spec.sheet) return spec;
+  return { ...spec, sheet: { ...spec.sheet, revs: { ...spec.sheet.revs, [rev]: spec.sheet.anims } } };
+}
+
+export const isSheetRecord = (r: AssetRecord) => r.type === "image" && !!(r.spec as ImageAssetSpec).sheet;
 
 export function recordsFromDesign(design: GameDesign): Record<string, AssetRecord> {
   const out: Record<string, AssetRecord> = {};
@@ -131,6 +165,114 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
   }
 }
 
+function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayout; chroma: Chroma; withRef: boolean; extra: string; retry: string }) {
+  const { layout, chroma } = o;
+  const c = CHROMA[chroma];
+  const rows = sheetRows(layout).map((row, r) => {
+    const cells = row.map((x) => `cell ${x.col + 1}) ${x.anim} frame ${x.i + 1}/${x.of}: ${x.pose}`);
+    for (let k = row.length; k < layout.cols; k++) cells.push(`cell ${k + 1}) EMPTY, background only`);
+    return `Row ${r + 1}:\n  ${cells.join("\n  ")}`;
+  });
+  return [
+    `2D game sprite sheet: ${o.withRef ? "the EXACT same character as the reference image (identical proportions, colors, outfit, accessories, line and shading style)" : "one single consistent character"}.`,
+    o.withRef
+      ? "The reference defines ONLY the character's identity, NOT the pose: do not copy its pose; draw every cell in the pose described for it."
+      : "",
+    `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
+    "Exactly one full-body pose per cell, side view, facing RIGHT in every cell, the same character size in every cell, feet on the same invisible baseline near the bottom of each cell, generous empty margin so no pose touches or crosses into a neighbouring cell.",
+    "Each animation reads left to right as consecutive frames: neighbouring frames of a cycle MUST show clearly different leg and arm positions exactly as described (never the same stride repeated).",
+    `FORBIDDEN: grid lines, borders, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, any ${c.label} on the character.`,
+    ...rows,
+    `Character: ${o.subject}.`,
+    `Art style: ${o.design.artStyle}. Palette: ${o.design.palette.join(", ")}.`,
+    o.extra ? `Direction: ${o.extra}.` : "",
+    o.retry ? `QA RETRY — fix: ${o.retry}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Reference for the edit endpoint: the approved character flattened on the chroma color, square-padded. */
+async function sheetReference(base: Buffer, chroma: Chroma) {
+  const [r, g, b] = CHROMA[chroma].rgb;
+  return sharp(base)
+    .ensureAlpha()
+    .trim({ threshold: 1 })
+    .resize(860, 860, { fit: "contain", background: { r, g, b, alpha: 1 } })
+    .extend({ top: 82, bottom: 82, left: 82, right: 82, background: { r, g, b, alpha: 1 } })
+    .flatten({ background: { r, g, b } })
+    .png()
+    .toBuffer();
+}
+
+/**
+ * Animation spritesheet for a 2D character: reference edit from the approved base sprite (OpenAI),
+ * text-only fallback otherwise, then strict grid normalization + per-frame QA.
+ */
+export async function generateSheetAsset(projectId: string, rec: AssetRecord, design: GameDesign, preferred: ImageProvider): Promise<AssetUsage | null> {
+  const spec = rec.spec as ImageAssetSpec;
+  const sheet = spec.sheet!;
+  const provider = availableImageProvider(preferred);
+  if (!provider) {
+    await fail(projectId, rec, "Sin clave de OpenAI ni MiniMax: el personaje usa animación procedural.", "skipped");
+    return null;
+  }
+  const project = await getProject(projectId);
+  const base = project?.assets[sheet.of];
+  const baseSpec = base?.spec as ImageAssetSpec | undefined;
+  if (!base || !baseSpec) {
+    await fail(projectId, rec, `No existe el personaje base ${sheet.of}.`);
+    return null;
+  }
+  if (base.status !== "ready" || !base.file) {
+    await fail(projectId, rec, `El personaje base ${sheet.of} no está listo; genéralo primero.`);
+    return null;
+  }
+  await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
+  const layout = sheetLayout(sheet.anims);
+  const aspect = sheetAspect(layout);
+  let spentUsd = 0;
+  let spentMs = 0;
+  let calls = 0;
+  let lastErr = "";
+  try {
+    const baseBuf = await readProjectFile(projectId, base.file);
+    const chroma = await pickChroma(baseBuf);
+    const ref = provider === "openai" ? await sheetReference(baseBuf, chroma) : null;
+    let best: { data: Buffer; reasons: string[] } | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let raw;
+      const mk = (withRef: boolean) =>
+        sheetPrompt({ subject: baseSpec.prompt, design, layout, chroma, withRef, extra: spec.prompt, retry: lastErr });
+      if (ref) {
+        try {
+          raw = await editImageOpenAI({ prompt: mk(true), image: ref, aspect, hq: true });
+        } catch (e) {
+          console.warn(`[forge] sheet edit failed ${rec.id}, text-only fallback`, e);
+          raw = await generateImage({ prompt: mk(false), aspect, transparent: false, provider, hq: true });
+        }
+      } else {
+        raw = await generateImage({ prompt: mk(false), aspect, transparent: false, provider, hq: true });
+      }
+      calls++;
+      spentUsd += raw.estimatedUsd;
+      spentMs += raw.ms;
+      const out = await processSheet(raw.data, sheet.anims, { chroma });
+      if (!best || out.reasons.length < best.reasons.length) best = { data: out.data, reasons: out.reasons };
+      if (!out.reasons.length) break;
+      lastErr = out.reasons.join("; ");
+      console.warn(`[forge] sheet QA failed ${rec.id} attempt ${attempt + 1}: ${lastErr}`);
+    }
+    const done = await finish(projectId, rec, "png", best!.data, "image/png", provider === "openai" ? "OpenAI" : "MiniMax");
+    if (done) await patchAsset(projectId, rec.id, { spec: withSheetRev(done.spec as ImageAssetSpec, done.rev) });
+    if (best!.reasons.length) await patchAsset(projectId, rec.id, { error: `QA débil: ${best!.reasons.join("; ")}`.slice(0, 300) });
+    return { provider, label: `sheet:${rec.id}`, estimatedUsd: spentUsd, ms: spentMs, images: calls };
+  } catch (e) {
+    await fail(projectId, rec, e);
+    return null;
+  }
+}
+
 export async function generateAudioAsset(projectId: string, rec: AssetRecord, design?: GameDesign): Promise<AssetUsage | null> {
   const spec = rec.spec as AudioAssetSpec;
   if (!config.elevenlabs.key()) {
@@ -214,6 +356,7 @@ export async function animateModelAsset(
 }
 
 export function generateAsset(projectId: string, rec: AssetRecord, design: GameDesign, provider: ImageProvider) {
+  if (rec.type === "image" && (rec.spec as ImageAssetSpec).sheet) return generateSheetAsset(projectId, rec, design, provider);
   if (rec.type === "image") return generateImageAsset(projectId, rec, design, provider);
   if (rec.type === "audio") return generateAudioAsset(projectId, rec, design);
   return generateModelAsset(projectId, rec, design);

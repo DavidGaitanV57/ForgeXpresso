@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: Ctx) {
     base: "/",
     version: v.n,
     gameUrl: `/api/files/${p.id}/${v.file}`,
-    fileUrl: (rel) => `/api/files/${p.id}/${rel}`,
+    fileUrl: (rel, a) => `/api/files/${p.id}/${rel}${a ? `?v=${a.updatedAt}` : ""}`,
     locale,
     design,
   });

@@ -1,3 +1,5 @@
+import type { SheetAnimSpec } from "./sheets";
+
 export type Dimension = "2d" | "2.5d" | "3d";
 export type Engine = "phaser" | "three";
 export type ImageProvider = "openai" | "minimax";
@@ -29,6 +31,8 @@ export interface ImageAssetSpec {
   usage: string;
   /** Must tile on X (left≈right). Only abstract layers; never unique landmarks. */
   seamless?: boolean;
+  /** 2D animation spritesheet derived from the base character image `of`. */
+  sheet?: { of: string; anims: SheetAnimSpec[]; /** Frame list each revision was drawn with (layouts differ across revisions). */ revs?: Record<string, SheetAnimSpec[]> };
 }
 
 export type UiControlType = "toggle" | "slider" | "select";

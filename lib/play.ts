@@ -1,20 +1,31 @@
-import type { AudioAssetSpec, ImageAssetSpec, Project } from "./types";
+import { sheetAnimsFor, sheetLayout, type SheetLayout } from "./sheets";
+import type { AssetRecord, AudioAssetSpec, ImageAssetSpec, Project } from "./types";
 
 export interface PlayManifest {
-  images: { id: string; name: string; role: string; aspect: string; transparent: boolean; seamless: boolean; url: string | null }[];
+  images: {
+    id: string;
+    name: string;
+    role: string;
+    aspect: string;
+    transparent: boolean;
+    seamless: boolean;
+    url: string | null;
+    sheet?: SheetLayout & { of: string };
+  }[];
   audio: { id: string; name: string; kind: string; loop: boolean; url: string | null }[];
   models: { id: string; name: string; url: string | null }[];
 }
 
-export function buildManifest(p: Project, fileUrl: (rel: string) => string): PlayManifest {
+export function buildManifest(p: Project, fileUrl: (rel: string, a?: AssetRecord) => string): PlayManifest {
   const all = Object.values(p.assets);
-  const url = (a: (typeof all)[number]) => (a.status === "ready" && a.file ? fileUrl(a.file) : null);
+  const url = (a: (typeof all)[number]) => (a.status === "ready" && a.file ? fileUrl(a.file, a) : null);
   return {
     images: all
       .filter((a) => a.type === "image")
       .map((a) => {
         const s = a.spec as ImageAssetSpec;
-        return { id: a.id, name: a.name, role: s.role, aspect: s.aspect, transparent: s.transparent, seamless: !!s.seamless, url: url(a) };
+        const sheet = s.sheet ? { of: s.sheet.of, ...sheetLayout(sheetAnimsFor(s.sheet, a.file)) } : undefined;
+        return { id: a.id, name: a.name, role: s.role, aspect: s.aspect, transparent: s.transparent, seamless: !!s.seamless, url: url(a), sheet };
       }),
     audio: all
       .filter((a) => a.type === "audio")
@@ -104,7 +115,7 @@ export function buildPlayHtml(
     base: string;
     gameUrl: string;
     version: number;
-    fileUrl: (rel: string) => string;
+    fileUrl: (rel: string, a?: AssetRecord) => string;
     locale?: "es" | "en" | "fr";
     /** Optional design override (localized genre/tagline/objective for the start menu). */
     design?: NonNullable<Project["design"]>;
