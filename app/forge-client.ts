@@ -1050,6 +1050,54 @@ function openUsagePop() {
 function closeUsagePop() {
   $("#usagePop").hidden = true;
 }
+
+const CHANGELOG_SEEN = "forge.changelogSeen";
+type Changelog = { sha: string; builtAt: string; entries: { sha: string; date: string; title: string; body: string }[] };
+let changelog: Changelog | null = null;
+
+function changelogUnseen() {
+  if (!changelog?.sha) return false;
+  try {
+    return localStorage.getItem(CHANGELOG_SEEN) !== changelog.sha;
+  } catch {
+    return false;
+  }
+}
+function paintChangelogBadge() {
+  for (const id of ["#logBtn", "#logBtnIntro"]) document.querySelector(id)?.classList.toggle("has-new", changelogUnseen());
+}
+async function loadChangelog() {
+  try {
+    changelog = await api<Changelog>("/api/changelog");
+  } catch {
+    changelog = null;
+  }
+  paintChangelogBadge();
+}
+function openChangelog() {
+  const loc = getLocale() === "en" ? "en" : getLocale() === "fr" ? "fr" : "es";
+  const when = changelog?.builtAt ? new Date(changelog.builtAt).toLocaleString(loc, { dateStyle: "medium", timeStyle: "short" }) : "";
+  $("#logDeploy").textContent = changelog ? t("log.built", { when, sha: changelog.sha.slice(0, 7) }) : "";
+  const entries = changelog?.entries || [];
+  $("#logPopBody").innerHTML = entries.length
+    ? `<ul class="log-list">${entries
+        .map((e, i) => {
+          const at = new Date(e.date).toLocaleString(loc, { dateStyle: "medium", timeStyle: "short" });
+          return `<li class="log-item${i === 0 ? " current" : ""}"><span class="when">${esc(at)}${i === 0 ? ` · <em class="log-badge">${esc(t("log.deploy"))}</em>` : ""}</span><b>${esc(e.title)}</b>${e.body ? `<p>${esc(e.body)}</p>` : ""}</li>`;
+        })
+        .join("")}</ul><p class="ur-note">${esc(t("log.note"))}</p>`
+    : `<p class="ur-note">${esc(t("log.empty"))}</p>`;
+  $("#logPop").hidden = false;
+  if (changelog?.sha) {
+    try {
+      localStorage.setItem(CHANGELOG_SEEN, changelog.sha);
+    } catch {}
+    paintChangelogBadge();
+  }
+}
+function closeChangelog() {
+  $("#logPop").hidden = true;
+}
 function syncAssetsCollapse() {
   const sec = $("#stAssets");
   const btn = $<HTMLButtonElement>("#assetsToggle");
@@ -2593,6 +2641,10 @@ export function mount() {
     { capture: true, signal },
   );
 
+  void loadChangelog();
+  for (const id of ["#logBtn", "#logBtnIntro"]) document.querySelector(id)?.addEventListener("click", () => openChangelog(), { signal });
+  $("#logPopX")?.addEventListener("click", () => closeChangelog(), { signal });
+  $("#logPop")?.addEventListener("click", (e) => { if (e.target === $("#logPop")) closeChangelog(); }, { signal });
   $("#usageBtn")?.addEventListener("click", () => openUsagePop(), { signal });
   $("#usagePopX")?.addEventListener("click", () => closeUsagePop(), { signal });
   $("#usagePop")?.addEventListener(

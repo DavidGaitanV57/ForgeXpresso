@@ -19,6 +19,7 @@ export const MARKUP = `
     </div>
     <h1 data-i18n-html="intro.title">¿Qué juego quieres <span>forjar</span> hoy?</h1>
     <p class="sub" data-i18n="intro.sub">Descríbelo con tus palabras. Un equipo de agentes diseña el juego, dibuja el arte, compone la música y escribe el código para que lo juegues en minutos.</p>
+    <button class="btn ghost log-open" id="logBtnIntro" type="button" data-i18n="log.title">Novedades</button>
     <form class="ask" id="askForm" autocomplete="off">
       <div class="agent"><i id="agentDot"></i><span id="agentTxt" data-i18n="intro.agentReady">Director de juego · listo</span></div>
       <textarea id="askIn" rows="3" maxlength="${IDEA_MAX_CHARS}" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
@@ -71,6 +72,7 @@ export const MARKUP = `
       <button type="button" data-locale="en" title="English">EN</button>
       <button type="button" data-locale="fr" title="Français">FR</button>
     </div>
+    <button class="btn ghost log-open" id="logBtn" type="button" data-i18n="log.title">Novedades</button>
     <button class="iconbtn help" id="helpBtn" type="button" data-i18n-title="studio.help" data-i18n-aria="studio.help" title="Ver recorrido" aria-label="Ver recorrido de ayuda">?</button>
     <button class="btn ghost" id="usageBtn" type="button" data-i18n="guide.usage" hidden>Consumo de APIs</button>
     <button class="btn ghost" id="proBtn" type="button" data-i18n="studio.pro">Abrir en Forge Pro</button>
@@ -126,6 +128,15 @@ export const MARKUP = `
       </section>
     </div>
     <aside class="flow asm from-left" id="flow" data-i18n-aria="studio.flow" aria-label="Panel de creación" style="--asd:.45s"></aside>
+  </div>
+</div>
+
+<div class="usage-pop" id="logPop" hidden role="dialog" aria-modal="true" aria-labelledby="logPopTitle">
+  <div class="usage-pop-card log-card">
+    <button class="iconbtn x" id="logPopX" type="button" data-i18n-aria="vp.close" aria-label="Cerrar">×</button>
+    <div class="eyebrow" id="logPopTitle" data-i18n="log.title">Novedades</div>
+    <p class="log-deploy" id="logDeploy"></p>
+    <div id="logPopBody"></div>
   </div>
 </div>
 
