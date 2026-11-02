@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError, loadProject, type Ctx } from "@/lib/http";
+import { CHAT_MAX_CHARS } from "@/lib/limits";
 import { BusyError, startChat } from "@/lib/agents/pipeline";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +11,9 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!p) return jsonError("Proyecto no encontrado", 404);
   if (p.status !== "ready" || !p.design) return jsonError("El juego todavía no está listo.", 409);
   const body = (await req.json().catch(() => ({}))) as { message?: string; playing?: boolean };
-  const message = String(body.message || "").trim().slice(0, 1500);
+  const message = String(body.message || "").trim();
   if (!message) return jsonError("Escribe un cambio.");
+  if (message.length > CHAT_MAX_CHARS) return jsonError(`El mensaje supera el máximo de ${CHAT_MAX_CHARS} caracteres (${message.length}).`);
   try {
     startChat(id, message, !!body.playing);
   } catch (e) {

@@ -102,6 +102,8 @@ html,body{height:100%}
 .dimsw button{border:0;background:transparent;color:var(--muted);font-weight:800;font-size:12px;height:28px;padding:0 12px;border-radius:999px}
 .dimsw button.on{background:var(--surface-3);color:var(--text)}
 .ask-bar .sp{flex:1}
+.ask-count{font-size:12px;opacity:.6;font-variant-numeric:tabular-nums}
+.ask-count.full{color:#ff6b5b;opacity:1}
 .send{width:44px;height:44px;border-radius:50%;border:0;background:var(--forge);color:var(--forge-ink);display:grid;place-items:center;transition:transform .15s,opacity .15s}
 .send:disabled{opacity:.35;cursor:not-allowed}
 .send:not(:disabled):hover{transform:scale(1.06)}

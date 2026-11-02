@@ -3,6 +3,7 @@ import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, Dimension, Forg
 import { formatDuration, formatUsd, PROVIDER_LABEL as API_LABEL } from "@/lib/usage";
 import { applyDomI18n, getLocale, initLocale, setLocale, t, type Locale } from "@/lib/i18n";
 import { sheetAnimsFor, sheetLayout, type SheetAnimSpec } from "@/lib/sheets";
+import { IDEA_MAX_CHARS } from "@/lib/limits";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
 type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null };
@@ -2254,7 +2255,14 @@ export function mount() {
   document.addEventListener("click", onLocaleClick, { capture: true, signal });
   const askIn = $<HTMLTextAreaElement>("#askIn"),
     askSend = $<HTMLButtonElement>("#askSend");
-  askIn.addEventListener("input", () => (askSend.disabled = !askIn.value.trim()), { signal });
+  const askCount = $("#askCount");
+  const syncAsk = () => {
+    askSend.disabled = !askIn.value.trim();
+    const n = askIn.value.length;
+    askCount.textContent = n > IDEA_MAX_CHARS * 0.8 ? `${n}/${IDEA_MAX_CHARS}` : "";
+    askCount.classList.toggle("full", n >= IDEA_MAX_CHARS);
+  };
+  askIn.addEventListener("input", syncAsk, { signal });
   askIn.addEventListener(
     "keydown",
     (e) => {
@@ -2292,7 +2300,7 @@ export function mount() {
       if (!b) return;
       const [idea, d] = ideasList()[Number(b.dataset.i)];
       askIn.value = idea;
-      askSend.disabled = false;
+      syncAsk();
       setIntroDim(d);
       askIn.focus();
     },

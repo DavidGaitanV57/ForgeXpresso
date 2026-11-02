@@ -79,24 +79,63 @@ export async function generateText(o: TextOpts) {
   throw last;
 }
 
-export async function generateJson<T>(o: { model: string; system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }): Promise<{ data: T; usage: AnthropicUsage }> {
-  const base: Anthropic.MessageCreateParamsNonStreaming = {
-    model: o.model,
-    max_tokens: o.maxTokens,
-    system: o.system,
-    messages: [{ role: "user", content: o.prompt }],
-  };
-  try {
-    const { text, usage } = await run({ ...base, output_config: { format: { type: "json_schema", schema: o.schema } } });
-    return { data: JSON.parse(text) as T, usage };
-  } catch (e) {
-    if (!isBadRequest(e) && !(e instanceof SyntaxError)) throw e;
+const JSON_MAX_TOKENS = 32000;
+
+export class TruncatedJsonError extends Error {
+  constructor(maxTokens: number) {
+    super(`La respuesta del modelo se cortó al superar ${maxTokens} tokens de salida; el diseño quedó incompleto.`);
+    this.name = "TruncatedJsonError";
   }
-  const { text, usage } = await run({
-    ...base,
-    system: `${o.system}\n\nResponde SOLO con un objeto JSON válido que cumpla este JSON Schema, sin texto adicional ni bloques de código:\n${JSON.stringify(o.schema)}`,
-  });
-  return { data: JSON.parse(extractJson(text)) as T, usage };
+}
+
+function addUsage(a: AnthropicUsage | null, b: AnthropicUsage): AnthropicUsage {
+  if (!a) return b;
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    estimatedUsd: a.estimatedUsd + b.estimatedUsd,
+    model: b.model,
+    ms: a.ms + b.ms,
+  };
+}
+
+export async function generateJson<T>(o: { model: string; system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }): Promise<{ data: T; usage: AnthropicUsage }> {
+  const budgets = [...new Set([o.maxTokens, Math.min(o.maxTokens * 2, JSON_MAX_TOKENS)])];
+  const fallbackSystem = `${o.system}\n\nResponde SOLO con un objeto JSON válido que cumpla este JSON Schema, sin texto adicional ni bloques de código:\n${JSON.stringify(o.schema)}`;
+  let structured = true;
+  let total: AnthropicUsage | null = null;
+  let last: unknown;
+  for (const maxTokens of budgets) {
+    const base: Anthropic.MessageCreateParamsNonStreaming = {
+      model: o.model,
+      max_tokens: maxTokens,
+      system: structured ? o.system : fallbackSystem,
+      messages: [{ role: "user", content: o.prompt }],
+    };
+    let r: Awaited<ReturnType<typeof run>>;
+    try {
+      r = await run(structured ? { ...base, output_config: { format: { type: "json_schema", schema: o.schema } } } : base);
+    } catch (e) {
+      if (!structured || !isBadRequest(e)) throw e;
+      structured = false;
+      r = await run({ ...base, system: fallbackSystem });
+    }
+    total = addUsage(total, r.usage);
+    // Parsing a cut-off response yields misleading errors like "Expected ',' or ']' after array element".
+    if (r.stop === "max_tokens") {
+      last = new TruncatedJsonError(maxTokens);
+      console.warn(`[generateJson] ${o.model} hit max_tokens=${maxTokens} (${r.text.length} chars)`);
+      continue;
+    }
+    try {
+      return { data: JSON.parse(structured ? r.text : extractJson(r.text)) as T, usage: total };
+    } catch (e) {
+      if (!(e instanceof SyntaxError)) throw e;
+      last = e;
+      structured = false;
+    }
+  }
+  throw last;
 }
 
 function extractJson(text: string) {

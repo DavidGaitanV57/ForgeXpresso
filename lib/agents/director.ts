@@ -153,9 +153,10 @@ ${
 - controls: list of {input, action} with action text in the idea's language.
 - cinematic: style and exactly 3 short lines (<= 70 chars) that set up the story (idea's language).
 - levelOutline: a concrete description of the level(s) layout, pacing and difficulty curve the programmer will implement.
-- mechanics: 3-7 concrete mechanics.`;
+- mechanics: 3-7 concrete mechanics.
+- LENGTH: the whole JSON must stay compact. Image/model/music/sfx prompts <= 60 words each, artStyle <= 90 words, levelOutline <= 150 words, usage notes <= 25 words. If the idea lists many features, merge them into fewer, denser mechanics instead of adding more assets.`;
 
-  const { data: raw, usage } = await generateJson<Raw>({ model: config.anthropic.fastModel(), system, prompt, schema, maxTokens: 9000 });
+  const { data: raw, usage } = await generateJson<Raw>({ model: config.anthropic.fastModel(), system, prompt, schema, maxTokens: 16000 });
   return { design: normalize(raw, dimension, opts.models3d, idea), usage };
 }
 
