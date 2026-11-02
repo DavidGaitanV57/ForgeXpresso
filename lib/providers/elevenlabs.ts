@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { estimateElevenLabsUsd } from "../usage";
+import { elevenLabsUsdPerCredit, estimateElevenLabsUsd } from "../usage";
 import { fetchWithRetry, ProviderError } from "./http";
 
 const BASE = "https://api.elevenlabs.io/v1";
@@ -10,6 +10,8 @@ export interface AudioResult {
   estimatedUsd: number;
   ms: number;
   audioSec: number;
+  /** Credits actually charged, from the account counter; undefined when the key can't read the subscription. */
+  credits?: number;
 }
 
 function headers() {
@@ -18,14 +20,43 @@ function headers() {
   return { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
 }
 
+/** Credits used in the current billing period (needs the key's "User: read" permission). */
+async function creditsUsed(): Promise<number | null> {
+  try {
+    const res = await fetch(`${BASE}/user/subscription`, { headers: { "xi-api-key": config.elevenlabs.key() } });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { character_count?: number };
+    return typeof j.character_count === "number" ? j.character_count : null;
+  } catch {
+    return null;
+  }
+}
+
+// Calls are serialized so the before/after counter delta belongs to exactly one request.
+let meterQueue: Promise<unknown> = Promise.resolve();
+function metered<T>(fn: () => Promise<T>): Promise<{ result: T; credits?: number }> {
+  const run = meterQueue.then(async () => {
+    const before = await creditsUsed();
+    const result = await fn();
+    const after = before == null ? null : await creditsUsed();
+    return { result, credits: before != null && after != null ? Math.max(0, after - before) : undefined };
+  });
+  meterQueue = run.catch(() => undefined);
+  return run;
+}
+
 async function audio(url: string, body: unknown, kind: "music" | "sfx" | "voice", durationSec: number, chars = 0): Promise<AudioResult> {
   const t0 = Date.now();
-  const res = await fetchWithRetry(url, { method: "POST", headers: headers(), body: JSON.stringify(body) }, { provider: "ElevenLabs", timeoutMs: 300_000 });
+  const { result: data, credits } = await metered(async () => {
+    const res = await fetchWithRetry(url, { method: "POST", headers: headers(), body: JSON.stringify(body) }, { provider: "ElevenLabs", timeoutMs: 300_000 });
+    return Buffer.from(await res.arrayBuffer());
+  });
   return {
-    data: Buffer.from(await res.arrayBuffer()),
-    estimatedUsd: estimateElevenLabsUsd(kind, durationSec, chars),
+    data,
+    estimatedUsd: credits != null ? credits * elevenLabsUsdPerCredit() : estimateElevenLabsUsd(kind, durationSec, chars),
     ms: Date.now() - t0,
     audioSec: durationSec,
+    credits,
   };
 }
 

@@ -772,6 +772,7 @@ function usageHTML(report: UsageReport | undefined, opts?: { title?: string; liv
     if (u.inputTokens || u.outputTokens) parts.push(`${(u.inputTokens + u.outputTokens).toLocaleString()} tok (${u.inputTokens.toLocaleString()} in / ${u.outputTokens.toLocaleString()} out)`);
     if (u.images) parts.push(`${u.images} imagen${u.images === 1 ? "" : "es"}`);
     if (u.audioSec) parts.push(`${Math.round(u.audioSec)}s audio`);
+    if (u.credits) parts.push(`${u.credits.toLocaleString()} créditos`);
     if (u.models) parts.push(`${u.models} modelo${u.models === 1 ? "" : "s"}`);
     parts.push(`${u.calls} llamada${u.calls === 1 ? "" : "s"} · ${formatDuration(u.ms)}`);
     return parts.join(" · ");

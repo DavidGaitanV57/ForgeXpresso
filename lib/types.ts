@@ -232,6 +232,8 @@ export interface UsageEvent {
   images?: number;
   audioSec?: number;
   models?: number;
+  /** Subscription credits (ElevenLabs). */
+  credits?: number;
   estimatedUsd?: number;
   ms?: number;
   model?: string;
@@ -246,6 +248,7 @@ export interface ProviderUsage {
   images: number;
   audioSec: number;
   models: number;
+  credits?: number;
   estimatedUsd: number;
   ms: number;
 }

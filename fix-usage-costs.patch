@@ -1,0 +1,305 @@
+From 14ae5ab571128ce643137a0bd5db70c6f6612698 Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Mon, 2 Nov 2026 17:46:15 +0000
+Subject: [PATCH] Fix usage costs: current Anthropic rates per model version,
+ cache tokens, measured ElevenLabs credits
+
+---
+ .env.example                |  6 ++++
+ app/forge-client.ts         |  1 +
+ lib/agents/assets.ts        |  3 +-
+ lib/agents/pipeline.ts      |  3 ++
+ lib/providers/anthropic.ts  |  5 ++--
+ lib/providers/elevenlabs.ts | 39 +++++++++++++++++++++---
+ lib/types.ts                |  3 ++
+ lib/usage.ts                | 59 ++++++++++++++++++++++++++-----------
+ 8 files changed, 95 insertions(+), 24 deletions(-)
+
+diff --git a/.env.example b/.env.example
+index 3d35e2a..8d65294 100644
+--- a/.env.example
++++ b/.env.example
+@@ -7,6 +7,9 @@ ANTHROPIC_API_KEY=
+ ANTHROPIC_MODEL_CODE=claude-opus-5-5
+ # Modelo para el director de juego (documento de diseño) y el chat de cambios.
+ ANTHROPIC_MODEL_FAST=claude-sonnet-5-5
++# Precio por millón de tokens si tienes tarifa propia (opcional; por defecto, tarifa pública del modelo).
++# ANTHROPIC_PRICE_IN=4
++# ANTHROPIC_PRICE_OUT=20
+ 
+ # --- Imágenes ---
+ # Proveedor por defecto: openai | minimax
+@@ -22,6 +25,9 @@ MINIMAX_IMAGE_MODEL=image-01
+ ELEVENLABS_API_KEY=
+ # Voz para la narración de la cinemática (opcional).
+ ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
++# El consumo se mide en créditos leyendo /v1/user/subscription (la clave necesita el permiso "User: read").
++# Opcional: precio de tu plan / créditos del plan para mostrarlo también en USD (ej. 22/100000 = 0.00022).
++# ELEVENLABS_USD_PER_CREDIT=0.00022
+ 
+ # --- Modelos 3D (opcional) ---
+ # Si está vacío, los juegos 3D usan geometría procedural con texturas generadas.
+diff --git a/app/forge-client.ts b/app/forge-client.ts
+index 1f0d1a7..63c5886 100644
+--- a/app/forge-client.ts
++++ b/app/forge-client.ts
+@@ -772,6 +772,7 @@ function usageHTML(report: UsageReport | undefined, opts?: { title?: string; liv
+     if (u.inputTokens || u.outputTokens) parts.push(`${(u.inputTokens + u.outputTokens).toLocaleString()} tok (${u.inputTokens.toLocaleString()} in / ${u.outputTokens.toLocaleString()} out)`);
+     if (u.images) parts.push(`${u.images} imagen${u.images === 1 ? "" : "es"}`);
+     if (u.audioSec) parts.push(`${Math.round(u.audioSec)}s audio`);
++    if (u.credits) parts.push(`${u.credits.toLocaleString()} créditos`);
+     if (u.models) parts.push(`${u.models} modelo${u.models === 1 ? "" : "s"}`);
+     parts.push(`${u.calls} llamada${u.calls === 1 ? "" : "s"} · ${formatDuration(u.ms)}`);
+     return parts.join(" · ");
+diff --git a/lib/agents/assets.ts b/lib/agents/assets.ts
+index 71abdb4..3daef4e 100644
+--- a/lib/agents/assets.ts
++++ b/lib/agents/assets.ts
+@@ -120,6 +120,7 @@ export type AssetUsage = {
+   images?: number;
+   audioSec?: number;
+   models?: number;
++  credits?: number;
+ };
+ 
+ export async function generateImageAsset(projectId: string, rec: AssetRecord, design: GameDesign, preferred: ImageProvider): Promise<AssetUsage | null> {
+@@ -319,7 +320,7 @@ export async function generateAudioAsset(projectId: string, rec: AssetRecord, de
+           ? await eleven.speech(spec.prompt)
+           : await eleven.soundEffect(spec.prompt, spec.durationSec, spec.loop);
+     await finish(projectId, rec, "mp3", result.data, "audio/mpeg", "ElevenLabs");
+-    return { provider: "elevenlabs", label: `audio:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, audioSec: result.audioSec };
++    return { provider: "elevenlabs", label: `audio:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, audioSec: result.audioSec, credits: result.credits };
+   } catch (e) {
+     await fail(projectId, rec, e);
+     return null;
+diff --git a/lib/agents/pipeline.ts b/lib/agents/pipeline.ts
+index 47358d2..f52b88b 100644
+--- a/lib/agents/pipeline.ts
++++ b/lib/agents/pipeline.ts
+@@ -174,6 +174,7 @@ async function generateMany(projectId: string, recs: AssetRecord[], design: Game
+         ms: u.ms,
+         images: u.images,
+         audioSec: u.audioSec,
++        credits: u.credits,
+         models: u.models,
+       });
+     }
+@@ -493,6 +494,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
+                 ms: u.ms,
+                 images: u.images,
+                 audioSec: u.audioSec,
++                credits: u.credits,
+                 models: u.models,
+               });
+             }
+@@ -630,6 +632,7 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
+         ms: u.ms,
+         images: u.images,
+         audioSec: u.audioSec,
++        credits: u.credits,
+         models: u.models,
+       });
+     }
+diff --git a/lib/providers/anthropic.ts b/lib/providers/anthropic.ts
+index a17aee4..f8b5f5a 100644
+--- a/lib/providers/anthropic.ts
++++ b/lib/providers/anthropic.ts
+@@ -36,10 +36,11 @@ function isBadRequest(e: unknown) {
+ function packUsage(model: string, msg: Anthropic.Message, ms: number): AnthropicUsage {
+   const inputTokens = msg.usage?.input_tokens ?? 0;
+   const outputTokens = msg.usage?.output_tokens ?? 0;
++  const cache = { read: msg.usage?.cache_read_input_tokens ?? 0, write: msg.usage?.cache_creation_input_tokens ?? 0 };
+   return {
+-    inputTokens,
++    inputTokens: inputTokens + cache.read + cache.write,
+     outputTokens,
+-    estimatedUsd: estimateAnthropicUsd(model, inputTokens, outputTokens),
++    estimatedUsd: estimateAnthropicUsd(model, inputTokens, outputTokens, cache),
+     model,
+     ms,
+   };
+diff --git a/lib/providers/elevenlabs.ts b/lib/providers/elevenlabs.ts
+index 962106a..aea74cd 100644
+--- a/lib/providers/elevenlabs.ts
++++ b/lib/providers/elevenlabs.ts
+@@ -1,5 +1,5 @@
+ import { config } from "../config";
+-import { estimateElevenLabsUsd } from "../usage";
++import { elevenLabsUsdPerCredit, estimateElevenLabsUsd } from "../usage";
+ import { fetchWithRetry, ProviderError } from "./http";
+ 
+ const BASE = "https://api.elevenlabs.io/v1";
+@@ -10,6 +10,8 @@ export interface AudioResult {
+   estimatedUsd: number;
+   ms: number;
+   audioSec: number;
++  /** Credits actually charged, from the account counter; undefined when the key can't read the subscription. */
++  credits?: number;
+ }
+ 
+ function headers() {
+@@ -18,14 +20,43 @@ function headers() {
+   return { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" };
+ }
+ 
++/** Credits used in the current billing period (needs the key's "User: read" permission). */
++async function creditsUsed(): Promise<number | null> {
++  try {
++    const res = await fetch(`${BASE}/user/subscription`, { headers: { "xi-api-key": config.elevenlabs.key() } });
++    if (!res.ok) return null;
++    const j = (await res.json()) as { character_count?: number };
++    return typeof j.character_count === "number" ? j.character_count : null;
++  } catch {
++    return null;
++  }
++}
++
++// Calls are serialized so the before/after counter delta belongs to exactly one request.
++let meterQueue: Promise<unknown> = Promise.resolve();
++function metered<T>(fn: () => Promise<T>): Promise<{ result: T; credits?: number }> {
++  const run = meterQueue.then(async () => {
++    const before = await creditsUsed();
++    const result = await fn();
++    const after = before == null ? null : await creditsUsed();
++    return { result, credits: before != null && after != null ? Math.max(0, after - before) : undefined };
++  });
++  meterQueue = run.catch(() => undefined);
++  return run;
++}
++
+ async function audio(url: string, body: unknown, kind: "music" | "sfx" | "voice", durationSec: number, chars = 0): Promise<AudioResult> {
+   const t0 = Date.now();
+-  const res = await fetchWithRetry(url, { method: "POST", headers: headers(), body: JSON.stringify(body) }, { provider: "ElevenLabs", timeoutMs: 300_000 });
++  const { result: data, credits } = await metered(async () => {
++    const res = await fetchWithRetry(url, { method: "POST", headers: headers(), body: JSON.stringify(body) }, { provider: "ElevenLabs", timeoutMs: 300_000 });
++    return Buffer.from(await res.arrayBuffer());
++  });
+   return {
+-    data: Buffer.from(await res.arrayBuffer()),
+-    estimatedUsd: estimateElevenLabsUsd(kind, durationSec, chars),
++    data,
++    estimatedUsd: credits != null ? credits * elevenLabsUsdPerCredit() : estimateElevenLabsUsd(kind, durationSec, chars),
+     ms: Date.now() - t0,
+     audioSec: durationSec,
++    credits,
+   };
+ }
+ 
+diff --git a/lib/types.ts b/lib/types.ts
+index 65570ca..1d41578 100644
+--- a/lib/types.ts
++++ b/lib/types.ts
+@@ -232,6 +232,8 @@ export interface UsageEvent {
+   images?: number;
+   audioSec?: number;
+   models?: number;
++  /** Subscription credits (ElevenLabs). */
++  credits?: number;
+   estimatedUsd?: number;
+   ms?: number;
+   model?: string;
+@@ -246,6 +248,7 @@ export interface ProviderUsage {
+   images: number;
+   audioSec: number;
+   models: number;
++  credits?: number;
+   estimatedUsd: number;
+   ms: number;
+ }
+diff --git a/lib/usage.ts b/lib/usage.ts
+index fc5ebd8..caa3301 100644
+--- a/lib/usage.ts
++++ b/lib/usage.ts
+@@ -1,25 +1,39 @@
+ import type { ApiProvider, UsageEvent, UsageReport, UsageTotals } from "./types";
+ 
+-/** Approximate list prices (USD). Marked as estimates in the UI. */
+-const ANTHROPIC_RATE: Record<string, { in: number; out: number }> = {
+-  // $ / 1M tokens
+-  opus: { in: 15, out: 75 },
+-  sonnet: { in: 3, out: 15 },
+-  haiku: { in: 1, out: 5 },
+-  default: { in: 5, out: 25 },
+-};
++type AnthropicRate = { in: number; out: number; cacheRead: number };
++
++/**
++ * Anthropic list prices, $ / 1M tokens (docs.claude.com/en/docs/about-claude/pricing), first match wins.
++ * Override with ANTHROPIC_PRICE_IN / ANTHROPIC_PRICE_OUT for custom contracts.
++ */
++const ANTHROPIC_RATES: [RegExp, AnthropicRate][] = [
++  [/opus-5-5/, { in: 4, out: 20, cacheRead: 0.2 }],
++  [/opus-(5|4-[5-9])/, { in: 5, out: 25, cacheRead: 0.5 }],
++  [/opus/, { in: 15, out: 75, cacheRead: 1.5 }],
++  [/sonnet-5/, { in: 2, out: 10, cacheRead: 0.1 }],
++  [/sonnet/, { in: 3, out: 15, cacheRead: 0.3 }],
++  [/haiku-5-5/, { in: 0.1, out: 0.5, cacheRead: 0.01 }],
++  [/haiku/, { in: 1, out: 5, cacheRead: 0.1 }],
++];
++const ANTHROPIC_DEFAULT: AnthropicRate = { in: 4, out: 20, cacheRead: 0.2 };
+ 
+-function anthropicRate(model: string) {
++function anthropicRate(model: string, inputTokens: number): AnthropicRate {
+   const m = model.toLowerCase();
+-  if (m.includes("opus")) return ANTHROPIC_RATE.opus;
+-  if (m.includes("sonnet")) return ANTHROPIC_RATE.sonnet;
+-  if (m.includes("haiku")) return ANTHROPIC_RATE.haiku;
+-  return ANTHROPIC_RATE.default;
++  let rate = ANTHROPIC_RATES.find(([re]) => re.test(m))?.[1] ?? ANTHROPIC_DEFAULT;
++  if (/haiku-5-5/.test(m) && inputTokens > 100_000) rate = { in: 0.5, out: 2.5, cacheRead: 0.05 };
++  const envIn = Number(process.env.ANTHROPIC_PRICE_IN);
++  const envOut = Number(process.env.ANTHROPIC_PRICE_OUT);
++  return {
++    in: envIn > 0 ? envIn : rate.in,
++    out: envOut > 0 ? envOut : rate.out,
++    cacheRead: envIn > 0 ? envIn * 0.1 : rate.cacheRead,
++  };
+ }
+ 
+-export function estimateAnthropicUsd(model: string, inputTokens: number, outputTokens: number) {
+-  const r = anthropicRate(model);
+-  return (inputTokens * r.in + outputTokens * r.out) / 1_000_000;
++/** Thinking tokens are already included in outputTokens by the API. */
++export function estimateAnthropicUsd(model: string, inputTokens: number, outputTokens: number, cache: { read?: number; write?: number } = {}) {
++  const r = anthropicRate(model, inputTokens + (cache.read ?? 0) + (cache.write ?? 0));
++  return (inputTokens * r.in + (cache.write ?? 0) * r.in * 1.25 + (cache.read ?? 0) * r.cacheRead + outputTokens * r.out) / 1_000_000;
+ }
+ 
+ /** gpt-image-2.5-sunburst approximate output-only list price at 1024²; landscape ×1.5. */
+@@ -33,7 +47,16 @@ export function estimateMiniMaxImageUsd() {
+   return 0.02;
+ }
+ 
+-/** Rough ElevenLabs list estimates. */
++/**
++ * ElevenLabs bills subscription credits, so by default a measured call costs $0 extra and the UI shows credits.
++ * Set ELEVENLABS_USD_PER_CREDIT (plan price / plan credits, e.g. 22/100000) to prorate them into dollars.
++ */
++export function elevenLabsUsdPerCredit() {
++  const v = Number(process.env.ELEVENLABS_USD_PER_CREDIT);
++  return v > 0 ? v : 0;
++}
++
++/** Rough ElevenLabs list estimates, used only when the account's credit counter can't be read. */
+ export function estimateElevenLabsUsd(kind: "music" | "sfx" | "voice", durationSec: number, chars = 0) {
+   if (kind === "voice") return Math.max(0.01, (chars || 80) * 0.00018);
+   if (kind === "music") return Math.max(0.15, (durationSec || 60) * 0.008);
+@@ -65,6 +88,7 @@ export function addUsageEvent(report: UsageReport, ev: Omit<UsageEvent, "at"> &
+     estimatedUsd: 0,
+     ms: 0,
+   };
++  const credits = (prev.credits ?? 0) + (ev.credits ?? 0);
+   const next = {
+     ...prev,
+     calls: prev.calls + (ev.calls ?? 1),
+@@ -75,6 +99,7 @@ export function addUsageEvent(report: UsageReport, ev: Omit<UsageEvent, "at"> &
+     models: prev.models + (ev.models ?? 0),
+     estimatedUsd: prev.estimatedUsd + (ev.estimatedUsd ?? 0),
+     ms: prev.ms + (ev.ms ?? 0),
++    ...(credits ? { credits } : {}),
+   };
+   const byProvider = { ...report.byProvider, [ev.provider]: next };
+   const totals = emptyTotals();
+-- 
+2.43.0
+
