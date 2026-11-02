@@ -10,11 +10,23 @@ body.debug-apis .keys-status{display:flex}
 .keys-status span.ok i{background:var(--emerald);box-shadow:0 0 6px var(--emerald)}
 .keys-status span.req:not(.ok){color:var(--rose);border-color:rgba(244,63,94,.4)}
 .keys-status span.req:not(.ok) i{background:var(--rose)}
-.projects{width:100%;display:flex;flex-direction:column;gap:8px;text-align:left}
-.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-.pj{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;text-align:left;transition:border-color .2s,transform .2s;animation:fadeUp .4s ease both;animation-delay:calc(var(--j,0) * 40ms)}
+.projects{width:100%;min-width:0;display:flex;flex-direction:column;gap:8px;text-align:left}
+.proj-grid{display:flex;gap:8px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:6px 2px 2px;scroll-behavior:auto}
+.proj-grid::-webkit-scrollbar{display:none}
+.proj-grid.is-drag,.proj-grid.is-drag .pj{cursor:grabbing;user-select:none}
+.pj{position:relative;flex:0 0 168px;width:168px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer;transition:border-color .2s,transform .2s;animation:fadeUp .4s ease both;animation-delay:calc(var(--j,0) * 40ms)}
 .pj:hover{border-color:var(--line-2);transform:translateY(-2px)}
-.pj .th{aspect-ratio:16/9;border-radius:8px;background:var(--bg) center/cover no-repeat;display:grid;place-items:center;color:var(--dim);font-weight:800;font-size:11px}
+.pj .th{aspect-ratio:16/9;border-radius:8px;background:var(--bg) center/cover no-repeat;display:grid;place-items:center;color:var(--dim);font-weight:800;font-size:11px;position:relative}
+.pj .zoom-ico{position:absolute;right:8px;bottom:8px;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(10,11,16,.72);color:#fff;display:grid;place-items:center;cursor:zoom-in;opacity:0;transition:opacity .15s}
+.pj:hover .zoom-ico,.pj .zoom-ico:focus-visible{opacity:1}
+.pj .zoom-ico svg{width:13px;height:13px}
+.zoom{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(4,5,8,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:24px}
+.zoom[hidden]{display:none}
+.zoom-back{position:absolute;inset:0;border:0;background:transparent;cursor:zoom-out}
+.zoom-card{position:relative;z-index:1;margin:0;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:min(960px,100%)}
+.zoom-card img{max-width:min(960px,92vw);max-height:min(78vh,960px);object-fit:contain;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.65);background:#0b0c12}
+.zoom-card figcaption{color:#fff;font-size:14px;font-weight:700;text-align:center}
+.zoom-x{position:absolute;top:16px;right:16px;z-index:2}
 .pj b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pj small{font-size:10.5px;color:var(--dim)}
 .pj .del{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(10,11,16,.7);color:var(--muted);display:none;place-items:center;font-size:13px;line-height:1}
@@ -115,7 +127,8 @@ body.is-playing #studioLang{visibility:visible;pointer-events:auto;position:fixe
 .log-item p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
 .log-badge{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff9a4a}
 .btn.log-open.has-new{box-shadow:inset 0 0 0 1px rgba(255,122,26,.7)}
-.intro .log-open{display:block;width:fit-content;margin:-8px auto 14px}
+.log-corner{display:none;position:fixed;z-index:54;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));background:rgba(18,20,28,.92);border-color:rgba(255,255,255,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+body[data-screen="intro"] .log-corner{display:inline-flex}
 .st-assets.collapsed .assets{display:none}
 .st-assets .st-sec{cursor:pointer;user-select:none}
 .st-assets .st-sec .chev-col{margin-left:auto;width:16px;height:16px;opacity:.7;transition:transform .2s}

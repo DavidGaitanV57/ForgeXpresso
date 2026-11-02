@@ -1,6 +1,6 @@
 import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
-import { normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES, sheetSpecFor } from "../sheets";
+import { clipSpecFor, normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES } from "../sheets";
 import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
 import { mergeAnims, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
@@ -11,7 +11,7 @@ const bool = { type: "boolean" };
 const obj = (properties: Record<string, unknown>) => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
 const arr = (items: unknown) => ({ type: "array", items });
 
-const ROLES: ImageRole[] = ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait"];
+const ROLES: ImageRole[] = ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait", "keyart"];
 const ASPECTS: Aspect[] = ["1:1", "16:9", "9:16", "3:2", "2:3"];
 
 const schema = obj({
@@ -121,14 +121,15 @@ Rules:
             : "2-4 seamless textures (role texture, 1:1) and 1 background (16:9, seamless=false)"
         }`
   }.
-  transparent=true for sprites/characters/objects/ui; false for background, texture, portrait.
+  transparent=true for sprites/characters/objects/ui; false for background, texture, portrait, keyart.
+  Exactly one keyart image: aspect 1:1, transparent false, seamless false. A square promotional poster with the hero large, the setting behind and the game title in bold stylized lettering. It is the library cover only — never a sprite and never drawn inside the gameplay. It is generated before the other pictures and is the identity reference: the hero image must describe that exact same character (same species, face, outfit and colors), not a redesign.
   Sprites MUST be isolated subjects: prompt the subject only — no scenery, no nebula plate, no ground, no frame. The image QA rejects baked backgrounds.
   CUTOUT HARD RULE for roles prop, collectible, hazard, goal (and platform when used as a floating piece): transparent=true ALWAYS. Prompt ONLY the object — forbidden: painted white/colored rectangle plate, scenery backdrop, room wall, ground shadow plate, vignette frame. These are alpha-cutout sprites composited into the scene; a baked background makes them look like stickers.
   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
   Match the camera: "side view facing right" for side games, "three-quarter front view" for top-down, "seen from behind, back to the camera" for a runner viewed from the rear.
   animations: ${
     dimension === "2d"
-      ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. The pipeline adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
+      ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. Keep the list to at most 6 names. The pipeline draws each name as its OWN spritesheet (run and walk with 6 frames, every other animation with 2) and adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
       : "always []."
   }
 - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
@@ -263,7 +264,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
   const images = (r.images || []).slice(0, 12).map((a): ImageAssetSpec => {
     const role = a.role;
     const forceCutout = ["prop", "collectible", "hazard", "goal", "platform"].includes(role);
-    const transparent = ["background", "texture", "portrait"].includes(role)
+    const transparent = ["background", "texture", "portrait", "keyart"].includes(role)
       ? false
       : forceCutout || cutoutRoles.has(role)
         ? true
@@ -275,7 +276,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       const scenic = /planet|ship|station|castle|landmark|city|boss|dread|hive|character|hero/i.test(a.prompt + " " + a.name);
       seamless = scenic ? false : a.seamless === true;
     }
-    if (["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "ui", "portrait", "platform"].includes(role)) seamless = false;
+    if (["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "ui", "portrait", "platform", "keyart"].includes(role)) seamless = false;
     let prompt = String(a.prompt || "");
     if (forceCutout && !/isolated cutout|no background|transparent background|chroma/i.test(prompt)) {
       prompt = `Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: ${prompt}`;
@@ -290,7 +291,22 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       seamless,
     };
   });
-  if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
+  if (!images.some((i) => i.role === "hero")) {
+    const standIn = images.find((i) => i.role !== "keyart");
+    if (standIn) standIn.role = "hero";
+  }
+  if (!images.some((i) => i.role === "keyart")) {
+    images.push({
+      id: slug("keyart", used),
+      name: "Portada",
+      role: "keyart",
+      prompt: `Square promotional key art poster, the character reference for every later sprite of the game "${r.title || "the game"}". The playable hero stays this exact character: ${[r.hero?.name, r.hero?.description].filter(Boolean).join(" — ") || "the hero"}. ${r.setting || "the game's world"} behind them, the title "${r.title || ""}" in bold stylized lettering. Do not invent a second protagonist. Polished splash illustration, full color, not a sprite, not a transparent cutout, no interface.`,
+      transparent: false,
+      aspect: "1:1",
+      usage: "Portada de la biblioteca de juegos. No es un sprite jugable.",
+      seamless: false,
+    });
+  }
   if (dimension === "2d") {
     for (const s of SCENERY) {
       if (!s.test.test(brief) || sceneryCovered(images, s) || images.length >= 16) continue;
@@ -312,9 +328,12 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       .sort((a, b) => Number(b.img.role === "hero") - Number(a.img.role === "hero"))
       .slice(0, 3);
     for (const { img, anims } of wants) {
-      const spec = sheetSpecFor(img, img.role === "hero" ? mergeAnims(brief, anims) : normalizeSheetAnims(anims));
-      used.add(spec.id);
-      images.push(spec);
+      const list = img.role === "hero" ? mergeAnims(brief, anims) : normalizeSheetAnims(anims);
+      for (const anim of list) {
+        const spec = clipSpecFor(img, anim);
+        used.add(spec.id);
+        images.push(spec);
+      }
     }
   }
   // Guarantee at least one seamless wrap layer for 2D side/scroll games when any background exists.

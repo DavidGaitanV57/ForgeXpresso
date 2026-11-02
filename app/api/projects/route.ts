@@ -12,7 +12,11 @@ export async function GET() {
   const list = await listProjects();
   return NextResponse.json(
     list.map((p) => {
-      const hero = Object.values(p.assets).find((a) => a.type === "image" && (a.spec as { role?: string; sheet?: unknown }).role === "hero" && !(a.spec as { sheet?: unknown }).sheet && a.status === "ready");
+      const specOf = (a: (typeof p.assets)[string]) => a.spec as { role?: string; sheet?: unknown };
+      const ready = Object.values(p.assets).filter((a) => a.type === "image" && a.status === "ready" && a.file && !specOf(a).sheet);
+      const keyart = ready.find((a) => specOf(a).role === "keyart");
+      const hero = ready.find((a) => specOf(a).role === "hero");
+      const cover = keyart || hero;
       return {
         id: p.id,
         title: p.design?.title || p.idea.slice(0, 40),
@@ -20,7 +24,8 @@ export async function GET() {
         dimension: p.dimension,
         status: p.status,
         updatedAt: p.updatedAt,
-        thumb: hero?.file ? `/api/files/${p.id}/${hero.file}` : null,
+        thumb: cover?.file ? `/api/files/${p.id}/${cover.file}` : null,
+        thumbFit: keyart ? "cover" : "contain",
       };
     }),
   );

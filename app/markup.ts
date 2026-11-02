@@ -11,6 +11,7 @@ export const MARKUP = `
   <button type="button" data-locale="en" title="English">EN</button>
   <button type="button" data-locale="fr" title="Français">FR</button>
 </div>
+<button class="btn ghost log-open log-corner" id="logBtnCorner" type="button" data-i18n="log.title">Novedades</button>
 <section class="intro" id="intro">
   <div class="intro-in" id="introIn">
     <div class="intro-mascot" id="introMascot" aria-hidden="true">
@@ -19,7 +20,6 @@ export const MARKUP = `
     </div>
     <h1 data-i18n-html="intro.title">¿Qué juego quieres <span>forjar</span> hoy?</h1>
     <p class="sub" data-i18n="intro.sub">Descríbelo con tus palabras. Un equipo de agentes diseña el juego, dibuja el arte, compone la música y escribe el código para que lo juegues en minutos.</p>
-    <button class="btn ghost log-open" id="logBtnIntro" type="button" data-i18n="log.title">Novedades</button>
     <form class="ask" id="askForm" autocomplete="off">
       <div class="agent"><i id="agentDot"></i><span id="agentTxt" data-i18n="intro.agentReady">Director de juego · listo</span></div>
       <textarea id="askIn" rows="3" maxlength="${IDEA_MAX_CHARS}" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
@@ -72,7 +72,6 @@ export const MARKUP = `
       <button type="button" data-locale="en" title="English">EN</button>
       <button type="button" data-locale="fr" title="Français">FR</button>
     </div>
-    <button class="btn ghost log-open" id="logBtn" type="button" data-i18n="log.title">Novedades</button>
     <button class="iconbtn help" id="helpBtn" type="button" data-i18n-title="studio.help" data-i18n-aria="studio.help" title="Ver recorrido" aria-label="Ver recorrido de ayuda">?</button>
     <button class="btn ghost" id="usageBtn" type="button" data-i18n="guide.usage" hidden>Consumo de APIs</button>
     <button class="btn ghost" id="proBtn" type="button" data-i18n="studio.pro">Abrir en Forge Pro</button>
@@ -241,6 +240,15 @@ export const MARKUP = `
     <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="${CHAT_MAX_CHARS}" data-i18n-placeholder="chat.ph" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
   </section>
   <button class="chat-fab" id="chatFab" type="button" data-i18n-aria="chat.open" aria-label="Abrir chat con Forge" aria-expanded="false"><span class="mascot" aria-hidden="true"></span><i class="dot" id="chatDot" hidden></i></button>
+</div>
+
+<div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-labelledby="zoomTitle">
+  <button type="button" class="zoom-back" id="zoomBack" data-i18n-aria="intro.closeCover" aria-label="Cerrar portada"></button>
+  <figure class="zoom-card">
+    <img id="zoomImg" alt="">
+    <figcaption id="zoomTitle"></figcaption>
+  </figure>
+  <button type="button" class="iconbtn zoom-x" id="zoomX" data-i18n-aria="intro.closeCover" aria-label="Cerrar portada">${ICX}</button>
 </div>
 
 <div class="av" id="av" hidden role="dialog" aria-modal="true" aria-labelledby="avName">

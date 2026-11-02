@@ -1,7 +1,13 @@
 {
-  "sha": "040c6a75dc65884acfa1d004c55fafe15e12634f",
-  "builtAt": "2026-11-02T19:16:23.928Z",
+  "sha": "a26d3fcf73bb844a04010792e69d15add997a32e",
+  "builtAt": "2026-11-02T21:39:48.142Z",
   "entries": [
+    {
+      "sha": "a26d3fcf73bb844a04010792e69d15add997a32e",
+      "date": "2026-11-02T14:18:47-05:00",
+      "title": "Show a What's new window rebuilt on every deploy",
+      "body": ""
+    },
     {
       "sha": "040c6a75dc65884acfa1d004c55fafe15e12634f",
       "date": "2026-11-02T13:39:07-05:00",

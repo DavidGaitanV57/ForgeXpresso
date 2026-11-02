@@ -9,7 +9,7 @@ export interface ProcessedImage {
   height: number;
 }
 
-const OPAQUE_ROLES: ImageRole[] = ["background", "texture", "portrait"];
+const OPAQUE_ROLES: ImageRole[] = ["background", "texture", "portrait", "keyart"];
 
 export async function processImage(input: Buffer, o: { role: ImageRole; transparent: boolean; needsKeying: boolean }): Promise<ProcessedImage> {
   const opaque = !o.transparent || OPAQUE_ROLES.includes(o.role);
@@ -354,7 +354,7 @@ export async function validateImageQa(
   // Isolation QA for subject sprites. Collectibles/UI often have soft glow halos —
   // only enforce transparentRatio + rectangular plate (borderOpaque) there.
   const subjectRoles = new Set(["hero", "enemy", "npc", "prop", "goal", "platform", "hazard"]);
-  if (o.transparent && !["background", "texture", "portrait"].includes(o.role)) {
+  if (o.transparent && !["background", "texture", "portrait", "keyart"].includes(o.role)) {
     const s = await sceneryContamination(buf);
     transparentRatio = s.transparentRatio;
     sceneryEdge = s.sceneryEdge;

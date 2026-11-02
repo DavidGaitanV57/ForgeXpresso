@@ -327,3 +327,30 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
 
   return { data, layout, frames, irregular, reasons };
 }
+
+/** Copy one animation's cells out of a normalized combined sheet into that clip's own grid. */
+export async function repackClip(png: Buffer, source: SheetAnimSpec[], anim: SheetAnimSpec): Promise<Buffer | null> {
+  const src = sheetLayout(source);
+  const dest = sheetLayout([anim]);
+  const cell = src.cell;
+  const meta = await sharp(png).metadata();
+  if (!meta.width || !meta.height || meta.width < src.cols * cell || meta.height < src.rows * cell) return null;
+  const from = src.anims.find((a) => a.name === anim.name);
+  if (!from || from.frames < anim.frames) return null;
+  const comps: OverlayOptions[] = [];
+  for (let i = 0; i < anim.frames; i++) {
+    const at = from.start + i;
+    const input = await sharp(png)
+      .extract({ left: (at % src.cols) * cell, top: Math.floor(at / src.cols) * cell, width: cell, height: cell })
+      .png()
+      .toBuffer();
+    const to = i;
+    comps.push({ input, left: (to % dest.cols) * cell, top: Math.floor(to / dest.cols) * cell });
+  }
+  return sharp({
+    create: { width: dest.cols * cell, height: dest.rows * cell, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(comps)
+    .png()
+    .toBuffer();
+}

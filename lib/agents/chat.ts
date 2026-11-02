@@ -33,7 +33,7 @@ const schema = obj({
     obj({
       id: str,
       name: str,
-      role: { type: "string", enum: ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait"] },
+      role: { type: "string", enum: ["hero", "enemy", "npc", "collectible", "hazard", "prop", "platform", "tile", "goal", "background", "texture", "ui", "portrait", "keyart"] },
       prompt: str,
       transparent: bool,
       aspect: { type: "string", enum: ["1:1", "16:9", "9:16", "3:2", "2:3"] },
@@ -52,11 +52,11 @@ export async function planChange(o: { design: GameDesign; assets: AssetRecord[];
 You receive a change request and decide the cheapest set of actions that fulfils it:
 1. "tuning": if the request is just about a number that already exists in the tuning list (speed, jump, gravity, difficulty…), set new values (respect min/max; you may widen nothing). This applies instantly without reloading.
 2. "regenerate": redraw/re-record existing assets. Images (décor/UI only in mesh games): English subject prompt or "". Music/sfx: English sound description. Voice: spoken script only. For 3D mesh entities regenerate the *_3d model id with an English mesh prompt — Tripo uses text→3D (no paired 2D image). Legacy projects may still have character images; prefer regenerating *_3d when changing look of mesh characters.
-3. "newImages"/"newAudio": décor/UI images and audio only when needed. Do NOT add hero/enemy/npc (or full-3D touchables) as newImages in 3D / mesh-character 2.5D games — add/regenerate *_3d models instead (English solid-mesh prompt). ids snake_case.
+3. "newImages"/"newAudio": décor/UI images and audio only when needed. Do NOT add hero/enemy/npc (or full-3D touchables) as newImages in 3D / mesh-character 2.5D games — add/regenerate *_3d models instead (English solid-mesh prompt). ids snake_case. When the user asks for a cover, logo, splash, poster or portada, add ONE newImages entry role "keyart", aspect "1:1", transparent false (square poster: hero, setting, bold title lettering). Do not mention that id in "code"; it is the library card, not a sprite.
 4. "code": precise instructions for the programmer (in English) when gameplay/logic/visual code must change. When adding 3D characters use forge.three.character(logicalId, height) so *_3d GLBs load (or primitives if no Tripo) — never forge.three.sprite for those roles. If the user asks for a cinematic / onCinematic, say so in "code".
 ${
     o.design.dimension === "2d"
-      ? `4b. "animate": 2D frame animations (spritesheets) for existing hero/enemy/npc image ids (never *_sheet ids): list every animation the character should have from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (max 6; "slide" = crouch/duck-under, "dash" = forward burst). Use it when the user asks to animate a character or adds a move (slide, dash, attack…) that needs frames; an existing sheet is redrawn with the new list. To redraw only the frames with a different direction, "regenerate" the *_sheet id with an English direction prompt. The runtime wiring is added to "code" automatically.\n`
+      ? `4b. "animate": 2D frame animations for existing hero/enemy/npc image ids. Each animation is its OWN image, id \`<characterId>_sheet_<name>\` (example: hero_sheet_run, hero_sheet_slide). Names from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (max 6; "slide" = crouch/duck-under, "dash" = forward burst). Use "animate" ONLY to add names that are not in the asset list yet. When the user asks to recreate, redraw, or improve ONE animation, "regenerate" ONLY that clip id (English direction, or "" to keep the look) and leave "code" empty. NEVER regenerate a combined \`<characterId>_sheet\` id and NEVER put any other clip id in "regenerate" — redrawing slide must not redraw run. The runtime wiring is added to "code" automatically only for "animate".\n`
       : `4b. "animate": always [] (only for 2D games).\n`
   }5. "title" ("" = keep) and "cinematicLines" ([] = keep, or exactly 3 short story lines in the game's language — never voice-direction meta-text).
 Answer in "reply" in the user's language, short and friendly (1-2 sentences), saying what you changed. "tags": 1-4 very short labels of the applied changes (e.g. "Salto +18%", "Nuevo enemigo").

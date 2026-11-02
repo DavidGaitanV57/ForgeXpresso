@@ -6,9 +6,9 @@ import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
-import { ensureSheet, generateAsset, isSheetRecord, newRecord, recordsFromDesign } from "./assets";
+import { clipIdParts, ensureClipSheets, generateAsset, isSheetRecord, newRecord, queueClipRedraws, recordsFromDesign, sheetsForCharacter } from "./assets";
 import { deliveryGaps } from "./delivery";
-import { sheetIdFor } from "../sheets";
+import { clipSpecFor, fluidCycles, sheetIdFor, type SheetAnimName } from "../sheets";
 import { planChange } from "./chat";
 import { codeAgent } from "./code";
 import { runDirector, wantsMeshCharacters } from "./director";
@@ -161,27 +161,36 @@ async function addChat(projectId: string, msg: Omit<ChatMsg, "at">) {
 }
 
 async function generateMany(projectId: string, recs: AssetRecord[], design: GameDesign, provider: Project["imageProvider"], ctl: JobCtl, stageId: string) {
+  await generateGroups(projectId, [recs], design, provider, ctl, stageId);
+}
+
+/** Run image groups one after another, so a later group can use the files of the earlier one. */
+async function generateGroups(projectId: string, groups: AssetRecord[][], design: GameDesign, provider: Project["imageProvider"], ctl: JobCtl, stageId: string) {
+  const recs = groups.flat();
   if (!recs.length) return;
   let done = 0;
   await ctl.stage(stageId, "run", `0/${recs.length}`);
-  await pool(recs, recs[0].type === "model" ? 2 : 3, async (r) => {
-    const u = await generateAsset(projectId, r, design, provider);
-    if (u) {
-      await ctl.track({
-        provider: u.provider as ApiProvider,
-        label: u.label,
-        calls: 1,
-        estimatedUsd: u.estimatedUsd,
-        ms: u.ms,
-        images: u.images,
-        audioSec: u.audioSec,
-        credits: u.credits,
-        models: u.models,
-      });
-    }
-    done++;
-    await ctl.stage(stageId, "run", `${done}/${recs.length}`);
-  });
+  for (const group of groups) {
+    if (!group.length) continue;
+    await pool(group, group[0].type === "model" ? 2 : 3, async (r) => {
+      const u = await generateAsset(projectId, r, design, provider);
+      if (u) {
+        await ctl.track({
+          provider: u.provider as ApiProvider,
+          label: u.label,
+          calls: 1,
+          estimatedUsd: u.estimatedUsd,
+          ms: u.ms,
+          images: u.images,
+          audioSec: u.audioSec,
+          credits: u.credits,
+          models: u.models,
+        });
+      }
+      done++;
+      await ctl.stage(stageId, "run", `${done}/${recs.length}`);
+    });
+  }
   const p = await getProject(projectId);
   const failed = recs.filter((r) => p?.assets[r.id]?.status === "error").length;
   const skipped = recs.filter((r) => p?.assets[r.id]?.status === "skipped").length;
@@ -241,10 +250,12 @@ async function createFlow(projectId: string) {
     if (!audio.length) await ctl.stage("audio", "ok", "Sin cambios");
     if (models3d && !models.length) await ctl.stage("models", "ok", "Sin cambios");
 
-    // Décor images + audio in parallel; Tripo text→3D models in parallel too (no image→3D dependency).
-    // Spritesheets need the approved character sprite as reference, so they follow the art stage.
+    // The poster is drawn first and becomes the identity reference for the hero, so the playable character cannot drift away from the cover.
+    // Spritesheets then use that hero. Audio and 3D models run alongside.
+    const posters = images.filter((a) => (a.spec as ImageAssetSpec).role === "keyart");
+    const rest = images.filter((a) => (a.spec as ImageAssetSpec).role !== "keyart");
     const assetsJob = Promise.all([
-      generateMany(projectId, images, design, p0.imageProvider, ctl, "art").then(() =>
+      generateGroups(projectId, [posters, rest], design, p0.imageProvider, ctl, "art").then(() =>
         generateMany(projectId, sheets, design, p0.imageProvider, ctl, "anim"),
       ),
       generateMany(projectId, audio, design, p0.imageProvider, ctl, "audio"),
@@ -404,7 +415,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
     const animated: string[] = [];
     const models3d = !!config.tripo.key() && p.dimension !== "2d";
     const entityRoles = meshEntityRoles(p.dimension, p.idea);
-    await updateProject(projectId, (pp) => {
+    await updateProject(projectId, async (pp) => {
       const d = pp.design!;
       for (const r of plan.regenerate) {
         let a: AssetRecord | undefined = pp.assets[r.id];
@@ -426,7 +437,28 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
               ) || undefined;
           }
         }
-        if (!a) continue;
+        if (!a) {
+          const clip = clipIdParts(r.id);
+          const legacy = clip ? pp.assets[sheetIdFor(clip.baseId)] : undefined;
+          if (clip && legacy?.type === "image") {
+            const redraws = await queueClipRedraws(projectId, pp, legacy, `${r.prompt || ""} ${clip.name}`);
+            for (const c of redraws) if (!toGenerate.includes(c)) toGenerate.push(c);
+          } else if (clip && pp.assets[clip.baseId]?.type === "image") {
+            const baseSpec = pp.assets[clip.baseId].spec as ImageAssetSpec;
+            const spec = clipSpecFor(baseSpec, fluidCycles([{ name: clip.name as SheetAnimName, frames: 2 }])[0]);
+            spec.prompt = r.prompt || "";
+            d.assets.images.push(spec);
+            const rec = newRecord("image", spec);
+            pp.assets[spec.id] = rec;
+            toGenerate.push(rec);
+          }
+          continue;
+        }
+        if (a.type === "image" && (a.spec as ImageAssetSpec).sheet) {
+          const redraws = await queueClipRedraws(projectId, pp, a, r.prompt || "");
+          for (const c of redraws) if (!toGenerate.includes(c)) toGenerate.push(c);
+          continue;
+        }
         if (r.prompt) {
           const spec = a.spec as { prompt: string; kind?: string };
           spec.prompt =
@@ -444,20 +476,27 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
             toGenerate.push(paired);
           }
         }
-        // A redrawn character makes its frames stale.
-        const sheet = a.type === "image" ? pp.assets[sheetIdFor(a.id)] : undefined;
-        if (sheet && !toGenerate.includes(sheet)) {
-          sheet.liked = 0;
-          toGenerate.push(sheet);
+        // A redrawn character makes its frames stale. Prefer the per-animation sheets; the old combined sheet is only redrawn when it is the only one.
+        if (a.type === "image") {
+          const followers = sheetsForCharacter(pp.assets, a.id);
+          const dedicated = followers.filter((s) => ((s.spec as ImageAssetSpec).sheet?.anims.length || 0) === 1);
+          for (const sheet of dedicated.length ? dedicated : followers) {
+            if (!toGenerate.includes(sheet)) {
+              sheet.liked = 0;
+              toGenerate.push(sheet);
+            }
+          }
         }
       }
       if (p.dimension === "2d") {
         for (const an of plan.animate || []) {
-          const rec = ensureSheet(d, pp.assets, an.id, an.animations);
-          if (!rec) continue;
-          rec.liked = 0;
-          if (!toGenerate.includes(rec)) toGenerate.push(rec);
+          const recs = ensureClipSheets(d, pp.assets, an.id, an.animations);
+          if (!recs.length) continue;
           animated.push(an.id);
+          for (const rec of recs) {
+            rec.liked = 0;
+            if (!toGenerate.includes(rec)) toGenerate.push(rec);
+          }
         }
       }
       for (const s of plan.newImages) {
@@ -609,10 +648,14 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
     const p = await getProject(projectId);
     const rec = p?.assets[assetId];
     if (!p?.design || !rec) return;
-    const sheet = rec.type === "image" ? p.assets[sheetIdFor(assetId)] : undefined;
+    const spec = rec.spec as ImageAssetSpec;
+    const combined = rec.type === "image" && !!spec.sheet && spec.sheet.anims.length > 1;
+    const followers = rec.type === "image" && !spec.sheet ? sheetsForCharacter(p.assets, assetId) : [];
+    const dedicated = followers.filter((s) => ((s.spec as ImageAssetSpec).sheet?.anims.length || 0) === 1);
+    const animTargets = dedicated.length ? dedicated : followers;
     const ctl = await startJob(projectId, "asset", [
       { id: "assets", label: rec.name },
-      ...(sheet ? [{ id: "anim", label: sheet.name }] : []),
+      ...(animTargets.length ? [{ id: "anim", label: animTargets.map((s) => s.name).join(", ") }] : []),
     ]);
     if (prompt) {
       const isVoice = rec.type === "audio" && (rec.spec as AudioAssetSpec).kind === "voice";
@@ -633,6 +676,20 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
       (rec.spec as { prompt: string }).prompt = cleaned;
     }
     await ctl.stage("assets", "run", "Generando");
+    if (combined && spec.sheet) {
+      let todo: AssetRecord[] = [];
+      await updateProject(projectId, async (pp) => {
+        const cur = pp.assets[assetId];
+        todo = await queueClipRedraws(projectId, pp, cur, prompt || "");
+      });
+      for (const t of todo) await generateAsset(projectId, t, p.design, p.imageProvider);
+      ctl.job.finishedAt = Date.now();
+      ctl.job.reload = true;
+      await ctl.stage("assets", "ok", todo.length ? todo.map((t) => t.name).join(", ") : "Las otras animaciones se quedaron igual");
+      await ctl.finishUsage();
+      await ctl.flush();
+      return;
+    }
     const u = await generateAsset(projectId, rec, p.design, p.imageProvider);
     if (u) {
       await ctl.track({
@@ -650,16 +707,26 @@ export function startAssetRegen(projectId: string, assetId: string, prompt?: str
     const fresh = await getProject(projectId);
     const status = fresh?.assets[assetId]?.status;
     await ctl.stage("assets", status === "ready" ? "ok" : "error", fresh?.assets[assetId]?.error);
-    // The frames are drawn from this sprite: redraw them so the animation matches the new look.
-    if (sheet && fresh?.design) {
+    // The frames are drawn from this sprite: redraw each clip so the animation matches the new look.
+    if (animTargets.length && fresh?.design) {
       if (status === "ready") {
         await ctl.stage("anim", "run", "Animando");
-        const su = await generateAsset(projectId, fresh.assets[sheet.id], fresh.design, p.imageProvider);
-        if (su) {
-          await ctl.track({ provider: su.provider as ApiProvider, label: su.label, calls: 1, estimatedUsd: su.estimatedUsd, ms: su.ms, images: su.images });
+        let animError: string | undefined;
+        let animOk = true;
+        for (const sheet of animTargets) {
+          const current = (await getProject(projectId))?.assets[sheet.id];
+          if (!current) continue;
+          const su = await generateAsset(projectId, current, fresh.design, p.imageProvider);
+          if (su) {
+            await ctl.track({ provider: su.provider as ApiProvider, label: su.label, calls: 1, estimatedUsd: su.estimatedUsd, ms: su.ms, images: su.images });
+          }
+          const sf = (await getProject(projectId))?.assets[sheet.id];
+          if (sf?.status !== "ready") {
+            animOk = false;
+            animError = sf?.error;
+          }
         }
-        const sf = (await getProject(projectId))?.assets[sheet.id];
-        await ctl.stage("anim", sf?.status === "ready" ? "ok" : "error", sf?.error);
+        await ctl.stage("anim", animOk ? "ok" : "error", animError);
       } else await ctl.stage("anim", "skip");
     }
     ctl.job.finishedAt = Date.now();
