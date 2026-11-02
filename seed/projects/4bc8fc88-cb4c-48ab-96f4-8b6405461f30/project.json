@@ -1,0 +1,1274 @@
+{
+  "id": "4bc8fc88-cb4c-48ab-96f4-8b6405461f30",
+  "createdAt": 1793309899491,
+  "updatedAt": 1793389727033,
+  "idea": "Un shoot'em up espacial con jefes gigantes y power-ups de colores",
+  "dimension": "2d",
+  "imageProvider": "openai",
+  "status": "ready",
+  "assets": {
+    "player_ship": {
+      "id": "player_ship",
+      "type": "image",
+      "name": "Colibrí-9",
+      "spec": {
+        "id": "player_ship",
+        "name": "Colibrí-9",
+        "role": "hero",
+        "prompt": "a small agile white and cyan starfighter with arrow-shaped swept wings, amber glass cockpit and glowing blue engine flame, side view facing right, full body",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Nave del jugador"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793311264520,
+      "file": "assets/player_ship.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "enemy_drone": {
+      "id": "enemy_drone",
+      "type": "image",
+      "name": "Dron explorador",
+      "spec": {
+        "id": "enemy_drone",
+        "name": "Dron explorador",
+        "role": "enemy",
+        "prompt": "small agile space drone enemy ship, side view facing left, metallic cutout, ISOLATED on flat solid pure magenta #FF00FF, NO nebula NO planets NO scenery",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Enemigo básico que vuela en ondas senoidales"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793312425567,
+      "file": "assets/enemy_drone.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "enemy_gunner": {
+      "id": "enemy_gunner",
+      "type": "image",
+      "name": "Cañonero imperial",
+      "spec": {
+        "id": "enemy_gunner",
+        "name": "Cañonero imperial",
+        "role": "enemy",
+        "prompt": "a medium armored orange and dark gray gunship with a big front cannon and twin thrusters, side view facing left, full body",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Enemigo que se detiene y dispara balas"
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793311213439,
+      "file": "assets/enemy_gunner.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "boss_dreadnought": {
+      "id": "boss_dreadnought",
+      "type": "image",
+      "name": "Dreadnought Carmesí",
+      "spec": {
+        "id": "boss_dreadnought",
+        "name": "Dreadnought Carmesí",
+        "role": "enemy",
+        "prompt": "massive crimson imperial dreadnought warship, side view facing left, full body mechanical silhouette with glowing cyan engines, ISOLATED subject only on flat solid pure magenta background, NO nebula, NO planets, NO space scenery, NO ground, NO frame",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Jefe 1, ocupa media pantalla"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793312074989,
+      "file": "assets/boss_dreadnought.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "boss_hive": {
+      "id": "boss_hive",
+      "type": "image",
+      "name": "Colmena Nodriza",
+      "spec": {
+        "id": "boss_hive",
+        "name": "Colmena Nodriza",
+        "role": "enemy",
+        "prompt": "colossal organic alien hive mothership boss, side view facing left, bio-mechanical cutout, ISOLATED on flat solid pure magenta #FF00FF, NO nebula NO planets NO stars NO scenery",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Jefe 2, final del nivel"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793312317476,
+      "file": "assets/boss_hive.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "powerup_red": {
+      "id": "powerup_red",
+      "type": "image",
+      "name": "Orbe rojo",
+      "spec": {
+        "id": "powerup_red",
+        "name": "Orbe rojo",
+        "role": "collectible",
+        "prompt": "a glowing red energy orb power-up inside a metallic ring with a small triple-shot icon, front view",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Power-up de disparo triple"
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793311213639,
+      "file": "assets/powerup_red.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "powerup_blue": {
+      "id": "powerup_blue",
+      "type": "image",
+      "name": "Orbe azul",
+      "spec": {
+        "id": "powerup_blue",
+        "name": "Orbe azul",
+        "role": "collectible",
+        "prompt": "a glowing blue energy orb power-up inside a metallic ring with a small shield icon, front view",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Power-up de escudo"
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793311213727,
+      "file": "assets/powerup_blue.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "powerup_green": {
+      "id": "powerup_green",
+      "type": "image",
+      "name": "Orbe verde",
+      "spec": {
+        "id": "powerup_green",
+        "name": "Orbe verde",
+        "role": "collectible",
+        "prompt": "a glowing green energy orb power-up inside a metallic ring with a small homing missile icon, front view",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Power-up de misiles teledirigidos"
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793311213816,
+      "file": "assets/powerup_green.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "enemy_bullet": {
+      "id": "enemy_bullet",
+      "type": "image",
+      "name": "Orbe de plasma",
+      "spec": {
+        "id": "enemy_bullet",
+        "name": "Orbe de plasma",
+        "role": "hazard",
+        "prompt": "a glowing pink and orange plasma orb projectile with a bright white core and soft glow, front view",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Bala enemiga"
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793311213887,
+      "file": "assets/enemy_bullet.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "asteroid_tile": {
+      "id": "asteroid_tile",
+      "type": "image",
+      "name": "Asteroide",
+      "spec": {
+        "id": "asteroid_tile",
+        "name": "Asteroide",
+        "role": "tile",
+        "prompt": "a large jagged rocky asteroid in dark purple-gray with glowing cyan crystal veins and craters, side view no background or alpha background",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Obstáculo destructible que flota por la pantalla",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793312857139,
+      "file": "assets/asteroid_tile.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "bg_nebula": {
+      "id": "bg_nebula",
+      "type": "image",
+      "name": "Nebulosa lejana",
+      "spec": {
+        "id": "bg_nebula",
+        "name": "Nebulosa lejana",
+        "role": "background",
+        "prompt": "a wide deep-space nebula with swirling indigo, magenta and cyan clouds and dense distant stars, no ships, seamless horizontal panorama",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Capa de parallax más lejana",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793310048874,
+      "file": "assets/bg_nebula.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "bg_planets": {
+      "id": "bg_planets",
+      "type": "image",
+      "name": "Planetas y polvo",
+      "spec": {
+        "id": "bg_planets",
+        "name": "Planetas y polvo",
+        "role": "background",
+        "prompt": "a wide space panorama with distant ringed planets, small moons and drifting asteroid dust in dark indigo tones, empty center for gameplay, seamless horizontal panorama",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Capa de parallax media",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793310049145,
+      "file": "assets/bg_planets.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "music_main": {
+      "id": "music_main",
+      "type": "audio",
+      "name": "Tema de batalla",
+      "spec": {
+        "id": "music_main",
+        "name": "Tema de batalla",
+        "kind": "music",
+        "prompt": "Energetic retro-futuristic synthwave space shooter soundtrack, driving arpeggios, punchy drums, heroic lead synth melody, building tension with epic boss-battle feel, loopable",
+        "durationSec": 75,
+        "loop": true,
+        "usage": "Música de fondo durante el nivel"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309950965,
+      "file": "assets/music_main.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_shoot": {
+      "id": "sfx_shoot",
+      "type": "audio",
+      "name": "Disparo láser",
+      "spec": {
+        "id": "sfx_shoot",
+        "name": "Disparo láser",
+        "kind": "sfx",
+        "prompt": "short crisp sci-fi laser blaster shot, bright and punchy",
+        "durationSec": 0.5,
+        "loop": false,
+        "usage": "Cada disparo del jugador"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309944055,
+      "file": "assets/sfx_shoot.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_powerup": {
+      "id": "sfx_powerup",
+      "type": "audio",
+      "name": "Power-up",
+      "spec": {
+        "id": "sfx_powerup",
+        "name": "Power-up",
+        "kind": "sfx",
+        "prompt": "rising bright arcade power-up pickup chime with sparkle",
+        "durationSec": 1,
+        "loop": false,
+        "usage": "Al recoger un orbe de color"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309944103,
+      "file": "assets/sfx_powerup.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_hit": {
+      "id": "sfx_hit",
+      "type": "audio",
+      "name": "Impacto",
+      "spec": {
+        "id": "sfx_hit",
+        "name": "Impacto",
+        "kind": "sfx",
+        "prompt": "metallic impact hit with electric zap, player ship damaged",
+        "durationSec": 0.8,
+        "loop": false,
+        "usage": "Cuando el jugador recibe daño o se rompe el escudo"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309945388,
+      "file": "assets/sfx_hit.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_explosion": {
+      "id": "sfx_explosion",
+      "type": "audio",
+      "name": "Explosión",
+      "spec": {
+        "id": "sfx_explosion",
+        "name": "Explosión",
+        "kind": "sfx",
+        "prompt": "medium space explosion with deep boom and debris crackle",
+        "durationSec": 1.5,
+        "loop": false,
+        "usage": "Al destruir enemigos y asteroides"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309945645,
+      "file": "assets/sfx_explosion.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_boss_alarm": {
+      "id": "sfx_boss_alarm",
+      "type": "audio",
+      "name": "Alarma de jefe",
+      "spec": {
+        "id": "sfx_boss_alarm",
+        "name": "Alarma de jefe",
+        "kind": "sfx",
+        "prompt": "ominous sci-fi warning siren with low rumbling bass, boss approaching",
+        "durationSec": 3,
+        "loop": false,
+        "usage": "Aviso antes de cada jefe"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309947060,
+      "file": "assets/sfx_boss_alarm.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_victory": {
+      "id": "sfx_victory",
+      "type": "audio",
+      "name": "Victoria",
+      "spec": {
+        "id": "sfx_victory",
+        "name": "Victoria",
+        "kind": "sfx",
+        "prompt": "triumphant heroic synth fanfare, short victory jingle",
+        "durationSec": 3,
+        "loop": false,
+        "usage": "Al derrotar al jefe final"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309947174,
+      "file": "assets/sfx_victory.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_gameover": {
+      "id": "sfx_gameover",
+      "type": "audio",
+      "name": "Derrota",
+      "spec": {
+        "id": "sfx_gameover",
+        "name": "Derrota",
+        "kind": "sfx",
+        "prompt": "descending sad synth tones with power-down sound, game over",
+        "durationSec": 2.5,
+        "loop": false,
+        "usage": "Al perder todas las vidas"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793309948975,
+      "file": "assets/sfx_gameover.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "narration": {
+      "id": "narration",
+      "type": "audio",
+      "name": "Narración inicial",
+      "spec": {
+        "id": "narration",
+        "name": "Narración inicial",
+        "kind": "voice",
+        "prompt": "El Imperio ha apagado las estrellas de nuestro sistema.\n\nSolo el Colibrí-9 puede cruzar la flota y los gigantes de guerra.\n\nAbre el paso hacia el planeta rebelde: la Nova Rebelión comienza.",
+        "durationSec": 12,
+        "loop": false,
+        "usage": "Voz de la cinemática de introducción"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793389362242,
+      "file": "assets/narration.r3.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    }
+  },
+  "versions": [
+    {
+      "n": 1,
+      "createdAt": 1793310765415,
+      "note": "Versión inicial",
+      "file": "versions/v1/game.js"
+    },
+    {
+      "n": 2,
+      "createdAt": 1793389726992,
+      "note": "Agrega una verdadera cinematica in-engine: genera design.cinematic.direction con",
+      "file": "versions/v2/game.js"
+    }
+  ],
+  "currentVersion": 2,
+  "chat": [
+    {
+      "who": "forge",
+      "text": "¡Nova Rebelión está listo! Juégalo y pídeme cambios con tus palabras: los aplico al instante.",
+      "at": 1793310765422
+    },
+    {
+      "who": "you",
+      "text": "El juego no tiene código todavía o falló al generarse. Por favor vuelve a programarlo completo.",
+      "at": 1793311030934
+    },
+    {
+      "who": "forge",
+      "text": "No pude aplicar ese cambio: Connection error.",
+      "at": 1793311032386
+    },
+    {
+      "who": "you",
+      "text": "Agrega una verdadera cinematica in-engine: genera design.cinematic.direction con shots y implementa onCinematic(dt, cine) con recorrido de camara/parallax sincronizado a las lineas de narracion — no un frame estatico. Restaura la camara de gameplay al terminar.",
+      "at": 1793389332290
+    },
+    {
+      "who": "forge",
+      "text": "¡Hecho! Reprogramo el juego completo (no tenía código) y añado una cinemática in-engine con 3 planos de cámara y parallax sincronizados con la narración. Al terminar, la cámara de gameplay se restaura.",
+      "tags": [
+        "Cinemática in-engine",
+        "Código completo",
+        "Narración sincronizada"
+      ],
+      "at": 1793389727032
+    }
+  ],
+  "repairs": 0,
+  "job": {
+    "kind": "chat",
+    "startedAt": 1793389332294,
+    "stages": [
+      {
+        "id": "plan",
+        "label": "Director",
+        "status": "ok",
+        "detail": "Entendiendo el cambio"
+      },
+      {
+        "id": "assets",
+        "label": "Recursos",
+        "status": "ok",
+        "detail": "1 actualizados"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "ok",
+        "detail": "Nueva versión"
+      }
+    ],
+    "finishedAt": 1793389727001,
+    "reload": true
+  },
+  "design": {
+    "title": "Nova Rebelión",
+    "tagline": "Cada color es un arma. Cada jefe, una montaña de acero.",
+    "genre": "Shoot'em up espacial de scroll horizontal con jefes gigantes",
+    "dimension": "2d",
+    "engine": "phaser",
+    "camera": "Vista lateral 2D con scroll horizontal automático hacia la derecha, nave del jugador a la izquierda, resolución 1280x720",
+    "artStyle": "Vibrant hand-painted 2D sci-fi illustration with bold dark outlines and clean cel-shaded highlights, slightly chunky arcade proportions. Strong rim lighting and neon glow on weapons, engines and power-ups against deep cosmic darkness. Saturated cyan, magenta and orange accents over indigo shadows, subtle painterly texture, epic yet playful retro-arcade mood, consistent soft glow and crisp silhouettes that stay readable at small sizes.",
+    "palette": [
+      "#0B0A24",
+      "#2B1B5E",
+      "#00E5FF",
+      "#FF3D81",
+      "#FFB300",
+      "#7CFF4F",
+      "#F4F1FF"
+    ],
+    "setting": "Un cinturón de asteroides y nebulosas al borde de la galaxia, donde una flota imperial de colosales naves nodriza bloquea el camino hacia el planeta natal de la rebelión.",
+    "hero": {
+      "name": "Colibrí-9",
+      "description": "Una nave caza pequeña y ágil de color blanco y cian con alas en forma de flecha, cabina de cristal ámbar y motores que brillan más según el nivel de power-up."
+    },
+    "mechanics": [
+      "Disparo continuo automático al mantener pulsado: el arma base lanza balas cian rápidas hacia la derecha.",
+      "Power-ups de colores que sueltan los enemigos: rojo = disparo en abanico triple, azul = escudo que absorbe 3 impactos, verde = misiles teledirigidos. Recoger el mismo color sube el nivel del arma (máx. 3) y se pueden combinar colores distintos.",
+      "Jefes gigantes con varias fases: ocupan media pantalla, tienen puntos débiles que se iluminan, cambian de patrón de balas al bajar de 66% y 33% de vida y muestran una barra de vida grande.",
+      "Oleadas de enemigos: drones que vuelan en ondas senoidales y cañoneros que se paran a disparar; los asteroides bloquean el paso y se pueden destruir.",
+      "Bomba de emergencia limitada (1 por vida): limpia las balas enemigas de la pantalla y daña a todos los enemigos.",
+      "Vidas y breve invulnerabilidad parpadeante tras recibir un golpe; al perder una vida se pierde un nivel de arma."
+    ],
+    "controls": [
+      {
+        "input": "← ↑ → ↓ / WASD",
+        "action": "mover la nave"
+      },
+      {
+        "input": "Espacio (mantener)",
+        "action": "disparar"
+      },
+      {
+        "input": "B / Shift",
+        "action": "lanzar bomba de emergencia"
+      },
+      {
+        "input": "P / Esc",
+        "action": "pausa"
+      }
+    ],
+    "objective": "Sobrevive a las oleadas, recoge power-ups de colores y destruye a los dos jefes gigantes para abrir el paso hacia el planeta rebelde.",
+    "loseCondition": "Pierdes cuando te quedas sin vidas (3 al inicio) tras recibir impactos de balas, enemigos, asteroides o jefes.",
+    "levelOutline": "Un nivel de unos 4-5 minutos en dos tramos. Tramo 1 (0:00-1:45): campo de asteroides con drones en ondas, introducción gradual: primero 3 drones en línea, luego formaciones en V, el primer power-up rojo cae del primer grupo; aparecen los cañoneros al segundo 50 y el azul y el verde llegan antes del jefe. Mini-pausa de 3 s con aviso 'PELIGRO' y el jefe 1, el Dreadnought Carmesí (vida 300): fase 1 abanico de balas lentas y torretas laterales; fase 2 (<66%) láseres horizontales con aviso y drones de escolta; fase 3 (<33%) lluvia de balas en espiral y el núcleo queda expuesto. Tramo 2 (2:30-4:00): nebulosa más densa, más cañoneros, asteroides grandes que obligan a esquivar y oleadas más rápidas, con power-ups más escasos. Jefe 2, la Colmena Nodriza (vida 450): lanza enjambres de drones, escudos regenerativos en los puntos débiles y ráfagas de orbes que rebotan; en la última fase aumenta la velocidad. Al derrotarla se muestra pantalla de victoria con puntuación. La curva de dificultad sube de forma constante, con picos antes de cada jefe y descansos con power-ups después.",
+    "tuning": [
+      {
+        "key": "playerSpeed",
+        "label": "Velocidad de la nave",
+        "min": 200,
+        "max": 600,
+        "value": 380
+      },
+      {
+        "key": "fireRate",
+        "label": "Cadencia de disparo (ms)",
+        "min": 70,
+        "max": 400,
+        "value": 160
+      },
+      {
+        "key": "enemySpeed",
+        "label": "Velocidad de enemigos",
+        "min": 60,
+        "max": 350,
+        "value": 150
+      },
+      {
+        "key": "spawnInterval",
+        "label": "Intervalo de oleadas (ms)",
+        "min": 600,
+        "max": 3000,
+        "value": 1400
+      },
+      {
+        "key": "bossHealth",
+        "label": "Vida del jefe",
+        "min": 100,
+        "max": 1000,
+        "value": 300
+      },
+      {
+        "key": "playerLives",
+        "label": "Vidas",
+        "min": 1,
+        "max": 9,
+        "value": 3
+      },
+      {
+        "key": "enemyBulletSpeed",
+        "label": "Velocidad balas enemigas",
+        "min": 120,
+        "max": 500,
+        "value": 260
+      },
+      {
+        "key": "powerUpDropRate",
+        "label": "Prob. de power-up (%)",
+        "min": 5,
+        "max": 60,
+        "value": 18
+      }
+    ],
+    "cinematic": {
+      "style": "epica",
+      "lines": [
+        "El Imperio ha apagado las estrellas de nuestro sistema.",
+        "Solo el Colibrí-9 puede cruzar la flota y los gigantes de guerra.",
+        "Abre el paso hacia el planeta rebelde: la Nova Rebelión comienza."
+      ],
+      "direction": {
+        "approach": "side_scroll_reveal",
+        "rationale": "Nova Rebelión is a horizontal-scrolling shmup, so the intro uses the same lateral language as gameplay. The camera travels right through layered parallax and reveals the story in three beats: a dead starfield under imperial pressure, the tiny Colibrí-9 against the fleet and the colossal bosses, then a launch that hands off into scrolling gameplay. The scale contrast (small, agile ship vs. steel mo",
+        "mood": "Epic and defiant: cold indigo darkness and ominous imperial scale, breaking into neon cyan, magenta and orange rebel energy.",
+        "notes": "Camera coordinates are in 1280x720 pixel units (x right, y up, z unused as depth/zoom reference ~10). Build 4-5 parallax layers (far stars, nebula, mid asteroids, near debris, foreground dust) and scroll them at different rates during the whole intro. Idle the Colibrí-9 with a gentle sine bob (±6px, 1.2s period) and low engine glow. Boss silhouettes (Dreadnought Carmesí, Colmena Nodriza) are static sprites tinted dark indigo with only rim light and glowing eyes/cores; they sway very slightly. Dr",
+        "shots": [
+          {
+            "lineIndex": 0,
+            "durationSec": 4.5,
+            "staging": "Open on near-black indigo starfield with a faint nebula. Stars flicker and go out one by one along the right side as a huge imperial shadow creeps in from the right edge. Camera drifts slowly right through slow parallax layers, with dim asteroid silhouettes passing in the foregro",
+            "camera": {
+              "from": [
+                420,
+                360,
+                10
+              ],
+              "to": [
+                640,
+                360,
+                10
+              ],
+              "lookAt": [
+                640,
+                360,
+                0
+              ],
+              "fov": 50,
+              "ease": "smooth"
+            },
+            "fx": [
+              "parallax_slow",
+              "star_flicker_out",
+              "vignette_dark",
+              "red_distant_pulse",
+              "dust_motes_drift"
+            ]
+          },
+          {
+            "lineIndex": 1,
+            "durationSec": 5,
+            "staging": "Camera continues right, then rises slightly to reveal the imperial fleet: giant mother-ship silhouettes with rim-lit hulls and tiny drone V-formations in front. Then it pulls down and left to find the Colibrí-9 small in the lower-left foreground, white and cyan, amber cockpit glo",
+            "camera": {
+              "from": [
+                640,
+                330,
+                10
+              ],
+              "to": [
+                760,
+                400,
+                9
+              ],
+              "lookAt": [
+                800,
+                380,
+                0
+              ],
+              "fov": 46,
+              "ease": "easeOut"
+            },
+            "fx": [
+              "boss_silhouette_reveal",
+              "rim_light_sweep",
+              "hero_engine_idle_glow",
+              "drone_formation_hover",
+              "camera_slight_shake_low",
+              "parallax_medium"
+            ]
+          },
+          {
+            "lineIndex": -1,
+            "durationSec": 2.6,
+            "staging": "Quick color-weapon beat: four neon power-up orbs (red, blue, green, orange/magenta) drift across the frame in front of the hero, each briefly lighting the ship's hull and engines in its color. Engines flare brighter with each pass. Tagline 'Cada color es un arma.' can appear as U",
+            "camera": {
+              "from": [
+                760,
+                400,
+                9
+              ],
+              "to": [
+                300,
+                360,
+                8
+              ],
+              "lookAt": [
+                300,
+                360,
+                0
+              ],
+              "fov": 44,
+              "ease": "smooth"
+            },
+            "fx": [
+              "powerup_orb_trail_red",
+              "powerup_orb_trail_blue",
+              "powerup_orb_trail_green",
+              "engine_glow_step_up",
+              "color_rim_flash",
+              "soft_bloom_up"
+            ]
+          },
+          {
+            "lineIndex": 2,
+            "durationSec": 4.5,
+            "staging": "Camera settles on the Colibrí-9 at its gameplay start position (left third of screen), framing it side-on. Engines ignite to full cyan burst, the ship launches forward slightly and the parallax accelerates to gameplay scroll speed. Camera eases to the standard gameplay frame as t",
+            "camera": {
+              "from": [
+                300,
+                360,
+                8
+              ],
+              "to": [
+                640,
+                360,
+                10
+              ],
+              "lookAt": [
+                640,
+                360,
+                0
+              ],
+              "fov": 50,
+              "ease": "easeIn"
+            },
+            "fx": [
+              "engine_ignite_burst",
+              "parallax_accelerate_to_gameplay",
+              "speed_lines",
+              "shockwave_ring_cyan",
+              "title_slam_neon_glow",
+              "screen_flash_soft"
+            ]
+          }
+        ]
+      }
+    },
+    "assets": {
+      "images": [
+        {
+          "id": "player_ship",
+          "name": "Colibrí-9",
+          "role": "hero",
+          "prompt": "a small agile white and cyan starfighter with arrow-shaped swept wings, amber glass cockpit and glowing blue engine flame, side view facing right, full body",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Nave del jugador"
+        },
+        {
+          "id": "enemy_drone",
+          "name": "Dron explorador",
+          "role": "enemy",
+          "prompt": "a small round magenta and dark purple attack drone with a single glowing red eye and tiny fins, side view facing left, full body",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Enemigo básico que vuela en ondas senoidales"
+        },
+        {
+          "id": "enemy_gunner",
+          "name": "Cañonero imperial",
+          "role": "enemy",
+          "prompt": "a medium armored orange and dark gray gunship with a big front cannon and twin thrusters, side view facing left, full body",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Enemigo que se detiene y dispara balas"
+        },
+        {
+          "id": "boss_dreadnought",
+          "name": "Dreadnought Carmesí",
+          "role": "enemy",
+          "prompt": "a gigantic crimson and black battleship dreadnought with multiple turrets, glowing exposed energy core in the center, spiked armored hull, side view facing left, full body",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Jefe 1, ocupa media pantalla"
+        },
+        {
+          "id": "boss_hive",
+          "name": "Colmena Nodriza",
+          "role": "enemy",
+          "prompt": "a colossal organic-mechanical alien hive mothership in purple and toxic green with glowing weak-point pods, drone launch bays and armored plates, side view facing left, full body",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Jefe 2, final del nivel"
+        },
+        {
+          "id": "powerup_red",
+          "name": "Orbe rojo",
+          "role": "collectible",
+          "prompt": "a glowing red energy orb power-up inside a metallic ring with a small triple-shot icon, front view",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Power-up de disparo triple"
+        },
+        {
+          "id": "powerup_blue",
+          "name": "Orbe azul",
+          "role": "collectible",
+          "prompt": "a glowing blue energy orb power-up inside a metallic ring with a small shield icon, front view",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Power-up de escudo"
+        },
+        {
+          "id": "powerup_green",
+          "name": "Orbe verde",
+          "role": "collectible",
+          "prompt": "a glowing green energy orb power-up inside a metallic ring with a small homing missile icon, front view",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Power-up de misiles teledirigidos"
+        },
+        {
+          "id": "enemy_bullet",
+          "name": "Orbe de plasma",
+          "role": "hazard",
+          "prompt": "a glowing pink and orange plasma orb projectile with a bright white core and soft glow, front view",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Bala enemiga"
+        },
+        {
+          "id": "asteroid_tile",
+          "name": "Asteroide",
+          "role": "tile",
+          "prompt": "a large jagged rocky asteroid in dark purple-gray with glowing cyan crystal veins and craters, side view",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Obstáculo destructible que flota por la pantalla",
+          "seamless": true
+        },
+        {
+          "id": "bg_nebula",
+          "name": "Nebulosa lejana",
+          "role": "background",
+          "prompt": "a wide deep-space nebula with swirling indigo, magenta and cyan clouds and dense distant stars, no ships, seamless horizontal panorama",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Capa de parallax más lejana",
+          "seamless": false
+        },
+        {
+          "id": "bg_planets",
+          "name": "Planetas y polvo",
+          "role": "background",
+          "prompt": "a wide space panorama with distant ringed planets, small moons and drifting asteroid dust in dark indigo tones, empty center for gameplay, seamless horizontal panorama",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Capa de parallax media",
+          "seamless": false
+        }
+      ],
+      "audio": [
+        {
+          "id": "music_main",
+          "name": "Tema de batalla",
+          "kind": "music",
+          "prompt": "Energetic retro-futuristic synthwave space shooter soundtrack, driving arpeggios, punchy drums, heroic lead synth melody, building tension with epic boss-battle feel, loopable",
+          "durationSec": 75,
+          "loop": true,
+          "usage": "Música de fondo durante el nivel"
+        },
+        {
+          "id": "sfx_shoot",
+          "name": "Disparo láser",
+          "kind": "sfx",
+          "prompt": "short crisp sci-fi laser blaster shot, bright and punchy",
+          "durationSec": 0.5,
+          "loop": false,
+          "usage": "Cada disparo del jugador"
+        },
+        {
+          "id": "sfx_powerup",
+          "name": "Power-up",
+          "kind": "sfx",
+          "prompt": "rising bright arcade power-up pickup chime with sparkle",
+          "durationSec": 1,
+          "loop": false,
+          "usage": "Al recoger un orbe de color"
+        },
+        {
+          "id": "sfx_hit",
+          "name": "Impacto",
+          "kind": "sfx",
+          "prompt": "metallic impact hit with electric zap, player ship damaged",
+          "durationSec": 0.8,
+          "loop": false,
+          "usage": "Cuando el jugador recibe daño o se rompe el escudo"
+        },
+        {
+          "id": "sfx_explosion",
+          "name": "Explosión",
+          "kind": "sfx",
+          "prompt": "medium space explosion with deep boom and debris crackle",
+          "durationSec": 1.5,
+          "loop": false,
+          "usage": "Al destruir enemigos y asteroides"
+        },
+        {
+          "id": "sfx_boss_alarm",
+          "name": "Alarma de jefe",
+          "kind": "sfx",
+          "prompt": "ominous sci-fi warning siren with low rumbling bass, boss approaching",
+          "durationSec": 3,
+          "loop": false,
+          "usage": "Aviso antes de cada jefe"
+        },
+        {
+          "id": "sfx_victory",
+          "name": "Victoria",
+          "kind": "sfx",
+          "prompt": "triumphant heroic synth fanfare, short victory jingle",
+          "durationSec": 3,
+          "loop": false,
+          "usage": "Al derrotar al jefe final"
+        },
+        {
+          "id": "sfx_gameover",
+          "name": "Derrota",
+          "kind": "sfx",
+          "prompt": "descending sad synth tones with power-down sound, game over",
+          "durationSec": 2.5,
+          "loop": false,
+          "usage": "Al perder todas las vidas"
+        },
+        {
+          "id": "narration",
+          "name": "Narración inicial",
+          "kind": "voice",
+          "prompt": "El Imperio ha apagado las estrellas de nuestro sistema.\n\nSolo el Colibrí-9 puede cruzar la flota y los gigantes de guerra.\n\nAbre el paso hacia el planeta rebelde: la Nova Rebelión comienza.",
+          "durationSec": 12,
+          "loop": false,
+          "usage": "Voz de la cinemática de introducción"
+        }
+      ],
+      "models": []
+    },
+    "ui": {
+      "hud": [
+        {
+          "id": "score",
+          "label": "Puntos",
+          "kind": "value",
+          "shows": "puntuación"
+        },
+        {
+          "id": "lives",
+          "label": "Vidas",
+          "kind": "lives",
+          "shows": "vidas"
+        },
+        {
+          "id": "bomb",
+          "label": "Bomba",
+          "kind": "value",
+          "shows": "bombas"
+        },
+        {
+          "id": "weapons",
+          "label": "Armas",
+          "kind": "value",
+          "shows": "armas RGB"
+        },
+        {
+          "id": "shield",
+          "label": "Escudo",
+          "kind": "bar",
+          "shows": "escudo"
+        },
+        {
+          "id": "boss",
+          "label": "Dreadnought Carmesí",
+          "kind": "bar",
+          "shows": "vida del jefe"
+        }
+      ],
+      "pauseMenu": [
+        {
+          "id": "resume",
+          "label": "Continuar",
+          "action": "resume"
+        },
+        {
+          "id": "settings",
+          "label": "Ajustes",
+          "action": "settings"
+        },
+        {
+          "id": "quit",
+          "label": "Salir",
+          "action": "quit"
+        }
+      ],
+      "settings": [
+        {
+          "key": "masterVolume",
+          "label": "Volumen general",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "defaultValue": 0.9
+        },
+        {
+          "key": "musicVolume",
+          "label": "Música",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "defaultValue": 0.7
+        },
+        {
+          "key": "sfxVolume",
+          "label": "Efectos",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "defaultValue": 1
+        }
+      ],
+      "gameOverActions": [
+        "Reintentar",
+        "Menú"
+      ],
+      "startActions": [
+        "Jugar"
+      ]
+    }
+  },
+  "cineAuto": true,
+  "playCopy": {
+    "fr": {
+      "sourceKey": "Shoot'em up espacial de scroll horizontal con jefes gigantes\nCada color es un arma. Cada jefe, una montaña de acero.\nSobrevive a las oleadas, recoge power-ups de colores y destruye a los dos jefes gigantes para abrir el paso hacia el planeta rebelde.",
+      "genre": "Shoot'em up spatial à défilement horizontal avec boss géants",
+      "tagline": "Chaque couleur est une arme. Chaque boss, une montagne d'acier.",
+      "objective": "Survivez aux vagues d'ennemis, ramassez des bonus de couleur et détruisez les deux boss géants pour ouvrir la voie vers la planète rebelle."
+    },
+    "en": {
+      "sourceKey": "Shoot'em up espacial de scroll horizontal con jefes gigantes\nCada color es un arma. Cada jefe, una montaña de acero.\nSobrevive a las oleadas, recoge power-ups de colores y destruye a los dos jefes gigantes para abrir el paso hacia el planeta rebelde.",
+      "genre": "Side-scrolling space shoot 'em up with giant bosses",
+      "tagline": "Every color is a weapon. Every boss, a mountain of steel.",
+      "objective": "Survive the waves, collect colored power-ups, and destroy the two giant bosses to clear the way to the rebel planet."
+    }
+  },
+  "jobUsage": {
+    "startedAt": 1793389332294,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 3,
+        "inputTokens": 39537,
+        "outputTokens": 50291,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 4.085184,
+        "ms": 394471
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 13.5,
+        "models": 0,
+        "estimatedUsd": 0.03402,
+        "ms": 1274
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 3674,
+        "outputTokens": 1688,
+        "estimatedUsd": 0.036342,
+        "ms": 13818,
+        "model": "claude-sonnet-5-5",
+        "at": 1793389346119
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2399,
+        "outputTokens": 1759,
+        "estimatedUsd": 0.033582,
+        "ms": 14657,
+        "model": "claude-sonnet-5-5",
+        "at": 1793389360950
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.03402,
+        "ms": 1274,
+        "audioSec": 13.5,
+        "at": 1793389362244
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 33464,
+        "outputTokens": 46844,
+        "estimatedUsd": 4.01526,
+        "ms": 365996,
+        "model": "claude-opus-5-5",
+        "at": 1793389726959
+      }
+    ],
+    "totals": {
+      "calls": 4,
+      "inputTokens": 39537,
+      "outputTokens": 50291,
+      "images": 0,
+      "audioSec": 13.5,
+      "models": 0,
+      "estimatedUsd": 4.119204,
+      "ms": 395745
+    },
+    "finishedAt": 1793389727001
+  },
+  "usage": {
+    "startedAt": 1793389332294,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 3,
+        "inputTokens": 39537,
+        "outputTokens": 50291,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 4.085184,
+        "ms": 394471
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 13.5,
+        "models": 0,
+        "estimatedUsd": 0.03402,
+        "ms": 1274
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 3674,
+        "outputTokens": 1688,
+        "estimatedUsd": 0.036342,
+        "ms": 13818,
+        "model": "claude-sonnet-5-5",
+        "at": 1793389346120
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2399,
+        "outputTokens": 1759,
+        "estimatedUsd": 0.033582,
+        "ms": 14657,
+        "model": "claude-sonnet-5-5",
+        "at": 1793389360950
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.03402,
+        "ms": 1274,
+        "audioSec": 13.5,
+        "at": 1793389362245
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 33464,
+        "outputTokens": 46844,
+        "estimatedUsd": 4.01526,
+        "ms": 365996,
+        "model": "claude-opus-5-5",
+        "at": 1793389726989
+      }
+    ],
+    "totals": {
+      "calls": 4,
+      "inputTokens": 39537,
+      "outputTokens": 50291,
+      "images": 0,
+      "audioSec": 13.5,
+      "models": 0,
+      "estimatedUsd": 4.119204,
+      "ms": 395745
+    },
+    "finishedAt": 1793389727001
+  }
+}

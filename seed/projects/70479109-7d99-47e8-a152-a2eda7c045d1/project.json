@@ -1,0 +1,1598 @@
+{
+  "id": "70479109-7d99-47e8-a152-a2eda7c045d1",
+  "createdAt": 1793400235265,
+  "updatedAt": 1793406092160,
+  "idea": "Un plataformero de un gato ninja que cruza una ciudad neón saltando entre azoteas",
+  "dimension": "2d",
+  "imageProvider": "openai",
+  "status": "ready",
+  "assets": {
+    "hero_kuro": {
+      "id": "hero_kuro",
+      "type": "image",
+      "name": "Kuro el gato ninja",
+      "spec": {
+        "id": "hero_kuro",
+        "name": "Kuro el gato ninja",
+        "role": "hero",
+        "prompt": "Side view facing right, a sleek black ninja cat with SOLID dark charcoal body fill (visible navy/charcoal midtones, never empty/transparent torso), magenta scarf flowing behind, small dark mask over glowing cyan eyes, tiny katana on its back, pointed ears, strong cyan rim light so the silhouette reads on dark backgrounds, bold dark outlines, cel-shaded, isolated single character, no background, no ground, no scenery plate",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Sprite principal del jugador, mostrado a unos 80 px de alto",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793402904561,
+      "file": "assets/hero_kuro.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "enemy_drone": {
+      "id": "enemy_drone",
+      "type": "image",
+      "name": "Dron patrulla",
+      "spec": {
+        "id": "enemy_drone",
+        "name": "Dron patrulla",
+        "role": "enemy",
+        "prompt": "Side view of a single cyberpunk patrol drone, compact round body with SOLID dark indigo metal fill and visible midtones (never hollow or transparent), small rotors, one glowing magenta eye, cyan rim light from the upper left, bold dark outlines, cel-shaded, isolated single object centered with empty margin, no background, no backdrop plate, no nebula, no scenery",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Enemigo volador que patrulla y daña al tocar; se destruye con la katana",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793402937877,
+      "file": "assets/enemy_drone.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (14% del margen)"
+    },
+    "hazard_spikes": {
+      "id": "hazard_spikes",
+      "type": "image",
+      "name": "Antena eléctrica",
+      "spec": {
+        "id": "hazard_spikes",
+        "name": "Antena eléctrica",
+        "role": "hazard",
+        "prompt": "A single electric antenna spike hazard, short row of three sharp metal prongs on a small dark base, SOLID dark indigo metal fill with crackling cyan electric sparks at the tips, magenta rim light from the upper left, bold dark outlines, cel-shaded, isolated single object, no background, no rooftop, no scenery plate, no glow backdrop",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Peligro estático colocado en el borde de azoteas; quita una vida al tocarlo",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793402902196,
+      "file": "assets/hazard_spikes.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (24% del margen)"
+    },
+    "collect_fish": {
+      "id": "collect_fish",
+      "type": "image",
+      "name": "Pez neón",
+      "spec": {
+        "id": "collect_fish",
+        "name": "Pez neón",
+        "role": "collectible",
+        "prompt": "Side view facing right, a small glowing fish shape made of yellow neon light with a soft cyan glow, simple stylized skeleton-like body, bold outline, cel-shaded, isolated object, no background",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Coleccionable que da puntos y avanza hacia la vida extra",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400322731,
+      "file": "assets/collect_fish.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "prop_crate": {
+      "id": "prop_crate",
+      "type": "image",
+      "name": "Caja de pescado",
+      "spec": {
+        "id": "prop_crate",
+        "name": "Caja de pescado",
+        "role": "prop",
+        "prompt": "A single wooden fish crate seen from the front, SOLID dark brown-indigo planks with visible midtones, a small neon cyan fish icon painted on the side, metal corner brackets, magenta rim light from the upper left, bold dark outlines, cel-shaded, isolated single object, no background, no rectangular plate, no ground, no scenery",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Caja rompible con la katana que suelta peces",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793402934152,
+      "file": "assets/prop_crate.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: poco alpha real (7% transparente); placa rectangular opaca (55% del margen)"
+    },
+    "goal_tower": {
+      "id": "goal_tower",
+      "type": "image",
+      "name": "Antena maestra",
+      "spec": {
+        "id": "goal_tower",
+        "name": "Antena maestra",
+        "role": "goal",
+        "prompt": "A tall master antenna tower, slender steel lattice structure with SOLID dark indigo fill and visible midtones, glowing magenta beacon at the top, cyan neon light strips along the frame, rim light from the upper left, bold dark outlines, cel-shaded, isolated single structure, no skyline, no sky, no clouds, no background plate, no nebula",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Meta al final del nivel; al tocarla se gana la partida",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 2,
+      "liked": 0,
+      "updatedAt": 1793402921021,
+      "file": "assets/goal_tower.r2.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "tile_rooftop": {
+      "id": "tile_rooftop",
+      "type": "image",
+      "name": "Azotea",
+      "spec": {
+        "id": "tile_rooftop",
+        "name": "Azotea",
+        "role": "tile",
+        "prompt": "Seamless horizontal rooftop tile, dark concrete top edge with a thin neon magenta trim and subtle vents and pipes on the facade below, flat cel-shaded, side view, night city",
+        "transparent": false,
+        "aspect": "3:2",
+        "usage": "Suelo y plataformas de azoteas, repetido en horizontal",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400372886,
+      "file": "assets/tile_rooftop.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: no es seamless (error de borde 16%)"
+    },
+    "bg_sky_clouds": {
+      "id": "bg_sky_clouds",
+      "type": "image",
+      "name": "Cielo nocturno con nubes",
+      "spec": {
+        "id": "bg_sky_clouds",
+        "name": "Cielo nocturno con nubes",
+        "role": "background",
+        "prompt": "Seamless abstract night sky layer, deep indigo and purple gradient with soft magenta and cyan glowing clouds and faint stars, no buildings, no moon, no landmarks, wide parallax, flat stylized",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Capa de fondo lejana con parallax lento y repetición horizontal",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400373056,
+      "file": "assets/bg_sky_clouds.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "bg_skyline": {
+      "id": "bg_skyline",
+      "type": "image",
+      "name": "Horizonte neón",
+      "spec": {
+        "id": "bg_skyline",
+        "name": "Horizonte neón",
+        "role": "background",
+        "prompt": "Wide cyberpunk city skyline at night seen from afar, dark building silhouettes with glowing windows and pink and cyan neon signs, hazy rain, deep indigo atmosphere, cel-shaded, no characters",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Fondo de paisaje urbano único, con parallax medio, nunca se repite en mosaico",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400385625,
+      "file": "assets/bg_skyline.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "music_neon_rooftops": {
+      "id": "music_neon_rooftops",
+      "type": "audio",
+      "name": "Azoteas neón",
+      "spec": {
+        "id": "music_neon_rooftops",
+        "name": "Azoteas neón",
+        "kind": "music",
+        "prompt": "Energetic synthwave chiptune loop with driving bass, arpeggiated synths, light retro drums, playful cool ninja night city vibe, upbeat 120 bpm, seamless loop",
+        "durationSec": 75,
+        "loop": true,
+        "usage": "Música de fondo durante el nivel"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400280189,
+      "file": "assets/music_neon_rooftops.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_jump": {
+      "id": "sfx_jump",
+      "type": "audio",
+      "name": "Salto",
+      "spec": {
+        "id": "sfx_jump",
+        "name": "Salto",
+        "kind": "sfx",
+        "prompt": "Short light cartoon jump whoosh with a soft synth blip, quick and bright",
+        "durationSec": 0.5,
+        "loop": false,
+        "usage": "Al saltar y al hacer doble salto"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400273285,
+      "file": "assets/sfx_jump.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_dash": {
+      "id": "sfx_dash",
+      "type": "audio",
+      "name": "Dash",
+      "spec": {
+        "id": "sfx_dash",
+        "name": "Dash",
+        "kind": "sfx",
+        "prompt": "Fast sharp air swoosh with a slight electric zap, ninja dash",
+        "durationSec": 0.6,
+        "loop": false,
+        "usage": "Al usar el deslizamiento rápido"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400273433,
+      "file": "assets/sfx_dash.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_slash": {
+      "id": "sfx_slash",
+      "type": "audio",
+      "name": "Corte de katana",
+      "spec": {
+        "id": "sfx_slash",
+        "name": "Corte de katana",
+        "kind": "sfx",
+        "prompt": "Quick katana slash swoosh with a metallic shing, crisp",
+        "durationSec": 0.6,
+        "loop": false,
+        "usage": "Al atacar con la katana"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400274618,
+      "file": "assets/sfx_slash.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_pickup": {
+      "id": "sfx_pickup",
+      "type": "audio",
+      "name": "Recoger pez",
+      "spec": {
+        "id": "sfx_pickup",
+        "name": "Recoger pez",
+        "kind": "sfx",
+        "prompt": "Bright sparkling coin-like pickup chime, short rising two-note synth",
+        "durationSec": 0.5,
+        "loop": false,
+        "usage": "Al recoger un pez neón"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400274717,
+      "file": "assets/sfx_pickup.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_hit": {
+      "id": "sfx_hit",
+      "type": "audio",
+      "name": "Golpe",
+      "spec": {
+        "id": "sfx_hit",
+        "name": "Golpe",
+        "kind": "sfx",
+        "prompt": "Electric zap hit with a short buzzing crunch, player damage sound",
+        "durationSec": 0.8,
+        "loop": false,
+        "usage": "Al recibir daño o destruir un dron"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400276149,
+      "file": "assets/sfx_hit.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_win": {
+      "id": "sfx_win",
+      "type": "audio",
+      "name": "Victoria",
+      "spec": {
+        "id": "sfx_win",
+        "name": "Victoria",
+        "kind": "sfx",
+        "prompt": "Triumphant short synth fanfare with sparkles, victorious and uplifting",
+        "durationSec": 2.5,
+        "loop": false,
+        "usage": "Al llegar a la antena maestra"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400276414,
+      "file": "assets/sfx_win.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_lose": {
+      "id": "sfx_lose",
+      "type": "audio",
+      "name": "Derrota",
+      "spec": {
+        "id": "sfx_lose",
+        "name": "Derrota",
+        "kind": "sfx",
+        "prompt": "Descending sad synth tones with a low thud, game over jingle",
+        "durationSec": 2,
+        "loop": false,
+        "usage": "Al perder todas las vidas"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793400278120,
+      "file": "assets/sfx_lose.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "narration": {
+      "id": "narration",
+      "type": "audio",
+      "name": "Narración",
+      "spec": {
+        "id": "narration",
+        "name": "Narración",
+        "kind": "voice",
+        "prompt": "La ciudad nunca duerme, y sus luces ocultan un secreto.\n\nAlguien apagó la antena maestra, y Kuro es el único que puede encenderla.\n\nSalta, gato ninja: la noche neón te espera.",
+        "durationSec": 12,
+        "loop": false,
+        "usage": "Narración de la cinemática inicial"
+      },
+      "status": "ready",
+      "rev": 4,
+      "liked": 0,
+      "updatedAt": 1793402576152,
+      "file": "assets/narration.r4.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "hero_kuro_sheet": {
+      "id": "hero_kuro_sheet",
+      "type": "image",
+      "name": "Kuro el gato ninja · anim",
+      "spec": {
+        "id": "hero_kuro_sheet",
+        "name": "Kuro el gato ninja · anim",
+        "role": "hero",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Animation spritesheet of hero_kuro (idle, walk, jump, fall, dash, attack). Use forge.phaser.animate(sprite) on the hero_kuro sprite.",
+        "seamless": false,
+        "sheet": {
+          "of": "hero_kuro",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            },
+            {
+              "name": "walk",
+              "frames": 4
+            },
+            {
+              "name": "jump",
+              "frames": 2
+            },
+            {
+              "name": "fall",
+              "frames": 2
+            },
+            {
+              "name": "dash",
+              "frames": 2
+            },
+            {
+              "name": "attack",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              },
+              {
+                "name": "walk",
+                "frames": 4
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "fall",
+                "frames": 2
+              },
+              {
+                "name": "dash",
+                "frames": 2
+              },
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793405901944,
+      "file": "assets/hero_kuro_sheet.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    }
+  },
+  "versions": [
+    {
+      "n": 1,
+      "createdAt": 1793401386770,
+      "note": "Versión inicial",
+      "file": "versions/v1/game.js"
+    },
+    {
+      "n": 2,
+      "createdAt": 1793405115973,
+      "note": "Anima a Kuro con spritesheet: idle, walk, jump, fall, dash y attack (el dash y e",
+      "file": "versions/v2/game.js"
+    }
+  ],
+  "currentVersion": 2,
+  "chat": [
+    {
+      "who": "forge",
+      "text": "Neko Neón",
+      "tags": [
+        "sys:ready"
+      ],
+      "at": 1793401386812
+    },
+    {
+      "who": "you",
+      "text": "Regenera estos recursos dañados por el cutout (cuerpo vaciado o placa de fondo). Usa el pipeline nuevo de keying; no toques audio ni fondos:  hero_kuro (Kuro el gato ninja) — silueta vaciada ~76%. Prompt sugerido: Side view facing right, a sleek black ninja cat with SOLID dark charcoal body fill (visible navy/charcoal midtones, never empty/transparent torso), magenta scarf flowing behind, small dark mask over glowing cyan eyes, tiny katana on its back, pointed ears, strong cyan rim light so the silhouette reads on dark backgrounds, bold dark outlines, cel-shaded, isolated single character, no background, no ground, no scenery plate  enemy_drone (Dron patrulla) — hueco + placa/escena en el borde  hazard_spikes (Antena eléctrica) — fondo de escena pegado  prop_crate (Caja de pescado) — placa rectangular + escena  goal_tower (Antena maestra) — fondo de escena pegado  En todos: sujeto aislado, cutout limpio, sin placa ni nebulosa detrás. Dejá collect_fish y los fondos como están.",
+      "at": 1793402862833
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Regenero Kuro, el dron, la antena eléctrica, la caja y la antena maestra como sujetos aislados con relleno sólido y sin placa de fondo. El pez, los fondos y el audio quedan intactos.",
+      "tags": [
+        "Regenerar 5 sprites",
+        "Cutout limpio"
+      ],
+      "at": 1793402938020
+    },
+    {
+      "who": "you",
+      "text": "Anima a Kuro con spritesheet: idle, walk, jump, fall, dash y attack (el dash y el corte con katana deben verse en los frames).",
+      "at": 1793405000610
+    },
+    {
+      "who": "forge",
+      "text": "¡Hecho! Genero el spritesheet de Kuro con idle, walk, jump, fall, dash y attack, con el dash en estela y el corte de katana bien visibles en los frames.",
+      "tags": [
+        "Spritesheet Kuro",
+        "6 animaciones"
+      ],
+      "at": 1793405115981
+    }
+  ],
+  "repairs": 0,
+  "jobUsage": {
+    "startedAt": 1793405872871,
+    "byProvider": {
+      "openai": {
+        "provider": "openai",
+        "calls": 1,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 1,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28725
+      }
+    },
+    "events": [
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kuro_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28725,
+        "images": 1,
+        "at": 1793405901948
+      }
+    ],
+    "totals": {
+      "calls": 1,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "images": 1,
+      "audioSec": 0,
+      "models": 0,
+      "estimatedUsd": 0.10335000000000001,
+      "ms": 29080
+    },
+    "finishedAt": 1793405901951
+  },
+  "usage": {
+    "startedAt": 1793400235268,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 7,
+        "inputTokens": 68236,
+        "outputTokens": 141176,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 10.96914,
+        "ms": 1273400
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 12,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 130.14285714285714,
+        "models": 0,
+        "estimatedUsd": 1.02006,
+        "ms": 27989
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 18,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 26,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 1.0805500000000001,
+        "ms": 625094
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "director",
+        "calls": 1,
+        "inputTokens": 3369,
+        "outputTokens": 5201,
+        "estimatedUsd": 0.088122,
+        "ms": 36076,
+        "model": "claude-sonnet-5-5",
+        "at": 1793400271709
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_jump",
+        "calls": 1,
+        "estimatedUsd": 0.02,
+        "ms": 1546,
+        "audioSec": 0.5,
+        "at": 1793400273287
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_dash",
+        "calls": 1,
+        "estimatedUsd": 0.024,
+        "ms": 1691,
+        "audioSec": 0.6,
+        "at": 1793400273435
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_slash",
+        "calls": 1,
+        "estimatedUsd": 0.024,
+        "ms": 1321,
+        "audioSec": 0.6,
+        "at": 1793400274619
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_pickup",
+        "calls": 1,
+        "estimatedUsd": 0.02,
+        "ms": 1274,
+        "audioSec": 0.5,
+        "at": 1793400274719
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_hit",
+        "calls": 1,
+        "estimatedUsd": 0.032,
+        "ms": 1522,
+        "audioSec": 0.8,
+        "at": 1793400276151
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_win",
+        "calls": 1,
+        "estimatedUsd": 0.1,
+        "ms": 1687,
+        "audioSec": 2.5,
+        "at": 1793400276416
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.02952,
+        "ms": 1338,
+        "audioSec": 11.714285714285714,
+        "at": 1793400277765
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_lose",
+        "calls": 1,
+        "estimatedUsd": 0.08,
+        "ms": 1961,
+        "audioSec": 2,
+        "at": 1793400278122
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:music_neon_rooftops",
+        "calls": 1,
+        "estimatedUsd": 0.6,
+        "ms": 8452,
+        "audioSec": 75,
+        "at": 1793400280191
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2334,
+        "outputTokens": 1606,
+        "estimatedUsd": 0.031092,
+        "ms": 13396,
+        "model": "claude-sonnet-5-5",
+        "at": 1793400285276
+      },
+      {
+        "provider": "openai",
+        "label": "img:hero_kuro",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 34974,
+        "images": 1,
+        "at": 1793400306880
+      },
+      {
+        "provider": "openai",
+        "label": "img:hazard_spikes",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 35141,
+        "images": 2,
+        "at": 1793400307259
+      },
+      {
+        "provider": "openai",
+        "label": "img:collect_fish",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 15722,
+        "images": 1,
+        "at": 1793400322733
+      },
+      {
+        "provider": "openai",
+        "label": "img:enemy_drone",
+        "calls": 1,
+        "estimatedUsd": 0.106,
+        "ms": 67143,
+        "images": 2,
+        "at": 1793400339137
+      },
+      {
+        "provider": "openai",
+        "label": "img:prop_crate",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 31918,
+        "images": 2,
+        "at": 1793400339429
+      },
+      {
+        "provider": "openai",
+        "label": "img:goal_tower",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 28999,
+        "images": 2,
+        "at": 1793400352117
+      },
+      {
+        "provider": "openai",
+        "label": "img:tile_rooftop",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 33534,
+        "images": 2,
+        "at": 1793400372889
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_sky_clouds",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 33487,
+        "images": 1,
+        "at": 1793400373059
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_skyline",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 33314,
+        "images": 1,
+        "at": 1793400385626
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:create",
+        "calls": 1,
+        "inputTokens": 10791,
+        "outputTokens": 64000,
+        "estimatedUsd": 4.961865,
+        "ms": 645048,
+        "model": "claude-opus-5-5",
+        "at": 1793400930336
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:fix2",
+        "calls": 1,
+        "inputTokens": 15304,
+        "outputTokens": 52218,
+        "estimatedUsd": 4.14591,
+        "ms": 456403,
+        "model": "claude-opus-5-5",
+        "at": 1793401386759
+      },
+      {
+        "provider": "openai",
+        "label": "img:hero_kuro",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 36946,
+        "images": 1,
+        "at": 1793401698646
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.02952,
+        "ms": 2950,
+        "audioSec": 11.714285714285714,
+        "at": 1793401709916
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.02952,
+        "ms": 2889,
+        "audioSec": 11.714285714285714,
+        "at": 1793402117474
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.0315,
+        "ms": 1358,
+        "audioSec": 12.5,
+        "at": 1793402576162
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4072,
+        "outputTokens": 900,
+        "estimatedUsd": 0.025716,
+        "ms": 7164,
+        "model": "claude-sonnet-5-5",
+        "at": 1793402870072
+      },
+      {
+        "provider": "openai",
+        "label": "img:hazard_spikes",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 31646,
+        "images": 2,
+        "at": 1793402902204
+      },
+      {
+        "provider": "openai",
+        "label": "img:hero_kuro",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 34202,
+        "images": 1,
+        "at": 1793402904566
+      },
+      {
+        "provider": "openai",
+        "label": "img:goal_tower",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 16305,
+        "images": 1,
+        "at": 1793402921024
+      },
+      {
+        "provider": "openai",
+        "label": "img:prop_crate",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 31515,
+        "images": 2,
+        "at": 1793402934172
+      },
+      {
+        "provider": "openai",
+        "label": "img:enemy_drone",
+        "calls": 1,
+        "estimatedUsd": 0.106,
+        "ms": 67266,
+        "images": 2,
+        "at": 1793402937887
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4265,
+        "outputTokens": 195,
+        "estimatedUsd": 0.01572,
+        "ms": 6241,
+        "model": "claude-sonnet-5-5",
+        "at": 1793405006864
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kuro_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 33590,
+        "images": 1,
+        "at": 1793405040789
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 28101,
+        "outputTokens": 17056,
+        "estimatedUsd": 1.700715,
+        "ms": 109072,
+        "model": "claude-opus-5-5",
+        "at": 1793405115970
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kuro_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30667,
+        "images": 1,
+        "at": 1793405500439
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:hero_kuro_sheet",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28725,
+        "images": 1,
+        "at": 1793405901948
+      }
+    ],
+    "totals": {
+      "calls": 37,
+      "inputTokens": 68236,
+      "outputTokens": 141176,
+      "images": 26,
+      "audioSec": 130.14285714285714,
+      "models": 0,
+      "estimatedUsd": 13.06975,
+      "ms": 5666683
+    },
+    "finishedAt": 1793405901951
+  },
+  "job": {
+    "kind": "asset",
+    "startedAt": 1793405872871,
+    "stages": [
+      {
+        "id": "assets",
+        "label": "Kuro el gato ninja · anim",
+        "status": "ok",
+        "detail": "Generando"
+      }
+    ],
+    "finishedAt": 1793405901951,
+    "reload": true
+  },
+  "design": {
+    "title": "Neko Neón",
+    "tagline": "Salta, desliza y corta la noche entre las azoteas de la ciudad.",
+    "genre": "Plataformero 2D de acción con scroll lateral",
+    "dimension": "2d",
+    "engine": "phaser",
+    "camera": "Vista lateral 2D con scroll horizontal suave que sigue al héroe, con parallax de varias capas de fondo. Resolución lógica 1280x720.",
+    "artStyle": "Stylized 2D cyberpunk illustration with bold clean dark outlines, flat cel-shaded color blocks and a single soft rim light in magenta or cyan on every subject. Neon glow halos around signs, eyes and pickups, set against deep indigo night shadows. Slightly chunky, readable silhouettes designed for small on-screen sizes, subtle grain-free vector-like finish, rain-slick night mood, high contrast between dark rooftops and luminous neon accents. Playful but cool tone, consistent line weight and lighting direction from the upper left across all assets.",
+    "palette": [
+      "#0b0620",
+      "#2a1458",
+      "#ff2e97",
+      "#16e0ff",
+      "#f9f871",
+      "#7b5cff",
+      "#1a1a2e"
+    ],
+    "setting": "Una megaciudad futurista de noche, bajo lluvia fina y carteles de neón. El gato ninja corre por azoteas con antenas, tuberías y tendederos, separadas por huecos sobre calles lejanas llenas de luces.",
+    "hero": {
+      "name": "Kuro, el gato ninja",
+      "description": "Un gato negro y esbelto con bufanda ninja magenta ondeante, antifaz sobre unos ojos cian brillantes y una pequeña katana a la espalda. Ágil, expresivo y con silueta clara de orejas puntiagudas."
+    },
+    "mechanics": [
+      "Salto variable: mantener el botón da más altura, soltarlo corta el salto. Salto doble en el aire.",
+      "Salto de pared: Kuro se agarra a muros de edificios y rebota hacia el lado contrario para subir entre azoteas.",
+      "Deslizamiento rápido (dash) en el suelo o en el aire, con breve invulnerabilidad y enfriamiento corto, útil para cruzar huecos y esquivar drones.",
+      "Ataque de katana en corto alcance que destruye drones patrulla y rompe cajas con pescados.",
+      "Recoger peces neón para sumar puntos; con 20 peces se gana una vida extra. Cae al vacío o toca peligros y pierdes una vida, reapareciendo en el último punto de control (farolillo).",
+      "Peligros: drones patrulla que vuelan en trayectoria, pinchos de antenas eléctricas y carteles que se apagan y dejan huecos intermitentes."
+    ],
+    "controls": [
+      {
+        "input": "A / D o Flechas izquierda/derecha",
+        "action": "Mover a Kuro"
+      },
+      {
+        "input": "Espacio o W / Flecha arriba",
+        "action": "Saltar (pulsar otra vez en el aire para doble salto, o contra una pared para saltar de pared)"
+      },
+      {
+        "input": "Shift",
+        "action": "Deslizamiento rápido (dash)"
+      },
+      {
+        "input": "J o clic izquierdo",
+        "action": "Atacar con la katana"
+      },
+      {
+        "input": "Esc o P",
+        "action": "Pausar el juego"
+      }
+    ],
+    "objective": "Cruzar las azoteas de la ciudad neón hasta la torre de la antena maestra al final del nivel, recogiendo peces neón por el camino y esquivando o destruyendo los drones.",
+    "loseCondition": "Pierdes las 3 vidas al caer al vacío, tocar pinchos eléctricos o ser golpeado por drones. Con 0 vidas aparece la pantalla de fin de partida.",
+    "levelOutline": "Un nivel largo (unos 6000 px de ancho de mundo, 3-4 minutos) dividido en 4 tramos con puntos de control entre ellos. Tramo 1 (tutorial): azoteas anchas, huecos pequeños de 120-200 px, primeros peces y una caja rompible; enseña salto y salto doble. Tramo 2: aparecen muros de edificios para salto de pared y los primeros drones lentos en patrulla horizontal; huecos de 200-280 px que requieren dash. Tramo 3: carteles intermitentes que se encienden y apagan cada 1.5 s, pinchos eléctricos en el borde de azoteas y drones más rápidos con trayectoria ondulada; combina salto, pared y dash. Tramo 4 (clímax): secuencia rápida de plataformas pequeñas y drones, con peces formando un camino ideal, y al final la torre de la antena maestra como meta. La dificultad sube gradualmente, con zonas de descanso con peces tras cada reto exigente.",
+    "tuning": [
+      {
+        "key": "playerSpeed",
+        "label": "Velocidad de Kuro",
+        "min": 180,
+        "max": 450,
+        "value": 300
+      },
+      {
+        "key": "jumpForce",
+        "label": "Fuerza de salto",
+        "min": 420,
+        "max": 800,
+        "value": 620
+      },
+      {
+        "key": "gravity",
+        "label": "Gravedad",
+        "min": 1000,
+        "max": 2600,
+        "value": 1800
+      },
+      {
+        "key": "dashSpeed",
+        "label": "Velocidad del dash",
+        "min": 450,
+        "max": 1000,
+        "value": 700
+      },
+      {
+        "key": "dashCooldown",
+        "label": "Enfriamiento del dash (s)",
+        "min": 0.2,
+        "max": 2,
+        "value": 0.8
+      },
+      {
+        "key": "droneSpeed",
+        "label": "Velocidad de drones",
+        "min": 60,
+        "max": 260,
+        "value": 120
+      },
+      {
+        "key": "startLives",
+        "label": "Vidas iniciales",
+        "min": 1,
+        "max": 9,
+        "value": 3
+      }
+    ],
+    "ui": {
+      "hud": [
+        {
+          "id": "lives",
+          "label": "Vidas",
+          "kind": "lives",
+          "shows": "Vidas restantes de Kuro como iconos de cabeza de gato"
+        },
+        {
+          "id": "fish",
+          "label": "Peces",
+          "kind": "value",
+          "shows": "Peces neón recogidos (progreso hacia vida extra cada 20)"
+        },
+        {
+          "id": "score",
+          "label": "Puntos",
+          "kind": "value",
+          "shows": "Puntuación total"
+        },
+        {
+          "id": "dash",
+          "label": "Dash",
+          "kind": "bar",
+          "shows": "Barra de recarga del deslizamiento rápido"
+        },
+        {
+          "id": "progress",
+          "label": "Recorrido",
+          "kind": "bar",
+          "shows": "Avance del nivel hasta la torre de la antena maestra"
+        }
+      ],
+      "pauseMenu": [
+        {
+          "id": "resume",
+          "label": "Continuar",
+          "action": "Cerrar la pausa y reanudar la partida"
+        },
+        {
+          "id": "settings",
+          "label": "Ajustes",
+          "action": "Abrir el panel de ajustes de audio y juego"
+        },
+        {
+          "id": "restart",
+          "label": "Reiniciar nivel",
+          "action": "Reiniciar el nivel desde el principio"
+        },
+        {
+          "id": "quit",
+          "label": "Salir",
+          "action": "Volver a la pantalla de inicio"
+        }
+      ],
+      "settings": [
+        {
+          "key": "masterVolume",
+          "label": "Volumen general",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "musicVolume",
+          "label": "Volumen de la música",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.6
+        },
+        {
+          "key": "sfxVolume",
+          "label": "Volumen de efectos",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "screenShake",
+          "label": "Temblor de pantalla",
+          "type": "toggle",
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "options": [],
+          "defaultValue": true
+        },
+        {
+          "key": "rain",
+          "label": "Lluvia",
+          "type": "toggle",
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "options": [],
+          "defaultValue": true
+        },
+        {
+          "key": "difficulty",
+          "label": "Dificultad",
+          "type": "select",
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "options": [
+            "Fácil",
+            "Normal",
+            "Difícil"
+          ],
+          "defaultValue": "Normal"
+        }
+      ],
+      "gameOverActions": [
+        "Reintentar",
+        "Salir al menú"
+      ],
+      "startActions": [
+        "Jugar",
+        "Ajustes"
+      ]
+    },
+    "cinematic": {
+      "style": "epica",
+      "lines": [
+        "La ciudad nunca duerme, y sus luces ocultan un secreto.",
+        "Alguien apagó la antena maestra, y Kuro es el único que puede encenderla.",
+        "Salta, gato ninja: la noche neón te espera."
+      ],
+      "direction": {
+        "approach": "side_scroll_reveal",
+        "rationale": "Neko Neón es un plataformero de scroll lateral con parallax multicapa, así que la intro debe usar el mismo lenguaje que el gameplay: un travelling lateral sobre las azoteas que revela la ciudad, la antena apagada y a Kuro. Con el tag 'épica' se empieza con una toma amplia y vertical de la megaciudad, se avanza a la torre de la antena apagada y se cierra con Kuro en primer plano, de modo que el últ",
+        "mood": "Epic, rain-slick cyberpunk night; wonder turning into urgency, then a playful, cool call to action",
+        "notes": "Use the 1280x720 logical canvas with the camera in pixel units (x right, y up, z is the zoom factor). Build the intro from the real gameplay parallax layers (far skyline, mid billboards, near rooftops, rain overlay) and keep the rain emitter and neon flicker running throughout. Kuro stays hidden until shot 3 and then stands in his idle pose, with his scarf waving in a looping wind tween and his cyan eyes glowing. Drones patrol slowly in the background as silhouettes, with no collisions or damage",
+        "shots": [
+          {
+            "lineIndex": 0,
+            "durationSec": 4.5,
+            "staging": "Wide establishing shot of the megacity at night. The camera starts high over the distant skyline and slowly descends and pushes in toward the rooftops while the parallax layers slide at different speeds. Neon signs flicker on in sequence from far to near, rain streaks cross the f",
+            "camera": {
+              "from": [
+                640,
+                520,
+                0.8
+              ],
+              "to": [
+                900,
+                400,
+                1
+              ],
+              "lookAt": [
+                1000,
+                360,
+                0
+              ],
+              "fov": 60,
+              "ease": "smooth"
+            },
+            "fx": [
+              "rain_overlay",
+              "neon_sign_flicker_sequence",
+              "parallax_slow",
+              "distant_drone_lights",
+              "soft_bloom_up"
+            ]
+          },
+          {
+            "lineIndex": -1,
+            "durationSec": 2.5,
+            "staging": "Bridge: a fast lateral travelling over the roofs (antennas, pipes, laundry lines) with foreground silhouettes whipping past, accelerating toward the right to cross the whole level. Layers move at very different speeds for strong depth.",
+            "camera": {
+              "from": [
+                1400,
+                380,
+                1
+              ],
+              "to": [
+                5200,
+                420,
+                1
+              ],
+              "lookAt": [
+                5200,
+                420,
+                0
+              ],
+              "fov": 60,
+              "ease": "easeIn"
+            },
+            "fx": [
+              "parallax_fast",
+              "foreground_silhouette_whip",
+              "rain_streak_stretch",
+              "speed_lines_subtle"
+            ]
+          },
+          {
+            "lineIndex": 1,
+            "durationSec": 5,
+            "staging": "The camera settles on the master antenna tower at the end of the level, dark and dead. A slow tilt up from its base to its tip, with a failed light flickering once or twice and an unlit red beacon. The skyline's neon dims slightly around it, as if the city were losing power, then",
+            "camera": {
+              "from": [
+                5400,
+                260,
+                1
+              ],
+              "to": [
+                5400,
+                560,
+                1.15
+              ],
+              "lookAt": [
+                5450,
+                520,
+                0
+              ],
+              "fov": 55,
+              "ease": "smooth"
+            },
+            "fx": [
+              "antenna_dead_flicker",
+              "neon_dim_pulse",
+              "vignette_in",
+              "cyan_eye_glint",
+              "rain_overlay"
+            ]
+          },
+          {
+            "lineIndex": 2,
+            "durationSec": 4.5,
+            "staging": "Hard but smooth return to the start rooftop. Kuro stands on the edge in silhouette with his scarf waving and his magenta rim light up-left, then he turns to the camera, his cyan eyes flare and he crouches ready to jump. The camera pushes from a medium-wide to a medium close-up, t",
+            "camera": {
+              "from": [
+                420,
+                330,
+                1.5
+              ],
+              "to": [
+                260,
+                360,
+                1
+              ],
+              "lookAt": [
+                240,
+                350,
+                0
+              ],
+              "fov": 50,
+              "ease": "easeOut"
+            },
+            "fx": [
+              "hero_rim_light_magenta",
+              "scarf_wave_loop",
+              "eye_glow_flare",
+              "title_neon_flicker_on",
+              "vignette_out",
+              "handoff_to_gameplay_camera"
+            ]
+          }
+        ]
+      }
+    },
+    "assets": {
+      "images": [
+        {
+          "id": "hero_kuro",
+          "name": "Kuro el gato ninja",
+          "role": "hero",
+          "prompt": "Side view facing right, a sleek black ninja cat in a dynamic running pose, magenta scarf flowing behind, small dark mask over glowing cyan eyes, tiny katana on its back, pointed ears, cyan rim light, bold dark outlines, cel-shaded, isolated single character, no background, no ground",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Sprite principal del jugador, mostrado a unos 80 px de alto",
+          "seamless": false
+        },
+        {
+          "id": "enemy_drone",
+          "name": "Dron patrulla",
+          "role": "enemy",
+          "prompt": "Side view facing right, a small round security drone with a single red-magenta glowing eye, two tiny propellers on top, dark metal body with neon pink trim, hovering, bold outlines, cel-shaded, isolated object, no background, no shadow",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Enemigo volador que patrulla y daña al tocar; se destruye con la katana",
+          "seamless": false
+        },
+        {
+          "id": "hazard_spikes",
+          "name": "Antena eléctrica",
+          "role": "hazard",
+          "prompt": "A short row of metal antenna spikes crackling with cyan electric sparks, dark metal base, neon glow, side view, bold outlines, cel-shaded, isolated object, no background, no ground plate",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Peligro estático colocado en el borde de azoteas; quita una vida al tocarlo",
+          "seamless": false
+        },
+        {
+          "id": "collect_fish",
+          "name": "Pez neón",
+          "role": "collectible",
+          "prompt": "Side view facing right, a small glowing fish shape made of yellow neon light with a soft cyan glow, simple stylized skeleton-like body, bold outline, cel-shaded, isolated object, no background",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Coleccionable que da puntos y avanza hacia la vida extra",
+          "seamless": false
+        },
+        {
+          "id": "prop_crate",
+          "name": "Caja de pescado",
+          "role": "prop",
+          "prompt": "A small wooden crate stamped with a neon fish icon, slightly worn, magenta neon edge light, side view, bold outlines, cel-shaded, isolated object, no background, no ground shadow",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Caja rompible con la katana que suelta peces",
+          "seamless": false
+        },
+        {
+          "id": "goal_tower",
+          "name": "Antena maestra",
+          "role": "goal",
+          "prompt": "A tall slim radio antenna tower with a glowing cyan beacon on top and magenta neon rings, lattice steel frame, front view, bold outlines, cel-shaded, isolated object, no background, no ground plate",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Meta al final del nivel; al tocarla se gana la partida",
+          "seamless": false
+        },
+        {
+          "id": "tile_rooftop",
+          "name": "Azotea",
+          "role": "tile",
+          "prompt": "Seamless horizontal rooftop tile, dark concrete top edge with a thin neon magenta trim and subtle vents and pipes on the facade below, flat cel-shaded, side view, night city",
+          "transparent": false,
+          "aspect": "3:2",
+          "usage": "Suelo y plataformas de azoteas, repetido en horizontal",
+          "seamless": true
+        },
+        {
+          "id": "bg_sky_clouds",
+          "name": "Cielo nocturno con nubes",
+          "role": "background",
+          "prompt": "Seamless abstract night sky layer, deep indigo and purple gradient with soft magenta and cyan glowing clouds and faint stars, no buildings, no moon, no landmarks, wide parallax, flat stylized",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Capa de fondo lejana con parallax lento y repetición horizontal",
+          "seamless": true
+        },
+        {
+          "id": "bg_skyline",
+          "name": "Horizonte neón",
+          "role": "background",
+          "prompt": "Wide cyberpunk city skyline at night seen from afar, dark building silhouettes with glowing windows and pink and cyan neon signs, hazy rain, deep indigo atmosphere, cel-shaded, no characters",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Fondo de paisaje urbano único, con parallax medio, nunca se repite en mosaico",
+          "seamless": false
+        },
+        {
+          "id": "hero_kuro_sheet",
+          "name": "Kuro el gato ninja · anim",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Animation spritesheet of hero_kuro (idle, walk, jump, fall, dash, attack). Use forge.phaser.animate(sprite) on the hero_kuro sprite.",
+          "seamless": false,
+          "sheet": {
+            "of": "hero_kuro",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              },
+              {
+                "name": "walk",
+                "frames": 4
+              },
+              {
+                "name": "jump",
+                "frames": 2
+              },
+              {
+                "name": "fall",
+                "frames": 2
+              },
+              {
+                "name": "dash",
+                "frames": 2
+              },
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      ],
+      "audio": [
+        {
+          "id": "music_neon_rooftops",
+          "name": "Azoteas neón",
+          "kind": "music",
+          "prompt": "Energetic synthwave chiptune loop with driving bass, arpeggiated synths, light retro drums, playful cool ninja night city vibe, upbeat 120 bpm, seamless loop",
+          "durationSec": 75,
+          "loop": true,
+          "usage": "Música de fondo durante el nivel"
+        },
+        {
+          "id": "sfx_jump",
+          "name": "Salto",
+          "kind": "sfx",
+          "prompt": "Short light cartoon jump whoosh with a soft synth blip, quick and bright",
+          "durationSec": 0.5,
+          "loop": false,
+          "usage": "Al saltar y al hacer doble salto"
+        },
+        {
+          "id": "sfx_dash",
+          "name": "Dash",
+          "kind": "sfx",
+          "prompt": "Fast sharp air swoosh with a slight electric zap, ninja dash",
+          "durationSec": 0.6,
+          "loop": false,
+          "usage": "Al usar el deslizamiento rápido"
+        },
+        {
+          "id": "sfx_slash",
+          "name": "Corte de katana",
+          "kind": "sfx",
+          "prompt": "Quick katana slash swoosh with a metallic shing, crisp",
+          "durationSec": 0.6,
+          "loop": false,
+          "usage": "Al atacar con la katana"
+        },
+        {
+          "id": "sfx_pickup",
+          "name": "Recoger pez",
+          "kind": "sfx",
+          "prompt": "Bright sparkling coin-like pickup chime, short rising two-note synth",
+          "durationSec": 0.5,
+          "loop": false,
+          "usage": "Al recoger un pez neón"
+        },
+        {
+          "id": "sfx_hit",
+          "name": "Golpe",
+          "kind": "sfx",
+          "prompt": "Electric zap hit with a short buzzing crunch, player damage sound",
+          "durationSec": 0.8,
+          "loop": false,
+          "usage": "Al recibir daño o destruir un dron"
+        },
+        {
+          "id": "sfx_win",
+          "name": "Victoria",
+          "kind": "sfx",
+          "prompt": "Triumphant short synth fanfare with sparkles, victorious and uplifting",
+          "durationSec": 2.5,
+          "loop": false,
+          "usage": "Al llegar a la antena maestra"
+        },
+        {
+          "id": "sfx_lose",
+          "name": "Derrota",
+          "kind": "sfx",
+          "prompt": "Descending sad synth tones with a low thud, game over jingle",
+          "durationSec": 2,
+          "loop": false,
+          "usage": "Al perder todas las vidas"
+        },
+        {
+          "id": "narration",
+          "name": "Narración",
+          "kind": "voice",
+          "prompt": "La ciudad nunca duerme, y sus luces ocultan un secreto.\n\nAlguien apagó la antena maestra, y Kuro es el único que puede encenderla.\n\nSalta, gato ninja: la noche neón te espera.",
+          "durationSec": 12,
+          "loop": false,
+          "usage": "Narración de la cinemática inicial"
+        }
+      ],
+      "models": []
+    }
+  }
+}

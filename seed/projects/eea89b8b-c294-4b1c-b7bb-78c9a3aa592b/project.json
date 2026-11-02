@@ -1,0 +1,1663 @@
+{
+  "id": "eea89b8b-c294-4b1c-b7bb-78c9a3aa592b",
+  "createdAt": 1793314006412,
+  "updatedAt": 1793400020896,
+  "idea": "A third-person 3D explorer collecting crystals in floating ruins",
+  "dimension": "3d",
+  "imageProvider": "openai",
+  "status": "ready",
+  "assets": {
+    "hero_ila": {
+      "id": "hero_ila",
+      "type": "image",
+      "name": "Ila the Skywalker",
+      "spec": {
+        "id": "hero_ila",
+        "name": "Ila the Skywalker",
+        "role": "hero",
+        "prompt": "Stylized low-poly young female explorer, short teal cloak, flowing cream wind-scarf, brown leather satchel, goggles pushed up on forehead, small glowing cyan glider charm on wrist, three-quarter front view, full body, hand-painted soft texture, warm golden rim light, isolated character on plain transparent background, no ground, no scenery",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Hero billboard or texture for the low-poly player character; also used for the start screen.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314115101,
+      "file": "assets/hero_ila.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: fondo de escena pegado al sprite (73% del borde)"
+    },
+    "stone_sentinel": {
+      "id": "stone_sentinel",
+      "type": "image",
+      "name": "Stone Sentinel",
+      "spec": {
+        "id": "stone_sentinel",
+        "name": "Stone Sentinel",
+        "role": "enemy",
+        "prompt": "Stylized low-poly ancient stone guardian golem, mossy carved blocky body, glowing amber rune eyes and chest rune, heavy rounded fists, three-quarter front view, hand-painted soft texture, isolated single character on plain transparent background, no ground, no scenery",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Patrolling enemy billboard or texture on a primitive-built golem.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314141036,
+      "file": "assets/stone_sentinel.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: fondo de escena pegado al sprite (70% del borde)"
+    },
+    "aether_crystal": {
+      "id": "aether_crystal",
+      "type": "image",
+      "name": "Aether Crystal",
+      "spec": {
+        "id": "aether_crystal",
+        "name": "Aether Crystal",
+        "role": "collectible",
+        "prompt": "Single floating faceted aether crystal, glowing cyan-white core with violet edges, soft inner light, tiny sparkles, stylized low-poly hand-painted look, three-quarter view, isolated object on plain transparent background, no ground, no scenery",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Collectible crystal sprite or texture on a bobbing octahedron mesh.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314072578,
+      "file": "assets/aether_crystal.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "beacon_gate": {
+      "id": "beacon_gate",
+      "type": "image",
+      "name": "Beacon Gate",
+      "spec": {
+        "id": "beacon_gate",
+        "name": "Beacon Gate",
+        "role": "goal",
+        "prompt": "Ancient stone arch gate with a glowing golden-white beacon orb at its apex, carved runes along the pillars, gleaming light rays, stylized low-poly hand-painted look, three-quarter front view, isolated object on plain transparent background, no ground, no scenery",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Goal marker billboard at the Beacon Spire and its victory glow.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314109508,
+      "file": "assets/beacon_gate.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (13% del margen); fondo de escena pegado al sprite (59% del borde)"
+    },
+    "tex_ruin_stone": {
+      "id": "tex_ruin_stone",
+      "type": "image",
+      "name": "Ruin Stone Texture",
+      "spec": {
+        "id": "tex_ruin_stone",
+        "name": "Ruin Stone Texture",
+        "role": "texture",
+        "prompt": "Seamless tileable texture of weathered ancient sandstone bricks in pale warm grey-beige with fine cracks and subtle moss in the seams, hand-painted stylized, soft even lighting, top-down flat, no perspective",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Main texture for ruin walls, pillars and island sides.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314127731,
+      "file": "assets/tex_ruin_stone.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "tex_moss_turf": {
+      "id": "tex_moss_turf",
+      "type": "image",
+      "name": "Mossy Turf Texture",
+      "spec": {
+        "id": "tex_moss_turf",
+        "name": "Mossy Turf Texture",
+        "role": "texture",
+        "prompt": "Seamless tileable hand-painted stylized grass and moss ground texture, soft sage green with tiny clover and pale yellow flower specks, subtle brush grain, flat top-down, no perspective",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Island top surfaces and terraces.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314135082,
+      "file": "assets/tex_moss_turf.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "tex_cracked_slab": {
+      "id": "tex_cracked_slab",
+      "type": "image",
+      "name": "Cracked Slab Texture",
+      "spec": {
+        "id": "tex_cracked_slab",
+        "name": "Cracked Slab Texture",
+        "role": "texture",
+        "prompt": "Seamless tileable texture of fractured dusty stone slab with deep cracks glowing faintly with orange light in the fissures, hand-painted stylized, flat top-down, no perspective",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Crumbling platforms, which warn the player visually.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314148743,
+      "file": "assets/tex_cracked_slab.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "tex_rune_glow": {
+      "id": "tex_rune_glow",
+      "type": "image",
+      "name": "Rune Glow Texture",
+      "spec": {
+        "id": "tex_rune_glow",
+        "name": "Rune Glow Texture",
+        "role": "texture",
+        "prompt": "Seamless tileable dark indigo stone texture with fine carved glowing cyan rune lines and geometric patterns, hand-painted stylized, flat top-down, no perspective",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Checkpoint runes, bridges and the beacon spire base.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314153372,
+      "file": "assets/tex_rune_glow.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "bg_sky_sea": {
+      "id": "bg_sky_sea",
+      "type": "image",
+      "name": "Cloud Sea Sky",
+      "spec": {
+        "id": "bg_sky_sea",
+        "name": "Cloud Sea Sky",
+        "role": "background",
+        "prompt": "Wide hand-painted stylized sky panorama at golden hour, endless sea of soft pastel clouds below, gradient from deep blue to peach and lavender at the horizon, a few tiny distant floating islands in haze, soft glowing moon, no characters, no text and its nigth no sun at all, completely night",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Skybox and backdrop for the whole level.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 4,
+      "liked": 0,
+      "updatedAt": 1793400020896,
+      "file": "assets/bg_sky_sea.r3.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "music_main": {
+      "id": "music_main",
+      "type": "audio",
+      "name": "Drifting Ruins",
+      "spec": {
+        "id": "music_main",
+        "name": "Drifting Ruins",
+        "kind": "music",
+        "prompt": "Calm ethereal adventure loop, airy harp arpeggios, soft glassy bells, warm strings pad, gentle flute melody, light wind textures, wondrous and slightly melancholic, 80 bpm, seamless loop, no vocals",
+        "durationSec": 75,
+        "loop": true,
+        "usage": "Background music during gameplay."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314062790,
+      "file": "assets/music_main.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_jump": {
+      "id": "sfx_jump",
+      "type": "audio",
+      "name": "Jump",
+      "spec": {
+        "id": "sfx_jump",
+        "name": "Jump",
+        "kind": "sfx",
+        "prompt": "Short soft whoosh with a light airy pop, small character jump, magical and gentle",
+        "durationSec": 0.6,
+        "loop": false,
+        "usage": "Jump and double jump."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314056759,
+      "file": "assets/sfx_jump.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_crystal": {
+      "id": "sfx_crystal",
+      "type": "audio",
+      "name": "Crystal pickup",
+      "spec": {
+        "id": "sfx_crystal",
+        "name": "Crystal pickup",
+        "kind": "sfx",
+        "prompt": "Bright magical crystal chime, rising glassy arpeggio with shimmering sparkle tail",
+        "durationSec": 1.2,
+        "loop": false,
+        "usage": "Collecting a crystal."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314057506,
+      "file": "assets/sfx_crystal.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_glide": {
+      "id": "sfx_glide",
+      "type": "audio",
+      "name": "Glide",
+      "spec": {
+        "id": "sfx_glide",
+        "name": "Glide",
+        "kind": "sfx",
+        "prompt": "Soft airy wind whoosh with a fluttering cloth sound, smooth and light",
+        "durationSec": 1.5,
+        "loop": false,
+        "usage": "Start of a glide."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314058666,
+      "file": "assets/sfx_glide.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_crumble": {
+      "id": "sfx_crumble",
+      "type": "audio",
+      "name": "Platform crumble",
+      "spec": {
+        "id": "sfx_crumble",
+        "name": "Platform crumble",
+        "kind": "sfx",
+        "prompt": "Rumbling stone cracking and crumbling, gravel falling, short and dusty",
+        "durationSec": 1.5,
+        "loop": false,
+        "usage": "Cracked platform starts to fall."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314059775,
+      "file": "assets/sfx_crumble.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_hit": {
+      "id": "sfx_hit",
+      "type": "audio",
+      "name": "Hit",
+      "spec": {
+        "id": "sfx_hit",
+        "name": "Hit",
+        "kind": "sfx",
+        "prompt": "Heavy stone thud impact with a dull magical zap, short, player damage",
+        "durationSec": 0.8,
+        "loop": false,
+        "usage": "Hit by a Sentinel or falling into the void and losing a life."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314060143,
+      "file": "assets/sfx_hit.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_win": {
+      "id": "sfx_win",
+      "type": "audio",
+      "name": "Beacon awakens",
+      "spec": {
+        "id": "sfx_win",
+        "name": "Beacon awakens",
+        "kind": "sfx",
+        "prompt": "Triumphant magical swell, choir pad, rising harp glissando and bright bell fanfare, ending in a warm resonant chord",
+        "durationSec": 3,
+        "loop": false,
+        "usage": "Reaching the open beacon gate."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314061294,
+      "file": "assets/sfx_win.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_lose": {
+      "id": "sfx_lose",
+      "type": "audio",
+      "name": "Game over",
+      "spec": {
+        "id": "sfx_lose",
+        "name": "Game over",
+        "kind": "sfx",
+        "prompt": "Sad descending glassy notes with a low fading drone, gentle defeat sting",
+        "durationSec": 2.5,
+        "loop": false,
+        "usage": "Losing the last life."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314061794,
+      "file": "assets/sfx_lose.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "narration": {
+      "id": "narration",
+      "type": "audio",
+      "name": "Narration",
+      "spec": {
+        "id": "narration",
+        "name": "Narration",
+        "kind": "voice",
+        "prompt": "The sky-city shattered, and its light fell silent. Only the aether crystals still hum among the drifting ruins. Ila climbs the broken sky to wake the last beacon.",
+        "durationSec": 12,
+        "loop": false,
+        "usage": "Intro cinematic narration."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793314062391,
+      "file": "assets/narration.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "hero_ila_3d": {
+      "id": "hero_ila_3d",
+      "type": "model",
+      "name": "Ila the Skywalker 3D",
+      "spec": {
+        "id": "hero_ila_3d",
+        "name": "Ila the Skywalker 3D",
+        "prompt": "Stylized low-poly young female sky explorer named Ila, full body standing in neutral A-pose, one single closed solid watertight mesh with thick volumetric limbs, torso, head and hair, short tousled hair, small satchel and scarf modeled as thick solid shapes fused to the body, simple tunic, boots, hand-painted soft gradated textures in warm earthy tones with teal accents, faceted geometry, no thin shells, no hollow plates, no floating parts, no base or stand",
+        "usage": "3D mesh for hero Ila the Skywalker"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793390505490,
+      "file": "assets/hero_ila_3d.r3.glb",
+      "mime": "model/gltf-binary",
+      "provider": "Tripo",
+      "custom": false
+    },
+    "stone_sentinel_3d": {
+      "id": "stone_sentinel_3d",
+      "type": "model",
+      "name": "Stone Sentinel 3D",
+      "spec": {
+        "id": "stone_sentinel_3d",
+        "name": "Stone Sentinel 3D",
+        "prompt": "Stylized low-poly ancient stone sentinel guardian statue, full body standing, one single closed solid watertight mesh, chunky blocky torso, thick legs and arms fused to the body, rounded heavy head with a glowing rune carved into the chest as solid relief, mossy weathered stone with painterly hand-painted texture, faceted geometry, solid volumes only, no thin shells, no hollow plates, no floating pieces, no base or stand",
+        "usage": "3D mesh for enemy Stone Sentinel"
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793390553286,
+      "file": "assets/stone_sentinel_3d.r3.glb",
+      "mime": "model/gltf-binary",
+      "provider": "Tripo",
+      "custom": false
+    },
+    "aether_crystal_3d": {
+      "id": "aether_crystal_3d",
+      "type": "model",
+      "name": "Aether Crystal 3D",
+      "spec": {
+        "id": "aether_crystal_3d",
+        "name": "Aether Crystal 3D",
+        "prompt": "Game-ready stylized low-poly 3D collectible: Single floating faceted aether crystal, glowing cyan-white core with violet edges, soft inner light, tiny sparkles, stylized low-poly hand-painted look, three-quarter view, isolated object on plain transparent background, no ground, no scenery. Single isolated object, clean topology, readable silhouette, no ground plane.",
+        "usage": "3D mesh for collectible Aether Crystal"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793387315012,
+      "file": "assets/aether_crystal_3d.r1.glb",
+      "mime": "model/gltf-binary",
+      "provider": "Tripo",
+      "custom": false
+    },
+    "beacon_gate_3d": {
+      "id": "beacon_gate_3d",
+      "type": "model",
+      "name": "Beacon Gate 3D",
+      "spec": {
+        "id": "beacon_gate_3d",
+        "name": "Beacon Gate 3D",
+        "prompt": "Game-ready stylized low-poly 3D goal: Ancient stone arch gate with a glowing golden-white beacon orb at its apex, carved runes along the pillars, gleaming light rays, stylized low-poly hand-painted look, three-quarter front view, isolated object on plain transparent background, no ground, no scenery. Single isolated object, clean topology, readable silhouette, no ground plane.",
+        "usage": "3D mesh for goal Beacon Gate"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793387323090,
+      "file": "assets/beacon_gate_3d.r1.glb",
+      "mime": "model/gltf-binary",
+      "provider": "Tripo",
+      "custom": false
+    }
+  },
+  "versions": [
+    {
+      "n": 1,
+      "createdAt": 1793315189524,
+      "note": "Versión inicial",
+      "file": "versions/v1/game.js"
+    },
+    {
+      "n": 2,
+      "createdAt": 1793325677987,
+      "note": "modifica a los enemigos para que sean primitivas en 3D y no los sprites actuales",
+      "file": "versions/v2/game.js"
+    },
+    {
+      "n": 3,
+      "createdAt": 1793387649527,
+      "note": "Generate 3D GLB models from the EXISTING 2D art — do NOT redraw images. Regenera",
+      "file": "versions/v3/game.js"
+    }
+  ],
+  "currentVersion": 3,
+  "chat": [
+    {
+      "who": "forge",
+      "text": "¡Skyshard Drift está listo! Juégalo y pídeme cambios con tus palabras: los aplico al instante.",
+      "at": 1793315189537
+    },
+    {
+      "who": "you",
+      "text": "modifica a los enemigos para que sean primitivas en 3D y no los sprites actuales, tambien los cristales",
+      "at": 1793325105992
+    },
+    {
+      "who": "forge",
+      "text": "¡Hecho! Los Centinelas y los cristales ahora se construyen con primitivas 3D (formas geométricas) en lugar de sprites, con brillo emisivo para los cristales.",
+      "tags": [
+        "Enemigos 3D",
+        "Cristales 3D"
+      ],
+      "at": 1793325678001
+    },
+    {
+      "who": "you",
+      "text": "Generate 3D GLB models from the EXISTING 2D art — do NOT redraw images. Regenerate these model ids: hero_ila_3d, stone_sentinel_3d, aether_crystal_3d, beacon_gate_3d. Update the code so hero, Stone Sentinels, aether crystals and the beacon gate use forge.three.character(imageId, height) (loads *_3d). Also create a full in-engine cinematic (cinematic director) for the existing narration lines and implement onCinematic(dt, cine) so the intro is a live camera sequence, not a static frame. Do not change music/sfx beyond what those meshes and the cinematic need.",
+      "at": 1793387158255
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Regenero las mallas 3D de Ila, el Centinela, el cristal y la puerta del faro a partir del arte 2D existente (sin redibujar), y paso todo a forge.three.character. También añado una cinemática de intro con cámara en vivo usando las líneas de narración actuales.",
+      "tags": [
+        "Modelos 3D GLB",
+        "Cinemática intro",
+        "Código 3D"
+      ],
+      "at": 1793387649558
+    },
+    {
+      "who": "you",
+      "text": "Regenerate ONLY these 3D models via Tripo text→3D (do NOT redraw any images, do NOT touch aether_crystal_3d or beacon_gate_3d, do NOT change code unless required): hero_ila_3d and stone_sentinel_3d. Use closed solid watertight mesh prompts — no paper-thin shells, no hollow floating plates. Keep music, sfx, narration and level as they are.",
+      "at": 1793388411052
+    },
+    {
+      "who": "forge",
+      "text": "¡Listo! Regenero solo hero_ila_3d y stone_sentinel_3d con Tripo texto→3D usando prompts de malla sólida y cerrada, sin tocar imágenes, cristales, puerta, audio ni código.",
+      "tags": [
+        "Ila 3D",
+        "Centinela 3D"
+      ],
+      "at": 1793388543735
+    }
+  ],
+  "repairs": 0,
+  "jobUsage": {
+    "startedAt": 1793388411058,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 1,
+        "inputTokens": 4171,
+        "outputTokens": 522,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.020343,
+        "ms": 5011
+      },
+      "tripo": {
+        "provider": "tripo",
+        "calls": 2,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 0,
+        "models": 2,
+        "estimatedUsd": 0.4,
+        "ms": 216618
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4171,
+        "outputTokens": 522,
+        "estimatedUsd": 0.020343,
+        "ms": 5011,
+        "model": "claude-sonnet-5-5",
+        "at": 1793388416081
+      },
+      {
+        "provider": "tripo",
+        "label": "model:hero_ila_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 89021,
+        "models": 1,
+        "at": 1793388505131
+      },
+      {
+        "provider": "tripo",
+        "label": "model:stone_sentinel_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 127597,
+        "models": 1,
+        "at": 1793388543715
+      }
+    ],
+    "totals": {
+      "calls": 3,
+      "inputTokens": 4171,
+      "outputTokens": 522,
+      "images": 0,
+      "audioSec": 0,
+      "models": 2,
+      "estimatedUsd": 0.420343,
+      "ms": 221629
+    },
+    "finishedAt": 1793388543728
+  },
+  "usage": {
+    "startedAt": 1793314006415,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 11,
+        "inputTokens": 251876,
+        "outputTokens": 273275,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 23.449917,
+        "ms": 2250095
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 9,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 97.67142857142858,
+        "models": 0,
+        "estimatedUsd": 1.07316,
+        "ms": 23053
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 12,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 15,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.687,
+        "ms": 409240
+      },
+      "tripo": {
+        "provider": "tripo",
+        "calls": 6,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 0,
+        "models": 6,
+        "estimatedUsd": 1.2,
+        "ms": 499119
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "director",
+        "calls": 1,
+        "inputTokens": 2956,
+        "outputTokens": 6899,
+        "estimatedUsd": 0.112353,
+        "ms": 47293,
+        "model": "claude-sonnet-5-5",
+        "at": 1793314054592
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_jump",
+        "calls": 1,
+        "estimatedUsd": 0.024,
+        "ms": 2137,
+        "audioSec": 0.6,
+        "at": 1793314056761
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_crystal",
+        "calls": 1,
+        "estimatedUsd": 0.048,
+        "ms": 2881,
+        "audioSec": 1.2,
+        "at": 1793314057508
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_glide",
+        "calls": 1,
+        "estimatedUsd": 0.06,
+        "ms": 1898,
+        "audioSec": 1.5,
+        "at": 1793314058669
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_crumble",
+        "calls": 1,
+        "estimatedUsd": 0.06,
+        "ms": 2260,
+        "audioSec": 1.5,
+        "at": 1793314059776
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_hit",
+        "calls": 1,
+        "estimatedUsd": 0.032,
+        "ms": 1468,
+        "audioSec": 0.8,
+        "at": 1793314060144
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_win",
+        "calls": 1,
+        "estimatedUsd": 0.12,
+        "ms": 1511,
+        "audioSec": 3,
+        "at": 1793314061296
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_lose",
+        "calls": 1,
+        "estimatedUsd": 0.1,
+        "ms": 1643,
+        "audioSec": 2.5,
+        "at": 1793314061796
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0.029160000000000002,
+        "ms": 1086,
+        "audioSec": 11.571428571428571,
+        "at": 1793314062393
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:music_main",
+        "calls": 1,
+        "estimatedUsd": 0.6,
+        "ms": 8169,
+        "audioSec": 75,
+        "at": 1793314062792
+      },
+      {
+        "provider": "openai",
+        "label": "img:aether_crystal",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 17817,
+        "images": 1,
+        "at": 1793314072580
+      },
+      {
+        "provider": "openai",
+        "label": "img:beacon_gate",
+        "calls": 1,
+        "estimatedUsd": 0.039,
+        "ms": 36614,
+        "images": 2,
+        "at": 1793314109510
+      },
+      {
+        "provider": "openai",
+        "label": "img:hero_ila",
+        "calls": 1,
+        "estimatedUsd": 0.159,
+        "ms": 60179,
+        "images": 2,
+        "at": 1793314115102
+      },
+      {
+        "provider": "openai",
+        "label": "img:tex_ruin_stone",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 18054,
+        "images": 1,
+        "at": 1793314127733
+      },
+      {
+        "provider": "openai",
+        "label": "img:tex_moss_turf",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 19767,
+        "images": 1,
+        "at": 1793314135085
+      },
+      {
+        "provider": "openai",
+        "label": "img:stone_sentinel",
+        "calls": 1,
+        "estimatedUsd": 0.106,
+        "ms": 86134,
+        "images": 2,
+        "at": 1793314141037
+      },
+      {
+        "provider": "openai",
+        "label": "img:tex_cracked_slab",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 20814,
+        "images": 1,
+        "at": 1793314148745
+      },
+      {
+        "provider": "openai",
+        "label": "img:tex_rune_glow",
+        "calls": 1,
+        "estimatedUsd": 0.013,
+        "ms": 18106,
+        "images": 1,
+        "at": 1793314153374
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_sky_sea",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 32067,
+        "images": 1,
+        "at": 1793314173304
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:create",
+        "calls": 1,
+        "inputTokens": 8746,
+        "outputTokens": 64000,
+        "estimatedUsd": 4.93119,
+        "ms": 638041,
+        "model": "claude-opus-5-5",
+        "at": 1793314692652
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:fix2",
+        "calls": 1,
+        "inputTokens": 18781,
+        "outputTokens": 57523,
+        "estimatedUsd": 4.59594,
+        "ms": 496839,
+        "model": "claude-opus-5-5",
+        "at": 1793315189514
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_sky_sea",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 35193,
+        "images": 1,
+        "at": 1793316922702
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_sky_sea",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 33420,
+        "images": 1,
+        "at": 1793317037068
+      },
+      {
+        "provider": "openai",
+        "label": "img:bg_sky_sea",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 31075,
+        "images": 1,
+        "at": 1793317110620
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 3357,
+        "outputTokens": 786,
+        "estimatedUsd": 0.021861,
+        "ms": 7480,
+        "model": "claude-sonnet-5-5",
+        "at": 1793325113485
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 32430,
+        "outputTokens": 28110,
+        "estimatedUsd": 2.5947,
+        "ms": 193042,
+        "model": "claude-opus-5-5",
+        "at": 1793325306573
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:fix2",
+        "calls": 1,
+        "inputTokens": 57611,
+        "outputTokens": 26771,
+        "estimatedUsd": 2.87199,
+        "ms": 176063,
+        "model": "claude-opus-5-5",
+        "at": 1793325482666
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:fix3",
+        "calls": 1,
+        "inputTokens": 83091,
+        "outputTokens": 28320,
+        "estimatedUsd": 3.370365,
+        "ms": 195293,
+        "model": "claude-opus-5-5",
+        "at": 1793325677984
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4016,
+        "outputTokens": 797,
+        "estimatedUsd": 0.024003,
+        "ms": 7818,
+        "model": "claude-sonnet-5-5",
+        "at": 1793387166090
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2394,
+        "outputTokens": 1348,
+        "estimatedUsd": 0.027402,
+        "ms": 11499,
+        "model": "claude-sonnet-5-5",
+        "at": 1793387177756
+      },
+      {
+        "provider": "tripo",
+        "label": "model:stone_sentinel_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 75282,
+        "models": 1,
+        "at": 1793387253066
+      },
+      {
+        "provider": "tripo",
+        "label": "model:hero_ila_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 83191,
+        "models": 1,
+        "at": 1793387260969
+      },
+      {
+        "provider": "tripo",
+        "label": "model:aether_crystal_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 61926,
+        "models": 1,
+        "at": 1793387315014
+      },
+      {
+        "provider": "tripo",
+        "label": "model:beacon_gate_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 62102,
+        "models": 1,
+        "at": 1793387323093
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:edit",
+        "calls": 1,
+        "inputTokens": 34323,
+        "outputTokens": 58199,
+        "estimatedUsd": 4.87977,
+        "ms": 471716,
+        "model": "claude-opus-5-5",
+        "at": 1793387649521
+      },
+      {
+        "provider": "anthropic",
+        "label": "chat:plan",
+        "calls": 1,
+        "inputTokens": 4171,
+        "outputTokens": 522,
+        "estimatedUsd": 0.020343,
+        "ms": 5011,
+        "model": "claude-sonnet-5-5",
+        "at": 1793388416082
+      },
+      {
+        "provider": "tripo",
+        "label": "model:hero_ila_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 89021,
+        "models": 1,
+        "at": 1793388505132
+      },
+      {
+        "provider": "tripo",
+        "label": "model:stone_sentinel_3d",
+        "calls": 1,
+        "estimatedUsd": 0.2,
+        "ms": 127597,
+        "models": 1,
+        "at": 1793388543715
+      }
+    ],
+    "totals": {
+      "calls": 38,
+      "inputTokens": 251876,
+      "outputTokens": 273275,
+      "images": 15,
+      "audioSec": 97.67142857142858,
+      "models": 6,
+      "estimatedUsd": 26.410077,
+      "ms": 74537313
+    },
+    "finishedAt": 1793388543728
+  },
+  "job": {
+    "kind": "chat",
+    "startedAt": 1793388411058,
+    "stages": [
+      {
+        "id": "plan",
+        "label": "Director",
+        "status": "ok",
+        "detail": "Entendiendo el cambio"
+      },
+      {
+        "id": "assets",
+        "label": "Recursos",
+        "status": "ok",
+        "detail": "2 actualizados"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "skip"
+      }
+    ],
+    "finishedAt": 1793388543728,
+    "reload": true
+  },
+  "design": {
+    "title": "Skyshard Drift",
+    "tagline": "Climb the broken sky and wake the last beacon.",
+    "genre": "Third-person 3D exploration platformer",
+    "dimension": "3d",
+    "engine": "three",
+    "camera": "Third-person orbit camera behind the hero, with mouse-look and soft collision against walls. It sits about 5 m back and 2 m up, and widens its FOV slightly while gliding.",
+    "artStyle": "Stylized low-poly diorama look with hand-painted, softly gradated textures and no hard outlines. Faceted geometry is lit by a warm low sun with long soft shadows and cool blue ambient fill from the sky. Crystals and runes are emissive with a gentle bloom glow and floating motes. Distant islands fade into pastel atmospheric haze. The mood is serene, wondrous and a little melancholic, like a forgotten civilization drifting in golden-hour light. Textures are clean and painterly, with subtle brush grain, moss and weathering rather than photorealism, so every asset looks like part of the same storybook world.",
+    "palette": [
+      "#2B3A67",
+      "#7FD1E8",
+      "#F6C177",
+      "#8FB996",
+      "#B8A9C9",
+      "#E8F7FF",
+      "#4A3F55"
+    ],
+    "setting": "A shattered sky-realm where a temple city broke apart and its islands now drift above an endless cloud sea. Overgrown stairways, broken arches and rune-carved platforms are held aloft by glowing aether crystals, and a dormant beacon spire waits at the highest island.",
+    "hero": {
+      "name": "Ila the Skywalker",
+      "description": "A young explorer in a short teal cloak with a wind-scarf, leather satchel and goggles pushed up on her forehead. She is built from low-poly primitives (capsule body, sphere head, box satchel) and has a small glowing glider-charm on her wrist."
+    },
+    "mechanics": [
+      "Run, jump and double jump across floating islands. Falling into the cloud void respawns you at the last checkpoint rune and costs one life.",
+      "Glide: hold Jump in mid-air to slow the fall to a drifting descent. It drains a short stamina bar that refills on solid ground, so Ila can cross medium gaps between islands.",
+      "Collect 12 aether crystals, which glow and bob. Each pickup adds score and charges the beacon. Some crystals sit on risky detours, such as narrow beams or crumbling platforms.",
+      "Crumbling platforms: cracked stone tiles shake for 0.8 s after being stepped on, then fall away and respawn after a few seconds.",
+      "Stone Sentinels patrol set paths on the ruins. Touching one knocks Ila back and costs one life. They can be avoided by jumping over them or gliding past, and they never leave their islands.",
+      "Checkpoint runes activate when touched and save the respawn position. Wind updraft vents on some islands launch the glider upward to reach high crystals.",
+      "Once all 12 crystals are collected, the beacon gate at the top island opens. Reaching it wins the game."
+    ],
+    "controls": [
+      {
+        "input": "W A S D / Left stick",
+        "action": "Move relative to the camera"
+      },
+      {
+        "input": "Mouse / Right stick",
+        "action": "Orbit the camera"
+      },
+      {
+        "input": "Space",
+        "action": "Jump (press again for double jump)"
+      },
+      {
+        "input": "Hold Space in mid-air",
+        "action": "Glide"
+      },
+      {
+        "input": "Shift",
+        "action": "Sprint"
+      },
+      {
+        "input": "Esc",
+        "action": "Pause"
+      }
+    ],
+    "objective": "Explore the floating ruins, collect all 12 aether crystals, then reach the beacon gate on the highest island to relight the sky.",
+    "loseCondition": "Lose all 3 lives by falling into the cloud void or being struck by Stone Sentinels.",
+    "levelOutline": "One handcrafted level of 5 islands linked by bridges, gaps and updrafts, rising in altitude. 1) Landing Isle (tutorial, safe): wide platform with 2 easy crystals, a low jump gap and a first checkpoint. Teaches jump and double jump. 2) Mossy Terraces: stepped ruins with 3 crystals, one slow Stone Sentinel and a first updraft vent that teaches gliding. 3) Cracked Causeway: a long chain of small crumbling platforms over the void with 3 crystals, one on a risky side beam. Second checkpoint at the start. 4) The Hollow Court: a ring-shaped ruin with 2 Sentinels patrolling opposite directions, 3 crystals, a vertical climb and a glide jump to the next island. Third checkpoint. 5) Beacon Spire: the final ascent over narrow beams and updrafts with 1 crystal on the way and the beacon gate at the top. The gate is locked until 12 crystals are held, and an earlier missed crystal means backtracking is allowed. Difficulty rises gradually: gaps widen from about 3 m to 8 m (the glide range), Sentinels appear from island 2, and crumbling tiles begin on island 3. Checkpoints sit before each hard section. The full run takes 6-10 minutes.",
+    "tuning": [
+      {
+        "key": "playerSpeed",
+        "label": "Run speed",
+        "min": 3,
+        "max": 12,
+        "value": 6
+      },
+      {
+        "key": "jumpForce",
+        "label": "Jump force",
+        "min": 5,
+        "max": 14,
+        "value": 8.5
+      },
+      {
+        "key": "gravity",
+        "label": "Gravity",
+        "min": 10,
+        "max": 40,
+        "value": 22
+      },
+      {
+        "key": "glideFallSpeed",
+        "label": "Glide fall speed",
+        "min": 0.5,
+        "max": 6,
+        "value": 2.2
+      },
+      {
+        "key": "glideStamina",
+        "label": "Glide time (s)",
+        "min": 1,
+        "max": 8,
+        "value": 3
+      },
+      {
+        "key": "sentinelSpeed",
+        "label": "Sentinel speed",
+        "min": 1,
+        "max": 6,
+        "value": 2.5
+      },
+      {
+        "key": "crumbleDelay",
+        "label": "Crumble delay (s)",
+        "min": 0.3,
+        "max": 2.5,
+        "value": 0.8
+      },
+      {
+        "key": "startLives",
+        "label": "Lives",
+        "min": 1,
+        "max": 9,
+        "value": 3
+      }
+    ],
+    "ui": {
+      "hud": [
+        {
+          "id": "crystals",
+          "label": "Crystals",
+          "kind": "value",
+          "shows": "Crystals collected out of 12, e.g. 5 / 12"
+        },
+        {
+          "id": "lives",
+          "label": "Lives",
+          "kind": "lives",
+          "shows": "Remaining lives as hearts"
+        },
+        {
+          "id": "glide",
+          "label": "Glide",
+          "kind": "bar",
+          "shows": "Glide stamina, drains in the air and refills on the ground"
+        },
+        {
+          "id": "score",
+          "label": "Score",
+          "kind": "value",
+          "shows": "Score from crystals and time bonus"
+        },
+        {
+          "id": "beacon",
+          "label": "Beacon",
+          "kind": "icon",
+          "shows": "Beacon icon that glows when all crystals are collected and the gate is open"
+        }
+      ],
+      "pauseMenu": [
+        {
+          "id": "resume",
+          "label": "Resume",
+          "action": "Close the menu and continue playing"
+        },
+        {
+          "id": "settings",
+          "label": "Settings",
+          "action": "Open the settings panel"
+        },
+        {
+          "id": "restart",
+          "label": "Restart level",
+          "action": "Restart from the beginning"
+        },
+        {
+          "id": "quit",
+          "label": "Quit",
+          "action": "Return to the title screen"
+        }
+      ],
+      "settings": [
+        {
+          "key": "masterVolume",
+          "label": "Master volume",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "musicVolume",
+          "label": "Music volume",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.6
+        },
+        {
+          "key": "sfxVolume",
+          "label": "SFX volume",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "cameraSensitivity",
+          "label": "Camera sensitivity",
+          "type": "slider",
+          "min": 0.2,
+          "max": 2,
+          "step": 0.1,
+          "options": [],
+          "defaultValue": 1
+        },
+        {
+          "key": "invertY",
+          "label": "Invert camera Y",
+          "type": "toggle",
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "options": [],
+          "defaultValue": false
+        },
+        {
+          "key": "difficulty",
+          "label": "Difficulty",
+          "type": "select",
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "options": [
+            "Relaxed",
+            "Normal",
+            "Hard"
+          ],
+          "defaultValue": "Normal"
+        }
+      ],
+      "gameOverActions": [
+        "Try again",
+        "Main menu"
+      ],
+      "startActions": [
+        "Play",
+        "Settings"
+      ]
+    },
+    "cinematic": {
+      "style": "epica",
+      "lines": [
+        "The sky-city shattered, and its light fell silent.",
+        "Only the aether crystals still hum among the drifting ruins.",
+        "Ila climbs the broken sky to wake the last beacon."
+      ],
+      "direction": {
+        "approach": "camera_tour",
+        "rationale": "Skyshard Drift is a 3D vertical exploration game, and its core fantasy is looking up at a broken sky-city and climbing it. A continuous, rising camera tour through the five islands previews the ascent from the cloud sea to the beacon spire. Each narration line gets its own beat: shattered ruins, humming crystals, then Ila with her goal. This ends with a hand-off onto the real gameplay orbit camera",
+        "mood": "Epic, serene and wondrous, with a touch of melancholy. Golden-hour light over a forgotten civilization, with a swelling sense of scale.",
+        "notes": "Hero: Ila stands idle on the Landing Isle edge during the whole intro, with a subtle breathing loop, wind-scarf and cloak fluttering, and the wrist glider-charm pulsing softly. She is hidden or out of frame in shots 1-2 and is revealed in shot 3. Enemies: Stone Sentinels stay dormant, with eyes dark and no patrol, and are only glimpsed in the distance in shot 2. Crumbling tiles and updraft vents stay in their idle visuals only. Disable player input and HUD during the intro, and allow skipping wi",
+        "shots": [
+          {
+            "lineIndex": 0,
+            "durationSec": 5,
+            "staging": "Open below the cloud sea at golden hour. Crane up through the cloud layer to reveal the shattered temple city: broken arches and rune platforms hang in pastel haze, and the dormant beacon spire is a tiny silhouette at the top. Runes are dark and the world is silent. Warm low sun ",
+            "camera": {
+              "from": [
+                -30,
+                -4,
+                60
+              ],
+              "to": [
+                -18,
+                22,
+                38
+              ],
+              "lookAt": [
+                0,
+                40,
+                -40
+              ],
+              "fov": 48,
+              "ease": "smooth"
+            },
+            "fx": [
+              "cloud_sea_parting",
+              "god_rays_low_sun",
+              "dust_motes_drift",
+              "bloom_low",
+              "rune_glow_off"
+            ]
+          },
+          {
+            "lineIndex": 1,
+            "durationSec": 5,
+            "staging": "Fly in a low dolly past the Mossy Terraces and Cracked Causeway. Aether crystals pulse one after another with a soft hum, and the light travels along the floating chain of islands. Pass an inert Stone Sentinel in foreground silhouette, then slide behind a broken arch that frames ",
+            "camera": {
+              "from": [
+                14,
+                18,
+                30
+              ],
+              "to": [
+                -6,
+                26,
+                6
+              ],
+              "lookAt": [
+                0,
+                28,
+                -10
+              ],
+              "fov": 55,
+              "ease": "smooth"
+            },
+            "fx": [
+              "crystal_pulse_sequence",
+              "soft_bloom_up",
+              "floating_motes_rise",
+              "rune_trail_flicker",
+              "hum_audio_swell"
+            ]
+          },
+          {
+            "lineIndex": 2,
+            "durationSec": 5.5,
+            "staging": "Cut to a swooping arc that settles on the Landing Isle. Ila stands at the platform edge with her back to the camera, scarf and cloak whipping in the wind, goggles on her forehead and the glider-charm glowing. The camera drifts around to a low three-quarter front angle, then tilts",
+            "camera": {
+              "from": [
+                6,
+                3,
+                9
+              ],
+              "to": [
+                2.5,
+                2,
+                6.5
+              ],
+              "lookAt": [
+                0,
+                2.3,
+                0
+              ],
+              "fov": 42,
+              "ease": "easeOut"
+            },
+            "fx": [
+              "hero_charm_glow",
+              "scarf_wind_flutter",
+              "lens_flare_sun",
+              "beacon_spire_flicker",
+              "soft_bloom_up",
+              "title_card_fade_in"
+            ]
+          }
+        ]
+      }
+    },
+    "assets": {
+      "images": [
+        {
+          "id": "hero_ila",
+          "name": "Ila the Skywalker",
+          "role": "hero",
+          "prompt": "Stylized low-poly young female explorer, short teal cloak, flowing cream wind-scarf, brown leather satchel, goggles pushed up on forehead, small glowing cyan glider charm on wrist, three-quarter front view, full body, hand-painted soft texture, warm golden rim light, isolated character on plain transparent background, no ground, no scenery",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Hero billboard or texture for the low-poly player character; also used for the start screen.",
+          "seamless": false
+        },
+        {
+          "id": "stone_sentinel",
+          "name": "Stone Sentinel",
+          "role": "enemy",
+          "prompt": "Stylized low-poly ancient stone guardian golem, mossy carved blocky body, glowing amber rune eyes and chest rune, heavy rounded fists, three-quarter front view, hand-painted soft texture, isolated single character on plain transparent background, no ground, no scenery",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Patrolling enemy billboard or texture on a primitive-built golem.",
+          "seamless": false
+        },
+        {
+          "id": "aether_crystal",
+          "name": "Aether Crystal",
+          "role": "collectible",
+          "prompt": "Single floating faceted aether crystal, glowing cyan-white core with violet edges, soft inner light, tiny sparkles, stylized low-poly hand-painted look, three-quarter view, isolated object on plain transparent background, no ground, no scenery",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Collectible crystal sprite or texture on a bobbing octahedron mesh.",
+          "seamless": false
+        },
+        {
+          "id": "beacon_gate",
+          "name": "Beacon Gate",
+          "role": "goal",
+          "prompt": "Ancient stone arch gate with a glowing golden-white beacon orb at its apex, carved runes along the pillars, gleaming light rays, stylized low-poly hand-painted look, three-quarter front view, isolated object on plain transparent background, no ground, no scenery",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Goal marker billboard at the Beacon Spire and its victory glow.",
+          "seamless": false
+        },
+        {
+          "id": "tex_ruin_stone",
+          "name": "Ruin Stone Texture",
+          "role": "texture",
+          "prompt": "Seamless tileable texture of weathered ancient sandstone bricks in pale warm grey-beige with fine cracks and subtle moss in the seams, hand-painted stylized, soft even lighting, top-down flat, no perspective",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Main texture for ruin walls, pillars and island sides.",
+          "seamless": true
+        },
+        {
+          "id": "tex_moss_turf",
+          "name": "Mossy Turf Texture",
+          "role": "texture",
+          "prompt": "Seamless tileable hand-painted stylized grass and moss ground texture, soft sage green with tiny clover and pale yellow flower specks, subtle brush grain, flat top-down, no perspective",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Island top surfaces and terraces.",
+          "seamless": true
+        },
+        {
+          "id": "tex_cracked_slab",
+          "name": "Cracked Slab Texture",
+          "role": "texture",
+          "prompt": "Seamless tileable texture of fractured dusty stone slab with deep cracks glowing faintly with orange light in the fissures, hand-painted stylized, flat top-down, no perspective",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Crumbling platforms, which warn the player visually.",
+          "seamless": true
+        },
+        {
+          "id": "tex_rune_glow",
+          "name": "Rune Glow Texture",
+          "role": "texture",
+          "prompt": "Seamless tileable dark indigo stone texture with fine carved glowing cyan rune lines and geometric patterns, hand-painted stylized, flat top-down, no perspective",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Checkpoint runes, bridges and the beacon spire base.",
+          "seamless": true
+        },
+        {
+          "id": "bg_sky_sea",
+          "name": "Cloud Sea Sky",
+          "role": "background",
+          "prompt": "Wide hand-painted stylized sky panorama at golden hour, endless sea of soft pastel clouds below, gradient from deep blue to peach and lavender at the horizon, a few tiny distant floating islands in haze, soft glowing sun, no characters, no text",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Skybox and backdrop for the whole level.",
+          "seamless": false
+        }
+      ],
+      "audio": [
+        {
+          "id": "music_main",
+          "name": "Drifting Ruins",
+          "kind": "music",
+          "prompt": "Calm ethereal adventure loop, airy harp arpeggios, soft glassy bells, warm strings pad, gentle flute melody, light wind textures, wondrous and slightly melancholic, 80 bpm, seamless loop, no vocals",
+          "durationSec": 75,
+          "loop": true,
+          "usage": "Background music during gameplay."
+        },
+        {
+          "id": "sfx_jump",
+          "name": "Jump",
+          "kind": "sfx",
+          "prompt": "Short soft whoosh with a light airy pop, small character jump, magical and gentle",
+          "durationSec": 0.6,
+          "loop": false,
+          "usage": "Jump and double jump."
+        },
+        {
+          "id": "sfx_crystal",
+          "name": "Crystal pickup",
+          "kind": "sfx",
+          "prompt": "Bright magical crystal chime, rising glassy arpeggio with shimmering sparkle tail",
+          "durationSec": 1.2,
+          "loop": false,
+          "usage": "Collecting a crystal."
+        },
+        {
+          "id": "sfx_glide",
+          "name": "Glide",
+          "kind": "sfx",
+          "prompt": "Soft airy wind whoosh with a fluttering cloth sound, smooth and light",
+          "durationSec": 1.5,
+          "loop": false,
+          "usage": "Start of a glide."
+        },
+        {
+          "id": "sfx_crumble",
+          "name": "Platform crumble",
+          "kind": "sfx",
+          "prompt": "Rumbling stone cracking and crumbling, gravel falling, short and dusty",
+          "durationSec": 1.5,
+          "loop": false,
+          "usage": "Cracked platform starts to fall."
+        },
+        {
+          "id": "sfx_hit",
+          "name": "Hit",
+          "kind": "sfx",
+          "prompt": "Heavy stone thud impact with a dull magical zap, short, player damage",
+          "durationSec": 0.8,
+          "loop": false,
+          "usage": "Hit by a Sentinel or falling into the void and losing a life."
+        },
+        {
+          "id": "sfx_win",
+          "name": "Beacon awakens",
+          "kind": "sfx",
+          "prompt": "Triumphant magical swell, choir pad, rising harp glissando and bright bell fanfare, ending in a warm resonant chord",
+          "durationSec": 3,
+          "loop": false,
+          "usage": "Reaching the open beacon gate."
+        },
+        {
+          "id": "sfx_lose",
+          "name": "Game over",
+          "kind": "sfx",
+          "prompt": "Sad descending glassy notes with a low fading drone, gentle defeat sting",
+          "durationSec": 2.5,
+          "loop": false,
+          "usage": "Losing the last life."
+        },
+        {
+          "id": "narration",
+          "name": "Narration",
+          "kind": "voice",
+          "prompt": "The sky-city shattered, and its light fell silent. Only the aether crystals still hum among the drifting ruins. Ila climbs the broken sky to wake the last beacon.",
+          "durationSec": 12,
+          "loop": false,
+          "usage": "Intro cinematic narration."
+        }
+      ],
+      "models": [
+        {
+          "id": "hero_ila_3d",
+          "name": "Ila the Skywalker 3D",
+          "prompt": "Game-ready stylized low-poly 3D playable hero Ila: young explorer woman, cream tunic, blue hooded cloak, brown satchel, purple leggings, chunky boots, scarf around neck fused as solid cloth volume (not thin sheets), closed solid watertight body mesh, no holes, no paper-thin shells, clean readable silhouette, single isolated character, A-pose facing camera, no ground plane",
+          "usage": "3D mesh for hero Ila the Skywalker"
+        },
+        {
+          "id": "stone_sentinel_3d",
+          "name": "Stone Sentinel 3D",
+          "prompt": "Game-ready stylized low-poly 3D enemy Stone Sentinel: ancient humanoid golem of connected mossy stone armor as ONE closed solid body (not floating hollow plates), glowing yellow rune core, blue crystal shards embedded in shoulders, solid limbs with thickness, watertight mesh, no see-through gaps, no paper-thin shells, readable silhouette, single isolated character, A-pose, no ground plane",
+          "usage": "3D mesh for enemy Stone Sentinel"
+        },
+        {
+          "id": "aether_crystal_3d",
+          "name": "Aether Crystal 3D",
+          "prompt": "Game-ready stylized low-poly 3D collectible: Single floating faceted aether crystal, glowing cyan-white core with violet edges, soft inner light, tiny sparkles, stylized low-poly hand-painted look, three-quarter view, isolated object on plain transparent background, no ground, no scenery. Single isolated object, clean topology, readable silhouette, no ground plane.",
+          "usage": "3D mesh for collectible Aether Crystal"
+        },
+        {
+          "id": "beacon_gate_3d",
+          "name": "Beacon Gate 3D",
+          "prompt": "Game-ready stylized low-poly 3D goal: Ancient stone arch gate with a glowing golden-white beacon orb at its apex, carved runes along the pillars, gleaming light rays, stylized low-poly hand-painted look, three-quarter front view, isolated object on plain transparent background, no ground, no scenery. Single isolated object, clean topology, readable silhouette, no ground plane.",
+          "usage": "3D mesh for goal Beacon Gate"
+        }
+      ]
+    }
+  },
+  "playCopy": {
+    "es": {
+      "sourceKey": "Third-person 3D exploration platformer\nClimb the broken sky and wake the last beacon.\nExplore the floating ruins, collect all 12 aether crystals, then reach the beacon gate on the highest island to relight the sky.",
+      "genre": "Plataformas de exploración 3D en tercera persona",
+      "tagline": "Escala el cielo roto y despierta el último faro.",
+      "objective": "Explora las ruinas flotantes, reúne los 12 cristales de éter y llega a la puerta del faro en la isla más alta para volver a encender el cielo."
+    },
+    "fr": {
+      "sourceKey": "Third-person 3D exploration platformer\nClimb the broken sky and wake the last beacon.\nExplore the floating ruins, collect all 12 aether crystals, then reach the beacon gate on the highest island to relight the sky.",
+      "genre": "Jeu de plateforme et d'exploration en 3D à la troisième personne",
+      "tagline": "Gravissez le ciel brisé et réveillez le dernier phare.",
+      "objective": "Explorez les ruines flottantes, récupérez les 12 cristaux d'éther, puis atteignez la porte du phare sur l'île la plus haute pour rallumer le ciel."
+    }
+  }
+}
