@@ -1,6 +1,6 @@
 import type { ImageAssetSpec } from "./types";
 
-export const SHEET_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "dash", "attack", "hurt"] as const;
+export const SHEET_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "slide", "dash", "attack", "hurt"] as const;
 export type SheetAnimName = (typeof SHEET_ANIMS)[number];
 
 export interface SheetAnimSpec {
@@ -27,7 +27,7 @@ export interface SheetLayout {
 
 export const SHEET_CELL = 256;
 export const SHEET_COLS = 4;
-export const SHEET_MAX_FRAMES = 14;
+export const SHEET_MAX_FRAMES = 16;
 const SHEET_MAX_ROWS = 4;
 
 /** Concrete per-frame poses: vague cycle names make image models repeat one stride pose. */
@@ -83,6 +83,15 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
     fps: 14,
     loop: false,
     poses: ["landing impact: knees deeply bent, body low, arms forward absorbing the impact", "landing recover: rising from the crouch back toward standing"],
+  },
+  slide: {
+    frames: 2,
+    fps: 10,
+    loop: true,
+    poses: [
+      "slide start: dropping into a crouch, knees folding, one hand reaching down, body getting low",
+      "full slide: body flat and low, chest close to the ground, legs trailing straight behind — ducking under an overhead bar, not a forward dive",
+    ],
   },
   dash: {
     frames: 2,

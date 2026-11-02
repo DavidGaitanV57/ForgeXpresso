@@ -1,6 +1,7 @@
 import * as acorn from "acorn";
 import { config } from "../config";
 import { generateText, type AnthropicUsage } from "../providers/anthropic";
+import { deliveryBrief, deliveryGaps } from "./delivery";
 import { wantsMeshCharacters } from "./director";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ModelAssetSpec } from "../types";
 import { runtimeDocs } from "./runtime-docs";
@@ -94,7 +95,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
   const meshChars = engine === "three" && wantsMeshCharacters(ideaBlob, input.design.dimension);
   const forceMesh = engine === "three" && (input.design.dimension === "3d" || meshChars);
   const meshValidate: ValidateCodeOpts = forceMesh ? { forbidSprites: true, requireCharacterMeshes: true } : {};
-  const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n`;
+  const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n\n${deliveryBrief(input.design, input.assets)}\n`;
   let task: string;
   if (input.mode === "create") {
     const cine = input.design.cinematic?.direction;
@@ -151,7 +152,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
       continue;
     }
     const code = extractCode(text);
-    const err = validateCode(code, engine, meshValidate);
+    const err = validateCode(code, engine, meshValidate) || deliveryGaps(code, input.assets);
     if (!err) return code;
     lastErr = err;
     messages.push({ role: "assistant", content: "```js\n" + code + "\n```" }, { role: "user", content: `Validation failed: ${err}\nReturn the full corrected module.` });

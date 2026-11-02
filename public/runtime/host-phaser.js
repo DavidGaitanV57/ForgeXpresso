@@ -308,7 +308,10 @@ function helpers(Phaser, forge) {
             return void play("hurt");
           }
           if (oneShot) return;
+          // `sliding` is a crouch/duck-under; `dashing` is a forward burst. Older games pass a crouch as dashing.
+          if (s.sliding && has("slide")) return void play("slide");
           if (s.dashing && has("dash")) return void play("dash");
+          if ((s.sliding || s.dashing) && has("slide")) return void play("slide");
           if (!grounded) return void play(vy < 0 ? (has("jump") ? "jump" : "fall") : has("fall") ? "fall" : "jump");
           if (landT > 0) return void play("land");
           const sp = Math.abs(vx);

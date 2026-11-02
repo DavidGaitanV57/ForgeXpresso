@@ -7,6 +7,7 @@ import { getProject, readCurrentCode, saveVersion, updateProject } from "../stor
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
 import { ensureSheet, generateAsset, isSheetRecord, newRecord, recordsFromDesign } from "./assets";
+import { deliveryGaps } from "./delivery";
 import { sheetIdFor } from "../sheets";
 import { planChange } from "./chat";
 import { codeAgent } from "./code";
@@ -287,7 +288,17 @@ async function createFlow(projectId: string) {
     const [code] = await Promise.all([codeJob, assetsJob]);
     await ctl.stage("qa", "run", "Validando");
     await saveVersion(projectId, code, "Versión inicial");
-    await ctl.stage("qa", "ok", "Listo para jugar");
+    const delivered = await getProject(projectId);
+    const deliveredAssets = Object.values(delivered?.assets || {});
+    const failed = deliveredAssets.filter((a) => a.status === "error" || a.status === "skipped");
+    const gaps = deliveryGaps(code, deliveredAssets);
+    if (failed.length || gaps) {
+      const detail = [failed.length ? `Sin generar: ${failed.map((a) => a.name).slice(0, 6).join(", ")}` : "", gaps || ""].filter(Boolean).join(" · ").slice(0, 240);
+      await ctl.stage("qa", "error", detail);
+      await addChat(projectId, { who: "forge", text: detail });
+    } else {
+      await ctl.stage("qa", "ok", "Todo entregado");
+    }
     ctl.job.finishedAt = Date.now();
     await ctl.finishUsage();
     await ctl.flush();
@@ -475,7 +486,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
     });
     for (const a of toGenerate) emit(projectId, { type: "asset", asset: a });
     if (animated.length) {
-      const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, attacking, hurt }, dt)\`. Remove forge.phaser.puppet from those sprites.`;
+      const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, sliding, attacking, hurt }, dt)\` — sliding while crouching/sliding under obstacles, dashing only for a forward burst. Remove forge.phaser.puppet from those sprites.`;
       plan.code = plan.code.trim() ? `${plan.code}\n${how}` : how;
     }
 

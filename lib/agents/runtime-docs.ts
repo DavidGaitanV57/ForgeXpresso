@@ -64,8 +64,9 @@ export default function createGame(forge, Phaser) {
   CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
   — BEFORE fit/body, because it swaps the texture to the \`<id>_sheet\` frames (square cells, feet on the cell bottom). Then fit/body as usual
   (sheet frames have side margins: use \`forge.phaser.body(sprite, {w:0.42, h:0.88})\`). Every frame call
-  \`anim.update({vx, vy, grounded, dashing, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/dash/attack/hurt
-  (only those listed in the sheet; \`attacking\` triggers once on its rising edge). \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
+  \`anim.update({vx, vy, grounded, dashing, sliding, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/slide/dash/attack/hurt.
+  Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
+  Only the clips listed in the sheet exist; \`attacking\` triggers once on its rising edge. \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
   You still flip with \`setFlipX(vx < 0)\`. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
   so ALWAYS use animate for characters that have a spritesheet — never load or slice sheets yourself, never use this.anims directly.
 - Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
@@ -138,6 +139,8 @@ export const QUALITY_RULES = `
 - Juice: particles on pickups/hits/landing, screen shake on impacts (forge.shake), squash/stretch (puppet), tween pops on collectibles, floating score text, sound on every meaningful event.
 - Level design by code: hand‑authored arrays or seeded procedural generation that is guaranteed beatable (check jump distances against tuning). Use forge.rand for randomness.
 - Visual depth: layered parallax/backdrops, palette‑consistent tints, lighting/fog in 3D, shadows under characters.
+- Scenery the player sees (buildings, trees, fences, signs, vehicles) MUST be the prop/background images from the manifest, placed and scaled with distance. Draw them with graphics primitives only when no such image exists.
+- Perspective ground (camera behind the runner, lanes converging to a horizon): fill the road with the seamless abstract ground texture or a flat color, and draw rails, sleepers and lane markings yourself as rows that scroll with the SAME perspective as the obstacles (wide near the player, compressed at the horizon). Never tile a pictured top-down road over that trapezoid, and never draw rails both in the texture and again in code.
 - Full 3D dimension: every gameplay entity in the world is a real mesh via \`forge.three.character(imageId)\` / \`forge.three.model\` (GLB or auto low-poly). Do NOT use forge.three.sprite. UI/HUD stays 2D via forge.hud.
 - 2.5D with “3D characters + 2D décor/parallax”: hero/enemies/NPCs = \`forge.three.character(…)\`; backgrounds = backdrop/skydome/parallax planes. Never forge.three.sprite for characters.
 - Use every generated image and sound where it makes sense; never reference ids that are not in the manifest (except synthesized sfx names).

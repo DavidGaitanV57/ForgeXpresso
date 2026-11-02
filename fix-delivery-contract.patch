@@ -1,0 +1,438 @@
+From 002a1d152dc30cb8a96af59c568edef2e9fe9fde Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Mon, 2 Nov 2026 18:37:00 +0000
+Subject: [PATCH] Make every stage deliver the full game: required animations,
+ scenery, sounds, and a QA check
+
+---
+ lib/agents/chat.ts            |   2 +-
+ lib/agents/code.ts            |   5 +-
+ lib/agents/delivery.ts        | 147 ++++++++++++++++++++++++++++++++++
+ lib/agents/director.ts        |  35 ++++++--
+ lib/agents/pipeline.ts        |  15 +++-
+ lib/agents/runtime-docs.ts    |   7 +-
+ lib/sheets.ts                 |  13 ++-
+ public/runtime/host-phaser.js |   3 +
+ 8 files changed, 211 insertions(+), 16 deletions(-)
+ create mode 100644 lib/agents/delivery.ts
+
+diff --git a/lib/agents/chat.ts b/lib/agents/chat.ts
+index c80fdf4..18a6f53 100644
+--- a/lib/agents/chat.ts
++++ b/lib/agents/chat.ts
+@@ -56,7 +56,7 @@ You receive a change request and decide the cheapest set of actions that fulfils
+ 4. "code": precise instructions for the programmer (in English) when gameplay/logic/visual code must change. When adding 3D characters use forge.three.character(logicalId, height) so *_3d GLBs load (or primitives if no Tripo) — never forge.three.sprite for those roles. If the user asks for a cinematic / onCinematic, say so in "code".
+ ${
+     o.design.dimension === "2d"
+-      ? `4b. "animate": 2D frame animations (spritesheets) for existing hero/enemy/npc image ids (never *_sheet ids): list every animation the character should have from [idle, walk, run, jump, fall, land, dash, attack, hurt] (max 6). Use it when the user asks to animate a character or adds a move (dash, attack…) that needs frames; an existing sheet is redrawn with the new list. To redraw only the frames with a different direction, "regenerate" the *_sheet id with an English direction prompt. The runtime wiring is added to "code" automatically.\n`
++      ? `4b. "animate": 2D frame animations (spritesheets) for existing hero/enemy/npc image ids (never *_sheet ids): list every animation the character should have from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (max 6; "slide" = crouch/duck-under, "dash" = forward burst). Use it when the user asks to animate a character or adds a move (slide, dash, attack…) that needs frames; an existing sheet is redrawn with the new list. To redraw only the frames with a different direction, "regenerate" the *_sheet id with an English direction prompt. The runtime wiring is added to "code" automatically.\n`
+       : `4b. "animate": always [] (only for 2D games).\n`
+   }5. "title" ("" = keep) and "cinematicLines" ([] = keep, or exactly 3 short story lines in the game's language — never voice-direction meta-text).
+ Answer in "reply" in the user's language, short and friendly (1-2 sentences), saying what you changed. "tags": 1-4 very short labels of the applied changes (e.g. "Salto +18%", "Nuevo enemigo").
+diff --git a/lib/agents/code.ts b/lib/agents/code.ts
+index bf04c4f..f0b56bd 100644
+--- a/lib/agents/code.ts
++++ b/lib/agents/code.ts
+@@ -1,6 +1,7 @@
+ import * as acorn from "acorn";
+ import { config } from "../config";
+ import { generateText, type AnthropicUsage } from "../providers/anthropic";
++import { deliveryBrief, deliveryGaps } from "./delivery";
+ import { wantsMeshCharacters } from "./director";
+ import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ModelAssetSpec } from "../types";
+ import { runtimeDocs } from "./runtime-docs";
+@@ -94,7 +95,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
+   const meshChars = engine === "three" && wantsMeshCharacters(ideaBlob, input.design.dimension);
+   const forceMesh = engine === "three" && (input.design.dimension === "3d" || meshChars);
+   const meshValidate: ValidateCodeOpts = forceMesh ? { forbidSprites: true, requireCharacterMeshes: true } : {};
+-  const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n`;
++  const header = `# Design document\n${JSON.stringify(designBrief(input.design), null, 1)}\n\n# Asset manifest (ids you can use)\n${JSON.stringify(manifest(input.assets), null, 1)}\n\n${deliveryBrief(input.design, input.assets)}\n`;
+   let task: string;
+   if (input.mode === "create") {
+     const cine = input.design.cinematic?.direction;
+@@ -151,7 +152,7 @@ export async function codeAgent(input: CodeInput): Promise<string> {
+       continue;
+     }
+     const code = extractCode(text);
+-    const err = validateCode(code, engine, meshValidate);
++    const err = validateCode(code, engine, meshValidate) || deliveryGaps(code, input.assets);
+     if (!err) return code;
+     lastErr = err;
+     messages.push({ role: "assistant", content: "```js\n" + code + "\n```" }, { role: "user", content: `Validation failed: ${err}\nReturn the full corrected module.` });
+diff --git a/lib/agents/delivery.ts b/lib/agents/delivery.ts
+new file mode 100644
+index 0000000..136edde
+--- /dev/null
++++ b/lib/agents/delivery.ts
+@@ -0,0 +1,147 @@
++import type { AssetRecord, GameDesign, ImageAssetSpec } from "../types";
++import { normalizeSheetAnims, type SheetAnimName } from "../sheets";
++
++/** Animations a 2D game must ship, read from the idea and the design text. */
++const ANIM_CUES: [SheetAnimName, RegExp][] = [
++  ["slide", /desliz|agach|slide|crouch|gliss|duck|barrera alta|por debajo|sous (?:la |les )?barri/i],
++  ["jump", /salt|jump|saut|hop\b/i],
++  ["dash", /\bdash\b|sprint|embestid|aceler[oó]n|boost/i],
++  ["attack", /atac|attack|dispar|shoot|arma|weapon/i],
++  ["fall", /ca[ií]d|falling|\bfall\b|chute/i],
++  ["walk", /camin|walk|marcher/i],
++  ["run", /corr|run\b|courir|runner|trotte/i],
++];
++
++const ANIM_ORDER: SheetAnimName[] = ["slide", "jump", "dash", "attack", "run", "walk", "fall", "land", "hurt", "idle"];
++
++/** Every animation the text actually asks for, plus idle, a locomotion cycle and a bump reaction. */
++export function requiredAnims(text: string): SheetAnimName[] {
++  const out = new Set<SheetAnimName>(["idle", "hurt"]);
++  for (const [name, re] of ANIM_CUES) if (re.test(text)) out.add(name);
++  if (!out.has("run") && !out.has("walk")) out.add("run");
++  return ANIM_ORDER.filter((n) => out.has(n));
++}
++
++/** Mechanic cues first, so a tight frame budget never drops slide/jump/dash in favor of idle. */
++export function mergeAnims(text: string, fromModel: string[]): ReturnType<typeof normalizeSheetAnims> {
++  const must = requiredAnims(text);
++  const extra = fromModel.map((n) => n.toLowerCase().trim()).filter((n) => !must.includes(n as SheetAnimName));
++  return normalizeSheetAnims([...must, ...extra]);
++}
++
++export interface ScenerySpec {
++  id: string;
++  name: string;
++  prompt: string;
++  aspect: ImageAssetSpec["aspect"];
++  test: RegExp;
++}
++
++/** Side scenery the idea names. One subject per image, so the programmer never has to draw it with rectangles. */
++export const SCENERY: ScenerySpec[] = [
++  {
++    id: "scenery_building",
++    name: "Edificio",
++    aspect: "2:3",
++    test: /edifici|rascaciel|building|immeuble|\bcasas?\b|\bhouses?\b|maison/i,
++    prompt:
++      "Single cartoon building front, flat cel-shaded, bold outline, windows and a door, isolated cutout on a transparent background, no ground, no sky, no neighboring buildings",
++  },
++  {
++    id: "scenery_tree",
++    name: "Árbol",
++    aspect: "2:3",
++    test: /árbol|arbol|tree|arbre/i,
++    prompt: "Single cartoon tree, round canopy and a short trunk, bold outline, flat colors, isolated cutout on a transparent background, no ground, no sky",
++  },
++  {
++    id: "scenery_fence",
++    name: "Valla",
++    aspect: "3:2",
++    test: /valla|cerca|reja|fence|cl[oô]ture/i,
++    prompt: "Short stretch of cartoon picket fence, front view, bold outline, flat colors, isolated cutout on a transparent background, no ground, no sky",
++  },
++  {
++    id: "scenery_sign",
++    name: "Cartel",
++    aspect: "1:1",
++    test: /cartel|letrero|billboard|signboard|panneau|se[ñn]al/i,
++    prompt: "Single cartoon billboard on two posts, blank colorful panel, front view, bold outline, isolated cutout on a transparent background, no ground, no sky, no text",
++  },
++];
++
++/** True when an image for this scenery already exists, so we don't add a second one. */
++export function sceneryCovered(images: { id: string; name: string; prompt: string }[], scenery: ScenerySpec) {
++  return images.some((i) => scenery.test.test(`${i.id} ${i.name} ${i.prompt}`));
++}
++
++const SFX_CUES: { id: string; name: string; prompt: string; test: RegExp }[] = [
++  { id: "sfx_jump", name: "Salto", prompt: "Short cartoon jump whoosh, bright and light, no voice", test: /salt|jump|saut/i },
++  { id: "sfx_slide", name: "Deslizamiento", prompt: "Short whoosh of something sliding along the ground, cartoon, no voice", test: /desliz|agach|slide|crouch|gliss/i },
++  { id: "sfx_dash", name: "Acelerón", prompt: "Short rising whoosh of a sudden speed burst, cartoon, no voice", test: /\bdash\b|sprint|aceler[oó]n/i },
++  { id: "sfx_coin", name: "Moneda", prompt: "Bright short coin pickup bling, no voice", test: /moneda|coin|pi[eè]ce/i },
++  { id: "sfx_hit", name: "Choque", prompt: "Soft cartoon thud, a bump not a scream, no voice", test: /choque|colisi|golpe|hurt|crash/i },
++];
++
++export function missingSfx(text: string, audio: { id: string; name: string; prompt: string }[]) {
++  return SFX_CUES.filter((c) => c.test.test(text) && !audio.some((a) => c.test.test(`${a.id} ${a.name} ${a.prompt}`)));
++}
++
++/** A rear-view road cannot be a top-down picture: the texture may only be grain, and code draws the converging rails. */
++export function isPerspectiveRoad(text: string) {
++  return /carril|lanes?|desde atr[aá]s|por detr[aá]s|from behind|rear view|vista trasera|endless runner/i.test(text);
++}
++
++export const PERSPECTIVE_GROUND_PROMPT =
++  "Seamless abstract ground surface only: flat cartoon asphalt grain with subtle speckle, no rails, no sleepers, no lane markings, no objects, no perspective, tileable vertically and horizontally";
++
++const PICTURED_ROAD = /rail|sleeper|lane|divider|v[ií]a|traviesa|carril|durmiente/i;
++
++/** A pictured road would be tiled flat over the perspective trapezoid, so the texture becomes grain and code draws the rails. */
++export function perspectiveGround(role: string, prompt: string, text: string) {
++  if ((role === "texture" || role === "tile") && isPerspectiveRoad(text) && PICTURED_ROAD.test(prompt)) return PERSPECTIVE_GROUND_PROMPT;
++  return prompt;
++}
++
++/** Why the finished module would be rejected. Sheets are used through their base id, so they are not required as strings. */
++export function deliveryGaps(code: string, assets: AssetRecord[]): string | null {
++  const missing: string[] = [];
++  for (const a of assets) {
++    if (a.status === "skipped" || a.status === "error") continue;
++    if (a.type === "image" && (a.spec as ImageAssetSpec).sheet) continue;
++    const quoted = [`"${a.id}"`, `'${a.id}'`, `\`${a.id}\``].some((q) => code.includes(q));
++    if (!quoted) missing.push(a.id);
++  }
++  const anims = new Set(
++    assets
++      .filter((a) => a.type === "image" && (a.spec as ImageAssetSpec).sheet)
++      .flatMap((a) => ((a.spec as ImageAssetSpec).sheet?.anims || []).map((x) => x.name)),
++  );
++  if (anims.has("slide") && !/\bsliding\b/.test(code)) missing.push("sliding:true mientras el personaje se agacha o desliza");
++  if (anims.has("dash") && !/\bdashing\b/.test(code)) missing.push("dashing:true durante el acelerón");
++  if (anims.has("jump") && !/jump/i.test(code)) missing.push("el salto (la animación jump no se usa)");
++  if (anims.has("attack") && !/\battacking\b/.test(code)) missing.push("attacking:true durante el ataque");
++  return missing.length ? `Falta usar en el juego: ${missing.join(", ")}.` : null;
++}
++
++/** Ids and animation states the programmer has to wire, shown in its prompt. */
++export function deliveryBrief(design: GameDesign, assets: AssetRecord[]): string {
++  const ids = assets.filter((a) => !(a.type === "image" && (a.spec as ImageAssetSpec).sheet)).map((a) => a.id);
++  const anims = [
++    ...new Set(
++      assets
++        .filter((a) => a.type === "image" && (a.spec as ImageAssetSpec).sheet?.of && /hero/i.test((a.spec as ImageAssetSpec).sheet!.of + a.id))
++        .flatMap((a) => (a.spec as ImageAssetSpec).sheet!.anims.map((x) => x.name)),
++    ),
++  ];
++  return [
++    "DELIVERY CONTRACT — the module is rejected otherwise:",
++    `Use every asset id as a string literal, on screen or as audio: ${ids.join(", ")}.`,
++    anims.length ? `The hero sheet has [${anims.join(", ")}]. Pass sliding:true the whole time the character crouches or slides, dashing:true only for a speed burst, attacking:true while striking, and a real jump when "jump" is listed.` : "",
++    design.dimension === "2d" && isPerspectiveRoad(`${design.camera} ${design.levelOutline}`)
++      ? "The ground texture is grain only. Draw rails, sleepers and lane lines yourself, in the same perspective as the obstacles. Place every scenery prop image (buildings, trees, fences, signs) scaled with distance; do not replace them with rectangles."
++      : "Place every scenery prop image in the level; do not redraw those subjects with graphics primitives.",
++  ]
++    .filter(Boolean)
++    .join("\n");
++}
+diff --git a/lib/agents/director.ts b/lib/agents/director.ts
+index b1b389b..51b4594 100644
+--- a/lib/agents/director.ts
++++ b/lib/agents/director.ts
+@@ -2,6 +2,7 @@ import { config } from "../config";
+ import { generateJson } from "../providers/anthropic";
+ import { normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES, sheetSpecFor } from "../sheets";
+ import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
++import { mergeAnims, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
+ import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
+ 
+ const str = { type: "string" };
+@@ -114,9 +115,9 @@ Rules:
+ - images: ${
+     dimension === "3d" || meshChars
+       ? "2D décor ONLY (no hero/enemy/npc/collectible/hazard/prop/goal sprites). Typically 2-4 seamless textures (role texture, 1:1) + 1 background (16:9, seamless=false) + optional ui. Mesh entities live under models[], not images."
+-      : `6-12 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
++      : `8-14 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
+           dimension === "2d"
+-            ? "parallax: at least ONE seamless=true abstract background layer (starfield/nebula/clouds ONLY, no planets/ships/landmarks, aspect 16:9) for wrapping, PLUS optionally one seamless=false landmark backdrop that must NEVER be tiled, and platform/ground tiles (seamless=true when meant to repeat)"
++            ? "scenery the idea names, as images and not left for the programmer to draw: ONE seamless=true abstract sky layer (clouds/stars ONLY, no buildings, aspect 16:9); 3-6 transparent prop cutouts (role prop) for the recurring side scenery (buildings, trees, fences, signs, vehicles), one subject each; and the ground. Flat side/top view: one seamless ground tile. Rear view down a road or track (lanes converging to a horizon, objects growing as they approach): the ground image is ONLY a seamless abstract surface (asphalt grain, gravel or grass) with NO rails, sleepers, lane lines or markings, role texture — code draws those in perspective"
+             : "2-4 seamless textures (role texture, 1:1) and 1 background (16:9, seamless=false)"
+         }`
+   }.
+@@ -124,10 +125,10 @@ Rules:
+   Sprites MUST be isolated subjects: prompt the subject only — no scenery, no nebula plate, no ground, no frame. The image QA rejects baked backgrounds.
+   CUTOUT HARD RULE for roles prop, collectible, hazard, goal (and platform when used as a floating piece): transparent=true ALWAYS. Prompt ONLY the object — forbidden: painted white/colored rectangle plate, scenery backdrop, room wall, ground shadow plate, vignette frame. These are alpha-cutout sprites composited into the scene; a baked background makes them look like stickers.
+   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
+-  Characters/objects for 2D or billboards must be "side view facing right" (2D side games) or "three-quarter front view" (top-down/3D).
++  Match the camera: "side view facing right" for side games, "three-quarter front view" for top-down, "seen from behind, back to the camera" for a runner viewed from the rear.
+   animations: ${
+     dimension === "2d"
+-      ? 'for the hero and up to 2 enemies/npcs that visibly move, list the frame animations the mechanics need from [idle, walk, run, jump, fall, land, dash, attack, hurt] (max 6, e.g. platformer hero: ["idle","walk","jump","fall","dash","attack"]). An animation spritesheet is generated from the approved sprite. [] for static enemies, items and everything else.'
++      ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. The pipeline adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
+       : "always []."
+   }
+ - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
+@@ -258,7 +259,8 @@ function normalizeUi(raw: Raw["ui"] | undefined, idea: string): GameUiSpec {
+ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): GameDesign {
+   const used = new Set<string>();
+   const cutoutRoles = new Set(["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "platform", "ui"]);
+-  const images = (r.images || []).slice(0, 14).map((a): ImageAssetSpec => {
++  const brief = [idea, r.camera, r.levelOutline, ...(r.mechanics || []), r.objective, r.loseCondition].filter(Boolean).join("\n");
++  const images = (r.images || []).slice(0, 12).map((a): ImageAssetSpec => {
+     const role = a.role;
+     const forceCutout = ["prop", "collectible", "hazard", "goal", "platform"].includes(role);
+     const transparent = ["background", "texture", "portrait"].includes(role)
+@@ -278,6 +280,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""):
+     if (forceCutout && !/isolated cutout|no background|transparent background|chroma/i.test(prompt)) {
+       prompt = `Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: ${prompt}`;
+     }
++    prompt = perspectiveGround(role, prompt, brief);
+     const { animations: _animations, ...rest } = a as ImageAssetSpec & { animations?: string[] };
+     return {
+       ...rest,
+@@ -289,13 +292,27 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""):
+   });
+   if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
+   if (dimension === "2d") {
++    for (const s of SCENERY) {
++      if (!s.test.test(brief) || sceneryCovered(images, s) || images.length >= 16) continue;
++      const id = slug(s.id, used);
++      images.push({
++        id,
++        name: s.name,
++        role: "prop",
++        prompt: s.prompt,
++        transparent: true,
++        aspect: s.aspect,
++        usage: `Escenario: ${s.name}. Colócalo a escala según la distancia; no lo dibujes con rectángulos.`,
++        seamless: false,
++      });
++    }
+     const wants = images
+       .map((img, k) => ({ img, anims: ((r.images || [])[k] as { animations?: string[] } | undefined)?.animations || [] }))
+       .filter((x) => SHEET_ROLES.has(x.img.role) && (x.anims.length || x.img.role === "hero"))
+       .sort((a, b) => Number(b.img.role === "hero") - Number(a.img.role === "hero"))
+       .slice(0, 3);
+     for (const { img, anims } of wants) {
+-      const spec = sheetSpecFor(img, normalizeSheetAnims(anims));
++      const spec = sheetSpecFor(img, img.role === "hero" ? mergeAnims(brief, anims) : normalizeSheetAnims(anims));
+       used.add(spec.id);
+       images.push(spec);
+     }
+@@ -306,7 +323,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""):
+     if (far && /star|nebula|cloud|sky|space dust|abstract/i.test(far.prompt)) far.seamless = true;
+   }
+   const cineLines = (r.cinematic?.lines || []).map((l) => String(l || "").trim()).filter(Boolean).slice(0, 3);
+-  const audio = (r.audio || []).slice(0, 10).map((a) => {
++  const audio = (r.audio || []).slice(0, 8).map((a) => {
+     const kind = a.kind;
+     let prompt = String(a.prompt || "");
+     if (kind === "voice") {
+@@ -321,6 +338,10 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""):
+       loop: kind === "music" ? true : !!a.loop,
+     };
+   });
++  for (const s of missingSfx(brief, audio)) {
++    if (audio.length >= 10) break;
++    audio.push({ id: slug(s.id, used), name: s.name, kind: "sfx", prompt: s.prompt, durationSec: 1, loop: false, usage: s.name });
++  }
+   const meshChars = wantsMeshCharacters(idea, dimension);
+   const meshMode = dimension === "3d" || meshChars;
+   const entityRoles = new Set(
+diff --git a/lib/agents/pipeline.ts b/lib/agents/pipeline.ts
+index f52b88b..d1daf2d 100644
+--- a/lib/agents/pipeline.ts
++++ b/lib/agents/pipeline.ts
+@@ -7,6 +7,7 @@ import { getProject, readCurrentCode, saveVersion, updateProject } from "../stor
+ import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
+ import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
+ import { ensureSheet, generateAsset, isSheetRecord, newRecord, recordsFromDesign } from "./assets";
++import { deliveryGaps } from "./delivery";
+ import { sheetIdFor } from "../sheets";
+ import { planChange } from "./chat";
+ import { codeAgent } from "./code";
+@@ -287,7 +288,17 @@ async function createFlow(projectId: string) {
+     const [code] = await Promise.all([codeJob, assetsJob]);
+     await ctl.stage("qa", "run", "Validando");
+     await saveVersion(projectId, code, "Versión inicial");
+-    await ctl.stage("qa", "ok", "Listo para jugar");
++    const delivered = await getProject(projectId);
++    const deliveredAssets = Object.values(delivered?.assets || {});
++    const failed = deliveredAssets.filter((a) => a.status === "error" || a.status === "skipped");
++    const gaps = deliveryGaps(code, deliveredAssets);
++    if (failed.length || gaps) {
++      const detail = [failed.length ? `Sin generar: ${failed.map((a) => a.name).slice(0, 6).join(", ")}` : "", gaps || ""].filter(Boolean).join(" · ").slice(0, 240);
++      await ctl.stage("qa", "error", detail);
++      await addChat(projectId, { who: "forge", text: detail });
++    } else {
++      await ctl.stage("qa", "ok", "Todo entregado");
++    }
+     ctl.job.finishedAt = Date.now();
+     await ctl.finishUsage();
+     await ctl.flush();
+@@ -475,7 +486,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
+     });
+     for (const a of toGenerate) emit(projectId, { type: "asset", asset: a });
+     if (animated.length) {
+-      const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, attacking, hurt }, dt)\`. Remove forge.phaser.puppet from those sprites.`;
++      const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, sliding, attacking, hurt }, dt)\` — sliding while crouching/sliding under obstacles, dashing only for a forward burst. Remove forge.phaser.puppet from those sprites.`;
+       plan.code = plan.code.trim() ? `${plan.code}\n${how}` : how;
+     }
+ 
+diff --git a/lib/agents/runtime-docs.ts b/lib/agents/runtime-docs.ts
+index cd73aff..5af01b7 100644
+--- a/lib/agents/runtime-docs.ts
++++ b/lib/agents/runtime-docs.ts
+@@ -64,8 +64,9 @@ export default function createGame(forge, Phaser) {
+   CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
+   — BEFORE fit/body, because it swaps the texture to the \`<id>_sheet\` frames (square cells, feet on the cell bottom). Then fit/body as usual
+   (sheet frames have side margins: use \`forge.phaser.body(sprite, {w:0.42, h:0.88})\`). Every frame call
+-  \`anim.update({vx, vy, grounded, dashing, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/dash/attack/hurt
+-  (only those listed in the sheet; \`attacking\` triggers once on its rising edge). \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
++  \`anim.update({vx, vy, grounded, dashing, sliding, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/slide/dash/attack/hurt.
++  Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
++  Only the clips listed in the sheet exist; \`attacking\` triggers once on its rising edge. \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
+   You still flip with \`setFlipX(vx < 0)\`. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
+   so ALWAYS use animate for characters that have a spritesheet — never load or slice sheets yourself, never use this.anims directly.
+ - Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
+@@ -138,6 +139,8 @@ export const QUALITY_RULES = `
+ - Juice: particles on pickups/hits/landing, screen shake on impacts (forge.shake), squash/stretch (puppet), tween pops on collectibles, floating score text, sound on every meaningful event.
+ - Level design by code: hand‑authored arrays or seeded procedural generation that is guaranteed beatable (check jump distances against tuning). Use forge.rand for randomness.
+ - Visual depth: layered parallax/backdrops, palette‑consistent tints, lighting/fog in 3D, shadows under characters.
++- Scenery the player sees (buildings, trees, fences, signs, vehicles) MUST be the prop/background images from the manifest, placed and scaled with distance. Draw them with graphics primitives only when no such image exists.
++- Perspective ground (camera behind the runner, lanes converging to a horizon): fill the road with the seamless abstract ground texture or a flat color, and draw rails, sleepers and lane markings yourself as rows that scroll with the SAME perspective as the obstacles (wide near the player, compressed at the horizon). Never tile a pictured top-down road over that trapezoid, and never draw rails both in the texture and again in code.
+ - Full 3D dimension: every gameplay entity in the world is a real mesh via \`forge.three.character(imageId)\` / \`forge.three.model\` (GLB or auto low-poly). Do NOT use forge.three.sprite. UI/HUD stays 2D via forge.hud.
+ - 2.5D with “3D characters + 2D décor/parallax”: hero/enemies/NPCs = \`forge.three.character(…)\`; backgrounds = backdrop/skydome/parallax planes. Never forge.three.sprite for characters.
+ - Use every generated image and sound where it makes sense; never reference ids that are not in the manifest (except synthesized sfx names).
+diff --git a/lib/sheets.ts b/lib/sheets.ts
+index b9d66ec..2bdb00f 100644
+--- a/lib/sheets.ts
++++ b/lib/sheets.ts
+@@ -1,6 +1,6 @@
+ import type { ImageAssetSpec } from "./types";
+ 
+-export const SHEET_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "dash", "attack", "hurt"] as const;
++export const SHEET_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "slide", "dash", "attack", "hurt"] as const;
+ export type SheetAnimName = (typeof SHEET_ANIMS)[number];
+ 
+ export interface SheetAnimSpec {
+@@ -27,7 +27,7 @@ export interface SheetLayout {
+ 
+ export const SHEET_CELL = 256;
+ export const SHEET_COLS = 4;
+-export const SHEET_MAX_FRAMES = 14;
++export const SHEET_MAX_FRAMES = 16;
+ const SHEET_MAX_ROWS = 4;
+ 
+ /** Concrete per-frame poses: vague cycle names make image models repeat one stride pose. */
+@@ -84,6 +84,15 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
+     loop: false,
+     poses: ["landing impact: knees deeply bent, body low, arms forward absorbing the impact", "landing recover: rising from the crouch back toward standing"],
+   },
++  slide: {
++    frames: 2,
++    fps: 10,
++    loop: true,
++    poses: [
++      "slide start: dropping into a crouch, knees folding, one hand reaching down, body getting low",
++      "full slide: body flat and low, chest close to the ground, legs trailing straight behind — ducking under an overhead bar, not a forward dive",
++    ],
++  },
+   dash: {
+     frames: 2,
+     fps: 14,
+diff --git a/public/runtime/host-phaser.js b/public/runtime/host-phaser.js
+index 118a024..c849daf 100644
+--- a/public/runtime/host-phaser.js
++++ b/public/runtime/host-phaser.js
+@@ -308,7 +308,10 @@ function helpers(Phaser, forge) {
+             return void play("hurt");
+           }
+           if (oneShot) return;
++          // `sliding` is a crouch/duck-under; `dashing` is a forward burst. Older games pass a crouch as dashing.
++          if (s.sliding && has("slide")) return void play("slide");
+           if (s.dashing && has("dash")) return void play("dash");
++          if ((s.sliding || s.dashing) && has("slide")) return void play("slide");
+           if (!grounded) return void play(vy < 0 ? (has("jump") ? "jump" : "fall") : has("fall") ? "fall" : "jump");
+           if (landT > 0) return void play("land");
+           const sp = Math.abs(vx);
+-- 
+2.43.0
+
