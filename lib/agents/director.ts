@@ -2,6 +2,7 @@ import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
 import { normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES, sheetSpecFor } from "../sheets";
 import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
+import { mergeAnims, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const str = { type: "string" };
@@ -114,9 +115,9 @@ Rules:
 - images: ${
     dimension === "3d" || meshChars
       ? "2D décor ONLY (no hero/enemy/npc/collectible/hazard/prop/goal sprites). Typically 2-4 seamless textures (role texture, 1:1) + 1 background (16:9, seamless=false) + optional ui. Mesh entities live under models[], not images."
-      : `6-12 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
+      : `8-14 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
           dimension === "2d"
-            ? "parallax: at least ONE seamless=true abstract background layer (starfield/nebula/clouds ONLY, no planets/ships/landmarks, aspect 16:9) for wrapping, PLUS optionally one seamless=false landmark backdrop that must NEVER be tiled, and platform/ground tiles (seamless=true when meant to repeat)"
+            ? "scenery the idea names, as images and not left for the programmer to draw: ONE seamless=true abstract sky layer (clouds/stars ONLY, no buildings, aspect 16:9); 3-6 transparent prop cutouts (role prop) for the recurring side scenery (buildings, trees, fences, signs, vehicles), one subject each; and the ground. Flat side/top view: one seamless ground tile. Rear view down a road or track (lanes converging to a horizon, objects growing as they approach): the ground image is ONLY a seamless abstract surface (asphalt grain, gravel or grass) with NO rails, sleepers, lane lines or markings, role texture — code draws those in perspective"
             : "2-4 seamless textures (role texture, 1:1) and 1 background (16:9, seamless=false)"
         }`
   }.
@@ -124,10 +125,10 @@ Rules:
   Sprites MUST be isolated subjects: prompt the subject only — no scenery, no nebula plate, no ground, no frame. The image QA rejects baked backgrounds.
   CUTOUT HARD RULE for roles prop, collectible, hazard, goal (and platform when used as a floating piece): transparent=true ALWAYS. Prompt ONLY the object — forbidden: painted white/colored rectangle plate, scenery backdrop, room wall, ground shadow plate, vignette frame. These are alpha-cutout sprites composited into the scene; a baked background makes them look like stickers.
   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
-  Characters/objects for 2D or billboards must be "side view facing right" (2D side games) or "three-quarter front view" (top-down/3D).
+  Match the camera: "side view facing right" for side games, "three-quarter front view" for top-down, "seen from behind, back to the camera" for a runner viewed from the rear.
   animations: ${
     dimension === "2d"
-      ? 'for the hero and up to 2 enemies/npcs that visibly move, list the frame animations the mechanics need from [idle, walk, run, jump, fall, land, dash, attack, hurt] (max 6, e.g. platformer hero: ["idle","walk","jump","fall","dash","attack"]). An animation spritesheet is generated from the approved sprite. [] for static enemies, items and everything else.'
+      ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. The pipeline adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
       : "always []."
   }
 - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
@@ -258,7 +259,8 @@ function normalizeUi(raw: Raw["ui"] | undefined, idea: string): GameUiSpec {
 function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): GameDesign {
   const used = new Set<string>();
   const cutoutRoles = new Set(["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "platform", "ui"]);
-  const images = (r.images || []).slice(0, 14).map((a): ImageAssetSpec => {
+  const brief = [idea, r.camera, r.levelOutline, ...(r.mechanics || []), r.objective, r.loseCondition].filter(Boolean).join("\n");
+  const images = (r.images || []).slice(0, 12).map((a): ImageAssetSpec => {
     const role = a.role;
     const forceCutout = ["prop", "collectible", "hazard", "goal", "platform"].includes(role);
     const transparent = ["background", "texture", "portrait"].includes(role)
@@ -278,6 +280,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     if (forceCutout && !/isolated cutout|no background|transparent background|chroma/i.test(prompt)) {
       prompt = `Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: ${prompt}`;
     }
+    prompt = perspectiveGround(role, prompt, brief);
     const { animations: _animations, ...rest } = a as ImageAssetSpec & { animations?: string[] };
     return {
       ...rest,
@@ -289,13 +292,27 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
   });
   if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
   if (dimension === "2d") {
+    for (const s of SCENERY) {
+      if (!s.test.test(brief) || sceneryCovered(images, s) || images.length >= 16) continue;
+      const id = slug(s.id, used);
+      images.push({
+        id,
+        name: s.name,
+        role: "prop",
+        prompt: s.prompt,
+        transparent: true,
+        aspect: s.aspect,
+        usage: `Escenario: ${s.name}. Colócalo a escala según la distancia; no lo dibujes con rectángulos.`,
+        seamless: false,
+      });
+    }
     const wants = images
       .map((img, k) => ({ img, anims: ((r.images || [])[k] as { animations?: string[] } | undefined)?.animations || [] }))
       .filter((x) => SHEET_ROLES.has(x.img.role) && (x.anims.length || x.img.role === "hero"))
       .sort((a, b) => Number(b.img.role === "hero") - Number(a.img.role === "hero"))
       .slice(0, 3);
     for (const { img, anims } of wants) {
-      const spec = sheetSpecFor(img, normalizeSheetAnims(anims));
+      const spec = sheetSpecFor(img, img.role === "hero" ? mergeAnims(brief, anims) : normalizeSheetAnims(anims));
       used.add(spec.id);
       images.push(spec);
     }
@@ -306,7 +323,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     if (far && /star|nebula|cloud|sky|space dust|abstract/i.test(far.prompt)) far.seamless = true;
   }
   const cineLines = (r.cinematic?.lines || []).map((l) => String(l || "").trim()).filter(Boolean).slice(0, 3);
-  const audio = (r.audio || []).slice(0, 10).map((a) => {
+  const audio = (r.audio || []).slice(0, 8).map((a) => {
     const kind = a.kind;
     let prompt = String(a.prompt || "");
     if (kind === "voice") {
@@ -321,6 +338,10 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       loop: kind === "music" ? true : !!a.loop,
     };
   });
+  for (const s of missingSfx(brief, audio)) {
+    if (audio.length >= 10) break;
+    audio.push({ id: slug(s.id, used), name: s.name, kind: "sfx", prompt: s.prompt, durationSec: 1, loop: false, usage: s.name });
+  }
   const meshChars = wantsMeshCharacters(idea, dimension);
   const meshMode = dimension === "3d" || meshChars;
   const entityRoles = new Set(
