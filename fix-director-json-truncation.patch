@@ -1,0 +1,258 @@
+From cd6edd738bd95f9c7840d71db8f0cf018273fead Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Mon, 2 Nov 2026 17:11:54 +0000
+Subject: [PATCH] Detect truncated director JSON, retry with larger budget, and
+ enforce visible input limits
+
+---
+ app/api/projects/[id]/chat/route.ts |  4 +-
+ app/api/projects/route.ts           |  4 +-
+ app/forge-client.ts                 | 12 ++++-
+ app/forge.css                       |  2 +
+ app/markup.ts                       |  7 ++-
+ lib/agents/director.ts              |  5 +-
+ lib/limits.ts                       |  3 ++
+ lib/providers/anthropic.ts          | 71 ++++++++++++++++++++++-------
+ 8 files changed, 84 insertions(+), 24 deletions(-)
+ create mode 100644 lib/limits.ts
+
+diff --git a/app/api/projects/[id]/chat/route.ts b/app/api/projects/[id]/chat/route.ts
+index 4d02498..888344d 100644
+--- a/app/api/projects/[id]/chat/route.ts
++++ b/app/api/projects/[id]/chat/route.ts
+@@ -1,5 +1,6 @@
+ import { NextResponse } from "next/server";
+ import { jsonError, loadProject, type Ctx } from "@/lib/http";
++import { CHAT_MAX_CHARS } from "@/lib/limits";
+ import { BusyError, startChat } from "@/lib/agents/pipeline";
+ 
+ export const dynamic = "force-dynamic";
+@@ -10,8 +11,9 @@ export async function POST(req: Request, { params }: Ctx) {
+   if (!p) return jsonError("Proyecto no encontrado", 404);
+   if (p.status !== "ready" || !p.design) return jsonError("El juego todavía no está listo.", 409);
+   const body = (await req.json().catch(() => ({}))) as { message?: string; playing?: boolean };
+-  const message = String(body.message || "").trim().slice(0, 1500);
++  const message = String(body.message || "").trim();
+   if (!message) return jsonError("Escribe un cambio.");
++  if (message.length > CHAT_MAX_CHARS) return jsonError(`El mensaje supera el máximo de ${CHAT_MAX_CHARS} caracteres (${message.length}).`);
+   try {
+     startChat(id, message, !!body.playing);
+   } catch (e) {
+diff --git a/app/api/projects/route.ts b/app/api/projects/route.ts
+index 912398d..d803a63 100644
+--- a/app/api/projects/route.ts
++++ b/app/api/projects/route.ts
+@@ -1,6 +1,7 @@
+ import { NextResponse } from "next/server";
+ import { capabilities, config } from "@/lib/config";
+ import { jsonError } from "@/lib/http";
++import { IDEA_MAX_CHARS } from "@/lib/limits";
+ import { startCreate } from "@/lib/agents/pipeline";
+ import { createProject, listProjects } from "@/lib/store";
+ import type { Dimension } from "@/lib/types";
+@@ -27,8 +28,9 @@ export async function GET() {
+ 
+ export async function POST(req: Request) {
+   const body = (await req.json().catch(() => ({}))) as { idea?: string; dimension?: Dimension };
+-  const idea = String(body.idea || "").trim().slice(0, 1200);
++  const idea = String(body.idea || "").trim();
+   if (!idea) return jsonError("Describe el juego que quieres crear.");
++  if (idea.length > IDEA_MAX_CHARS) return jsonError(`La idea supera el máximo de ${IDEA_MAX_CHARS} caracteres (${idea.length}). Resúmela un poco.`);
+   if (!capabilities().code) return jsonError("Falta ANTHROPIC_API_KEY en .env.local: es necesaria para diseñar y programar el juego.", 412);
+   const dimension: Dimension = body.dimension === "3d" || body.dimension === "2.5d" ? body.dimension : "2d";
+   const p = await createProject(idea, dimension, config.imageProvider());
+diff --git a/app/forge-client.ts b/app/forge-client.ts
+index cf9e5fb..1f0d1a7 100644
+--- a/app/forge-client.ts
++++ b/app/forge-client.ts
+@@ -3,6 +3,7 @@ import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, Dimension, Forg
+ import { formatDuration, formatUsd, PROVIDER_LABEL as API_LABEL } from "@/lib/usage";
+ import { applyDomI18n, getLocale, initLocale, setLocale, t, type Locale } from "@/lib/i18n";
+ import { sheetAnimsFor, sheetLayout, type SheetAnimSpec } from "@/lib/sheets";
++import { IDEA_MAX_CHARS } from "@/lib/limits";
+ 
+ type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
+ type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null };
+@@ -2254,7 +2255,14 @@ export function mount() {
+   document.addEventListener("click", onLocaleClick, { capture: true, signal });
+   const askIn = $<HTMLTextAreaElement>("#askIn"),
+     askSend = $<HTMLButtonElement>("#askSend");
+-  askIn.addEventListener("input", () => (askSend.disabled = !askIn.value.trim()), { signal });
++  const askCount = $("#askCount");
++  const syncAsk = () => {
++    askSend.disabled = !askIn.value.trim();
++    const n = askIn.value.length;
++    askCount.textContent = n > IDEA_MAX_CHARS * 0.8 ? `${n}/${IDEA_MAX_CHARS}` : "";
++    askCount.classList.toggle("full", n >= IDEA_MAX_CHARS);
++  };
++  askIn.addEventListener("input", syncAsk, { signal });
+   askIn.addEventListener(
+     "keydown",
+     (e) => {
+@@ -2292,7 +2300,7 @@ export function mount() {
+       if (!b) return;
+       const [idea, d] = ideasList()[Number(b.dataset.i)];
+       askIn.value = idea;
+-      askSend.disabled = false;
++      syncAsk();
+       setIntroDim(d);
+       askIn.focus();
+     },
+diff --git a/app/forge.css b/app/forge.css
+index 5ceb28d..1a33222 100644
+--- a/app/forge.css
++++ b/app/forge.css
+@@ -102,6 +102,8 @@ html,body{height:100%}
+ .dimsw button{border:0;background:transparent;color:var(--muted);font-weight:800;font-size:12px;height:28px;padding:0 12px;border-radius:999px}
+ .dimsw button.on{background:var(--surface-3);color:var(--text)}
+ .ask-bar .sp{flex:1}
++.ask-count{font-size:12px;opacity:.6;font-variant-numeric:tabular-nums}
++.ask-count.full{color:#ff6b5b;opacity:1}
+ .send{width:44px;height:44px;border-radius:50%;border:0;background:var(--forge);color:var(--forge-ink);display:grid;place-items:center;transition:transform .15s,opacity .15s}
+ .send:disabled{opacity:.35;cursor:not-allowed}
+ .send:not(:disabled):hover{transform:scale(1.06)}
+diff --git a/app/markup.ts b/app/markup.ts
+index 31680f3..62f52d5 100644
+--- a/app/markup.ts
++++ b/app/markup.ts
+@@ -1,3 +1,5 @@
++import { CHAT_MAX_CHARS, IDEA_MAX_CHARS } from "@/lib/limits";
++
+ const ICSEND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+ const ICX = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
+ const ICSND = (id: string, wave: string) =>
+@@ -19,10 +21,11 @@ export const MARKUP = `
+     <p class="sub" data-i18n="intro.sub">Descríbelo con tus palabras. Un equipo de agentes diseña el juego, dibuja el arte, compone la música y escribe el código para que lo juegues en minutos.</p>
+     <form class="ask" id="askForm" autocomplete="off">
+       <div class="agent"><i id="agentDot"></i><span id="agentTxt" data-i18n="intro.agentReady">Director de juego · listo</span></div>
+-      <textarea id="askIn" rows="3" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
++      <textarea id="askIn" rows="3" maxlength="${IDEA_MAX_CHARS}" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
+       <div class="ask-bar">
+         <div class="dimsw" role="group" data-i18n-aria="intro.ariaDim" aria-label="Dimensión"><button type="button" data-d="2d" class="on">2D</button><button type="button" data-d="2.5d">2.5D</button><button type="button" data-d="3d">3D</button></div>
+         <span class="sp"></span>
++        <span class="ask-count" id="askCount" aria-live="polite"></span>
+         <button class="send" id="askSend" type="submit" data-i18n-aria="intro.ariaCreate" aria-label="Crear juego" disabled>${ICSEND}</button>
+       </div>
+     </form>
+@@ -224,7 +227,7 @@ export const MARKUP = `
+     <header><span class="mascot" aria-hidden="true"></span><div><b>Forge</b><small data-i18n="chat.director">Director de juego</small></div><button class="iconbtn" id="chatClose" type="button" data-i18n-aria="chat.close" aria-label="Cerrar chat">${ICX}</button></header>
+     <div class="chat-log" id="chatLog"></div>
+     <div class="chat-ctx" id="chatCtx"></div>
+-    <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" data-i18n-placeholder="chat.ph" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
++    <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="${CHAT_MAX_CHARS}" data-i18n-placeholder="chat.ph" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
+   </section>
+   <button class="chat-fab" id="chatFab" type="button" data-i18n-aria="chat.open" aria-label="Abrir chat con Forge" aria-expanded="false"><span class="mascot" aria-hidden="true"></span><i class="dot" id="chatDot" hidden></i></button>
+ </div>
+diff --git a/lib/agents/director.ts b/lib/agents/director.ts
+index d58f6c4..b1b389b 100644
+--- a/lib/agents/director.ts
++++ b/lib/agents/director.ts
+@@ -153,9 +153,10 @@ ${
+ - controls: list of {input, action} with action text in the idea's language.
+ - cinematic: style and exactly 3 short lines (<= 70 chars) that set up the story (idea's language).
+ - levelOutline: a concrete description of the level(s) layout, pacing and difficulty curve the programmer will implement.
+-- mechanics: 3-7 concrete mechanics.`;
++- mechanics: 3-7 concrete mechanics.
++- LENGTH: the whole JSON must stay compact. Image/model/music/sfx prompts <= 60 words each, artStyle <= 90 words, levelOutline <= 150 words, usage notes <= 25 words. If the idea lists many features, merge them into fewer, denser mechanics instead of adding more assets.`;
+ 
+-  const { data: raw, usage } = await generateJson<Raw>({ model: config.anthropic.fastModel(), system, prompt, schema, maxTokens: 9000 });
++  const { data: raw, usage } = await generateJson<Raw>({ model: config.anthropic.fastModel(), system, prompt, schema, maxTokens: 16000 });
+   return { design: normalize(raw, dimension, opts.models3d, idea), usage };
+ }
+ 
+diff --git a/lib/limits.ts b/lib/limits.ts
+new file mode 100644
+index 0000000..c305cf6
+--- /dev/null
++++ b/lib/limits.ts
+@@ -0,0 +1,3 @@
++/** Input caps shared by the API routes and the UI so text is never silently cut server-side. */
++export const IDEA_MAX_CHARS = 3000;
++export const CHAT_MAX_CHARS = 1500;
+diff --git a/lib/providers/anthropic.ts b/lib/providers/anthropic.ts
+index a595021..a17aee4 100644
+--- a/lib/providers/anthropic.ts
++++ b/lib/providers/anthropic.ts
+@@ -79,24 +79,63 @@ export async function generateText(o: TextOpts) {
+   throw last;
+ }
+ 
+-export async function generateJson<T>(o: { model: string; system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }): Promise<{ data: T; usage: AnthropicUsage }> {
+-  const base: Anthropic.MessageCreateParamsNonStreaming = {
+-    model: o.model,
+-    max_tokens: o.maxTokens,
+-    system: o.system,
+-    messages: [{ role: "user", content: o.prompt }],
++const JSON_MAX_TOKENS = 32000;
++
++export class TruncatedJsonError extends Error {
++  constructor(maxTokens: number) {
++    super(`La respuesta del modelo se cortó al superar ${maxTokens} tokens de salida; el diseño quedó incompleto.`);
++    this.name = "TruncatedJsonError";
++  }
++}
++
++function addUsage(a: AnthropicUsage | null, b: AnthropicUsage): AnthropicUsage {
++  if (!a) return b;
++  return {
++    inputTokens: a.inputTokens + b.inputTokens,
++    outputTokens: a.outputTokens + b.outputTokens,
++    estimatedUsd: a.estimatedUsd + b.estimatedUsd,
++    model: b.model,
++    ms: a.ms + b.ms,
+   };
+-  try {
+-    const { text, usage } = await run({ ...base, output_config: { format: { type: "json_schema", schema: o.schema } } });
+-    return { data: JSON.parse(text) as T, usage };
+-  } catch (e) {
+-    if (!isBadRequest(e) && !(e instanceof SyntaxError)) throw e;
++}
++
++export async function generateJson<T>(o: { model: string; system: string; prompt: string; schema: Record<string, unknown>; maxTokens: number }): Promise<{ data: T; usage: AnthropicUsage }> {
++  const budgets = [...new Set([o.maxTokens, Math.min(o.maxTokens * 2, JSON_MAX_TOKENS)])];
++  const fallbackSystem = `${o.system}\n\nResponde SOLO con un objeto JSON válido que cumpla este JSON Schema, sin texto adicional ni bloques de código:\n${JSON.stringify(o.schema)}`;
++  let structured = true;
++  let total: AnthropicUsage | null = null;
++  let last: unknown;
++  for (const maxTokens of budgets) {
++    const base: Anthropic.MessageCreateParamsNonStreaming = {
++      model: o.model,
++      max_tokens: maxTokens,
++      system: structured ? o.system : fallbackSystem,
++      messages: [{ role: "user", content: o.prompt }],
++    };
++    let r: Awaited<ReturnType<typeof run>>;
++    try {
++      r = await run(structured ? { ...base, output_config: { format: { type: "json_schema", schema: o.schema } } } : base);
++    } catch (e) {
++      if (!structured || !isBadRequest(e)) throw e;
++      structured = false;
++      r = await run({ ...base, system: fallbackSystem });
++    }
++    total = addUsage(total, r.usage);
++    // Parsing a cut-off response yields misleading errors like "Expected ',' or ']' after array element".
++    if (r.stop === "max_tokens") {
++      last = new TruncatedJsonError(maxTokens);
++      console.warn(`[generateJson] ${o.model} hit max_tokens=${maxTokens} (${r.text.length} chars)`);
++      continue;
++    }
++    try {
++      return { data: JSON.parse(structured ? r.text : extractJson(r.text)) as T, usage: total };
++    } catch (e) {
++      if (!(e instanceof SyntaxError)) throw e;
++      last = e;
++      structured = false;
++    }
+   }
+-  const { text, usage } = await run({
+-    ...base,
+-    system: `${o.system}\n\nResponde SOLO con un objeto JSON válido que cumpla este JSON Schema, sin texto adicional ni bloques de código:\n${JSON.stringify(o.schema)}`,
+-  });
+-  return { data: JSON.parse(extractJson(text)) as T, usage };
++  throw last;
+ }
+ 
+ function extractJson(text: string) {
+-- 
+2.43.0
+

@@ -1,3 +1,5 @@
+import { CHAT_MAX_CHARS, IDEA_MAX_CHARS } from "@/lib/limits";
+
 const ICSEND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
 const ICX = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
 const ICSND = (id: string, wave: string) =>
@@ -19,10 +21,11 @@ export const MARKUP = `
     <p class="sub" data-i18n="intro.sub">Descríbelo con tus palabras. Un equipo de agentes diseña el juego, dibuja el arte, compone la música y escribe el código para que lo juegues en minutos.</p>
     <form class="ask" id="askForm" autocomplete="off">
       <div class="agent"><i id="agentDot"></i><span id="agentTxt" data-i18n="intro.agentReady">Director de juego · listo</span></div>
-      <textarea id="askIn" rows="3" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
+      <textarea id="askIn" rows="3" maxlength="${IDEA_MAX_CHARS}" data-i18n-placeholder="intro.placeholder" data-i18n-aria="intro.ariaDescribe" placeholder="Ej: un plataformero de un zorro ninja que cruza una ciudad neón saltando entre azoteas" aria-label="Describe tu juego"></textarea>
       <div class="ask-bar">
         <div class="dimsw" role="group" data-i18n-aria="intro.ariaDim" aria-label="Dimensión"><button type="button" data-d="2d" class="on">2D</button><button type="button" data-d="2.5d">2.5D</button><button type="button" data-d="3d">3D</button></div>
         <span class="sp"></span>
+        <span class="ask-count" id="askCount" aria-live="polite"></span>
         <button class="send" id="askSend" type="submit" data-i18n-aria="intro.ariaCreate" aria-label="Crear juego" disabled>${ICSEND}</button>
       </div>
     </form>
@@ -224,7 +227,7 @@ export const MARKUP = `
     <header><span class="mascot" aria-hidden="true"></span><div><b>Forge</b><small data-i18n="chat.director">Director de juego</small></div><button class="iconbtn" id="chatClose" type="button" data-i18n-aria="chat.close" aria-label="Cerrar chat">${ICX}</button></header>
     <div class="chat-log" id="chatLog"></div>
     <div class="chat-ctx" id="chatCtx"></div>
-    <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" data-i18n-placeholder="chat.ph" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
+    <form class="chat-in" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="${CHAT_MAX_CHARS}" data-i18n-placeholder="chat.ph" data-i18n-aria="studio.dockAria" placeholder="Pide un cambio con tus palabras…" aria-label="Pide un cambio al juego"><button type="submit" data-i18n-aria="studio.send" aria-label="Enviar">${ICSEND}</button></form>
   </section>
   <button class="chat-fab" id="chatFab" type="button" data-i18n-aria="chat.open" aria-label="Abrir chat con Forge" aria-expanded="false"><span class="mascot" aria-hidden="true"></span><i class="dot" id="chatDot" hidden></i></button>
 </div>
