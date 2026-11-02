@@ -699,6 +699,8 @@ function stageDetail(detail: string | undefined, status: string) {
   if (lines) return t("stage.detail.lines", { n: lines[1] });
   const fixAttempt = /^Corrigiendo validación \(intento (\d+)\)$/i.exec(detail);
   if (fixAttempt) return t("stage.detail.fixAttempt", { n: fixAttempt[1] });
+  const rewriteAttempt = /^Reescribiendo sin razonamiento extendido \(intento (\d+)\)$/i.exec(detail);
+  if (rewriteAttempt) return t("stage.detail.rewriteAttempt", { n: rewriteAttempt[1] });
   const updated = /^(\d+)\s*actualizados$/i.exec(detail);
   if (updated) return t("stage.detail.updated", { n: updated[1] });
   return detail;

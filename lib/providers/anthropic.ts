@@ -19,6 +19,7 @@ interface TextOpts {
   messages: Msg[];
   maxTokens: number;
   think?: boolean;
+  effort?: "low" | "medium" | "high";
 }
 
 export interface AnthropicUsage {
@@ -65,7 +66,7 @@ export async function generateText(o: TextOpts) {
   };
   // Not every model accepts adaptive thinking or very large outputs; degrade gracefully.
   const attempts: Anthropic.MessageCreateParamsNonStreaming[] = [];
-  if (o.think) attempts.push({ ...base, thinking: { type: "adaptive" }, output_config: { effort: "high" } });
+  if (o.think) attempts.push({ ...base, thinking: { type: "adaptive" }, output_config: { effort: o.effort ?? "high" } });
   attempts.push(base);
   if (o.maxTokens > 32000) attempts.push({ ...base, max_tokens: 32000 });
   let last: unknown;

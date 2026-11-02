@@ -65,6 +65,7 @@ const es: Dict = {
   "stage.detail.generating": "Generando",
   "stage.detail.lines": "{n} líneas",
   "stage.detail.fixAttempt": "Corrigiendo validación (intento {n})",
+  "stage.detail.rewriteAttempt": "Reescribiendo sin razonamiento extendido (intento {n})",
   "stage.detail.updated": "{n} actualizados",
 
   "studio.home": "Volver al inicio",
@@ -415,6 +416,7 @@ const en: Dict = {
   "stage.detail.generating": "Generating",
   "stage.detail.lines": "{n} lines",
   "stage.detail.fixAttempt": "Fixing validation (attempt {n})",
+  "stage.detail.rewriteAttempt": "Rewriting without extended reasoning (attempt {n})",
   "stage.detail.updated": "{n} updated",
 
   "studio.home": "Back to home",
@@ -765,6 +767,7 @@ const fr: Dict = {
   "stage.detail.generating": "Génération",
   "stage.detail.lines": "{n} lignes",
   "stage.detail.fixAttempt": "Correction validation (essai {n})",
+  "stage.detail.rewriteAttempt": "Réécriture sans raisonnement étendu (essai {n})",
   "stage.detail.updated": "{n} mis à jour",
 
   "studio.home": "Retour à l’accueil",
