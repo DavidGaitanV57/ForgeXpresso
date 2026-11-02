@@ -31,6 +31,12 @@ const es: Dict = {
   "intro.deleteConfirm": "¿Eliminar este juego y todos sus recursos?",
   "intro.lang": "Idioma",
 
+  "log.title": "Novedades",
+  "log.deploy": "Este despliegue",
+  "log.built": "Desplegado {when} · {sha}",
+  "log.empty": "Todavía no hay cambios registrados en este despliegue.",
+  "log.note": "Esta lista se genera sola con cada despliegue.",
+
   "loader.eyebrow": "Los agentes están forjando tu juego",
   "loader.back": "← Inicio",
   "loader.preparing": "Preparando",
@@ -382,6 +388,12 @@ const en: Dict = {
   "intro.deleteConfirm": "Delete this game and all its assets?",
   "intro.lang": "Language",
 
+  "log.title": "What's new",
+  "log.deploy": "This deploy",
+  "log.built": "Deployed {when} · {sha}",
+  "log.empty": "This deploy has no recorded changes yet.",
+  "log.note": "This list is rebuilt automatically on every deploy.",
+
   "loader.eyebrow": "Agents are forging your game",
   "loader.back": "← Home",
   "loader.preparing": "Preparing",
@@ -732,6 +744,12 @@ const fr: Dict = {
   "intro.delete": "Supprimer le jeu",
   "intro.deleteConfirm": "Supprimer ce jeu et toutes ses ressources ?",
   "intro.lang": "Langue",
+
+  "log.title": "Nouveautés",
+  "log.deploy": "Ce déploiement",
+  "log.built": "Déployé {when} · {sha}",
+  "log.empty": "Ce déploiement n'a pas encore de changements enregistrés.",
+  "log.note": "Cette liste se régénère à chaque déploiement.",
 
   "loader.eyebrow": "Les agents forgent ton jeu",
   "loader.back": "← Accueil",
