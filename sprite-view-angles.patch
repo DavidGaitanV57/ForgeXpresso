@@ -1,0 +1,264 @@
+From a99d389fe6323b99c3cfb7e10bea8920a411a83a Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Mon, 2 Nov 2026 22:06:59 +0000
+Subject: [PATCH] Draw 2D sprites for side, front, rear, top-down, or isometric
+
+The camera picks one view for the still sprite and for every animation cell. Side-scrollers still face right and flip; the other views stay in the angle they were drawn.
+---
+ lib/agents/assets.ts       | 52 +++++++---------------
+ lib/agents/chat.ts         |  2 +-
+ lib/agents/director.ts     |  6 +--
+ lib/agents/runtime-docs.ts |  4 +-
+ lib/sprite-view.ts         | 88 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 110 insertions(+), 42 deletions(-)
+ create mode 100644 lib/sprite-view.ts
+
+diff --git a/lib/agents/assets.ts b/lib/agents/assets.ts
+index 6d8abb7..d74ac9d 100644
+--- a/lib/agents/assets.ts
++++ b/lib/agents/assets.ts
+@@ -9,6 +9,7 @@ import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, normalizeSheetAn
+ import sharp from "sharp";
+ import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
+ import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec, Project } from "../types";
++import { cameraOverride, characterView, sheetIdentityLine, sheetViewLine, stillViewLine } from "../sprite-view";
+ import { sanitizeVoicePrompt } from "./voice-prompt";
+ 
+ /** Image id paired with a `*_3d` model (lumi_hero_3d → lumi_hero). */
+@@ -178,29 +179,19 @@ const ROLE_FRAMING: Record<ImageRole, string> = {
+     "Square promotional key art poster, full-bleed splash illustration, the hero large and readable, the game's world behind them, the game title in bold stylized lettering, opaque painted background, not a sprite, not a transparent cutout, no UI buttons, no border, no watermark",
+ };
+ 
+-/** Straight back view. A three-quarter turn is a different camera. */
+-export function wantsRearView(text: string) {
+-  return /vista trasera|desde atr[aá]s|por detr[aá]s|de espalda|back to the camera|seen from behind|from behind|rear view|back view|camera behind/i.test(text);
+-}
+-
+-const REAR_VIEW =
+-  " STRICT straight-on rear view, orthographic, camera directly behind the character. Back of the head centered, both shoulders equal, both arms and both legs seen from behind, the character faces away. FORBIDDEN: side profile, three-quarter view, looking over the shoulder, any part of the face, one eye, the torso turned left or right.";
+-
+-function viewBlob(design: GameDesign, extra = "") {
+-  return [design.camera, design.levelOutline, design.setting, design.hero?.description, extra].filter(Boolean).join("\n");
++function designView(design: GameDesign, prompt = "") {
++  return characterView({
++    camera: design.camera,
++    levelOutline: design.levelOutline,
++    setting: design.setting,
++    heroDescription: design.hero?.description,
++    prompt,
++  });
+ }
+ 
+ export function imagePrompt(spec: ImageAssetSpec, design: GameDesign, retryNote = "") {
+-  const rear = wantsRearView(viewBlob(design, spec.prompt));
+-  const cast = ["hero", "enemy", "npc", "hazard", "prop", "goal"].includes(spec.role);
+-  const view =
+-    design.dimension === "2d" && cast
+-      ? rear
+-        ? REAR_VIEW
+-        : /top[- ]?down/i.test(design.camera)
+-          ? " Three-quarter front view."
+-          : " Side view, facing right."
+-      : "";
++  const cast = ["hero", "enemy", "npc", "hazard", "prop", "goal", "keyart"].includes(spec.role);
++  const view = design.dimension === "2d" && cast ? stillViewLine(designView(design, spec.prompt)) : "";
+   let seamless = "";
+   if (spec.seamless) {
+     seamless =
+@@ -273,13 +264,8 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
+   try {
+     const ref = provider === "openai" && (spec.role === "keyart" || CAST_LOCK.has(spec.role)) ? await identityReference(projectId, spec) : null;
+     for (let attempt = 0; attempt < 2; attempt++) {
+-      const rear = wantsRearView(viewBlob(design, spec.prompt));
+-      const prompt =
+-        imagePrompt(spec, design, lastErr) +
+-        (ref ? ref.note : "") +
+-        (ref && rear
+-          ? " CAMERA OVERRIDE: keep the reference character's species, outfit and colors, but discard its camera angle. Redraw them in the strict straight-on back view. Do not keep a three-quarter or side turn."
+-          : "");
++      const view = design.dimension === "2d" && ["hero", "enemy", "npc", "hazard", "prop", "goal", "keyart"].includes(spec.role) ? designView(design, spec.prompt) : null;
++      const prompt = imagePrompt(spec, design, lastErr) + (ref ? ref.note : "") + (ref && view ? cameraOverride(view) : "");
+       const hq = spec.role === "hero" || spec.role === "background" || spec.role === "enemy" || spec.role === "keyart";
+       let raw;
+       if (ref) {
+@@ -328,18 +314,12 @@ function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayo
+     for (let k = row.length; k < layout.cols; k++) cells.push(`cell ${k + 1}) EMPTY, background only`);
+     return `Row ${r + 1}:\n  ${cells.join("\n  ")}`;
+   });
+-  const rear = wantsRearView([o.design.camera, o.design.levelOutline, o.subject, o.extra].filter(Boolean).join("\n"));
++  const view = designView(o.design, [o.subject, o.extra].filter(Boolean).join("\n"));
+   return [
+     `2D game sprite sheet: ${o.withRef ? "the EXACT same character as the reference image (identical proportions, colors, outfit, accessories, line and shading style)" : "one single consistent character"}.`,
+-    o.withRef
+-      ? rear
+-        ? "The reference defines ONLY the character's identity, NOT the pose and NOT the camera angle. Do not copy a three-quarter or side turn. Draw every cell in strict straight-on back view."
+-        : "The reference defines ONLY the character's identity, NOT the pose: do not copy its pose; draw every cell in the pose described for it."
+-      : "",
++    o.withRef ? sheetIdentityLine(view) : "",
+     `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
+-    rear
+-      ? "Exactly one full-body pose per cell, STRICT straight-on rear view in every cell: camera directly behind, both shoulders equal, back of the head centered, face never visible, not three-quarter, not a side profile. Read each pose from behind, so forward means away from the camera. The same character size in every cell, feet on the same invisible baseline near the bottom of each cell, generous empty margin so no pose touches or crosses into a neighbouring cell."
+-      : "Exactly one full-body pose per cell, side view, facing RIGHT in every cell, the same character size in every cell, feet on the same invisible baseline near the bottom of each cell, generous empty margin so no pose touches or crosses into a neighbouring cell.",
++    sheetViewLine(view),
+     "Each animation reads left to right as consecutive frames: neighbouring frames of a cycle MUST show clearly different leg and arm positions exactly as described (never the same stride repeated).",
+     `FORBIDDEN: grid lines, borders, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, any ${c.label} on the character.`,
+     ...rows,
+diff --git a/lib/agents/chat.ts b/lib/agents/chat.ts
+index cb3c3b5..c737c1a 100644
+--- a/lib/agents/chat.ts
++++ b/lib/agents/chat.ts
+@@ -56,7 +56,7 @@ You receive a change request and decide the cheapest set of actions that fulfils
+ 4. "code": precise instructions for the programmer (in English) when gameplay/logic/visual code must change. When adding 3D characters use forge.three.character(logicalId, height) so *_3d GLBs load (or primitives if no Tripo) — never forge.three.sprite for those roles. If the user asks for a cinematic / onCinematic, say so in "code".
+ ${
+     o.design.dimension === "2d"
+-      ? `4b. "animate": 2D frame animations for existing hero/enemy/npc image ids. Each animation is its OWN image, id \`<characterId>_sheet_<name>\` (example: hero_sheet_run, hero_sheet_slide). Names from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (max 6; "slide" = crouch/duck-under, "dash" = forward burst). Use "animate" ONLY to add names that are not in the asset list yet. When the user asks to recreate, redraw, or improve ONE animation, "regenerate" ONLY that clip id (English direction, or "" to keep the look) and leave "code" empty. NEVER regenerate a combined \`<characterId>_sheet\` id and NEVER put any other clip id in "regenerate" — redrawing slide must not redraw run. When the user asks to change the character's viewing angle (rear view, back view, side view), "regenerate" ONLY the base character image id, with an English prompt that states the angle, and leave "code" empty. For a rear view the prompt must say: strict straight-on back view, camera directly behind, both shoulders equal, face not visible, not three-quarter, not a side profile. Do not list the clip ids and do not regenerate the keyart unless they asked for the poster; the clips are redrawn from that sprite. The runtime wiring is added to "code" automatically only for "animate".\n`
++      ? `4b. "animate": 2D frame animations for existing hero/enemy/npc image ids. Each animation is its OWN image, id \`<characterId>_sheet_<name>\` (example: hero_sheet_run, hero_sheet_slide). Names from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (max 6; "slide" = crouch/duck-under, "dash" = forward burst). Use "animate" ONLY to add names that are not in the asset list yet. When the user asks to recreate, redraw, or improve ONE animation, "regenerate" ONLY that clip id (English direction, or "" to keep the look) and leave "code" empty. NEVER regenerate a combined \`<characterId>_sheet\` id and NEVER put any other clip id in "regenerate" — redrawing slide must not redraw run. When the user asks to change the character's viewing angle (side, front, rear, top-down, isometric), "regenerate" ONLY the base character image id, with an English prompt that names exactly one view, and leave "code" empty. Use these phrases: side "side view facing right"; front "strict front view, facing the camera, both eyes visible"; rear "strict straight-on back view, camera directly behind, both shoulders equal, face not visible"; top-down "strict top-down view, camera straight above"; isometric "strict isometric view, elevated three-quarter, top of the head and the front of the body visible". Do not list the clip ids and do not regenerate the keyart unless they asked for the poster; the clips are redrawn from that sprite. The runtime wiring is added to "code" automatically only for "animate".\n`
+       : `4b. "animate": always [] (only for 2D games).\n`
+   }5. "title" ("" = keep) and "cinematicLines" ([] = keep, or exactly 3 short story lines in the game's language — never voice-direction meta-text).
+ Answer in "reply" in the user's language, short and friendly (1-2 sentences), saying what you changed. "tags": 1-4 very short labels of the applied changes (e.g. "Salto +18%", "Nuevo enemigo").
+diff --git a/lib/agents/director.ts b/lib/agents/director.ts
+index 4a6bdb4..b596aa6 100644
+--- a/lib/agents/director.ts
++++ b/lib/agents/director.ts
+@@ -83,7 +83,7 @@ type Raw = Omit<GameDesign, "dimension" | "engine" | "assets" | "ui"> & {
+ };
+ 
+ const DIM_GUIDE: Record<Dimension, string> = {
+-  "2d": "2D side/top-down game. Sprites are single transparent images (moving characters also get a frame-animation spritesheet derived from their sprite); backgrounds are wide parallax images.",
++  "2d": "2D game whose camera is exactly one of side, front, rear, top-down or isometric. Sprites are single transparent images drawn for that camera (moving characters also get a frame-animation spritesheet in the same view); backgrounds are wide parallax images.",
+   "2.5d": "2.5D side-scroller on a gameplay plane with a side/three-quarter camera. READ THE IDEA for art split: if it asks for 3D characters + 2D décor/parallax (personnages en 3D + décor/fond en 2D, etc.), hero/enemies/NPCs MUST be real 3D via forge.three.character (GLB when Tripo available, else auto Capsule/Sphere low-poly) — never flat billboard sprites — while sky/far scenery stay 2D parallax (backdrop + layered planes). If unspecified, prefer 3D characters when models exist, else textured low-poly meshes for characters.",
+   "3d": "Full 3D game (third-person, first-person or isometric). Environment from procedural meshes with generated seamless textures. EVERY gameplay entity (hero, enemies, collectibles, goals, hazards, props) MUST be true 3D via forge.three.character / model (GLB and/or auto low-poly). Flat billboard/sprite planes are FORBIDDEN for those entities — only HUD/UI may be 2D. Image assets for entities are reference/texture sources, not flat cardboard cutouts in the world.",
+ };
+@@ -122,11 +122,11 @@ Rules:
+         }`
+   }.
+   transparent=true for sprites/characters/objects/ui; false for background, texture, portrait, keyart.
+-  Exactly one keyart image: aspect 1:1, transparent false, seamless false. A square promotional poster with the hero large, the setting behind and the game title in bold stylized lettering. It is the library cover only — never a sprite and never drawn inside the gameplay. It is generated before the other pictures and is the identity reference: the hero image must describe that exact same character (same species, outfit and colors), not a redesign. If the camera is from behind, the poster shows that same strict straight-on back view, not a three-quarter turn toward the viewer.
++  Exactly one keyart image: aspect 1:1, transparent false, seamless false. A square promotional poster with the hero large, the setting behind and the game title in bold stylized lettering. It is the library cover only — never a sprite and never drawn inside the gameplay. It is generated before the other pictures and is the identity reference: the hero image must describe that exact same character (same species, outfit and colors), not a redesign. The poster hero uses the same camera as the playable sprite.
+   Sprites MUST be isolated subjects: prompt the subject only — no scenery, no nebula plate, no ground, no frame. The image QA rejects baked backgrounds.
+   CUTOUT HARD RULE for roles prop, collectible, hazard, goal (and platform when used as a floating piece): transparent=true ALWAYS. Prompt ONLY the object — forbidden: painted white/colored rectangle plate, scenery backdrop, room wall, ground shadow plate, vignette frame. These are alpha-cutout sprites composited into the scene; a baked background makes them look like stickers.
+   seamless=true ONLY for abstract repeating layers/textures/tiles. Unique painted scenes with planets or landmarks MUST be seamless=false.
+-  Match the camera. Side games: "side view facing right". Top-down: "three-quarter front view". A runner viewed from the rear: "strict straight-on back view, camera directly behind, both shoulders equal, back of the head centered, face not visible, not three-quarter, not a side profile". Never write "three-quarter" for that rear camera.
++  The camera field and every character prompt (hero, enemies, keyart) name ONE view, in these words: side → "side view facing right"; front → "strict front view, facing the camera, both eyes visible"; rear → "strict straight-on back view, camera directly behind, both shoulders equal, face not visible"; top-down → "strict top-down view, camera straight above"; isometric → "strict isometric view, elevated three-quarter, top of the head and the front of the body visible". Do not mix two views in one prompt. A rear camera must not say three-quarter or side view.
+   animations: ${
+     dimension === "2d"
+       ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. Keep the list to at most 6 names. The pipeline draws each name as its OWN spritesheet (run and walk with 6 frames, every other animation with 2) and adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
+diff --git a/lib/agents/runtime-docs.ts b/lib/agents/runtime-docs.ts
+index c6ebaed..30ef6fd 100644
+--- a/lib/agents/runtime-docs.ts
++++ b/lib/agents/runtime-docs.ts
+@@ -59,7 +59,7 @@ export default function createGame(forge, Phaser) {
+ - Generated images are large single frames (~512–640 px, transparent PNG for sprites). ALWAYS size them with
+   \`forge.phaser.fit(gameObject, targetHeightPx)\` (keeps aspect). For physics sprites call \`forge.phaser.body(sprite, {w:0.6, h:0.9})\` AFTER fit
+   to set a body as a fraction of the displayed size (bottom‑centered).
+-- Sprites are drawn facing right: use \`setFlipX(true)\` to face left.
++- Match the sprite's camera. Side view is drawn facing right: use \`setFlipX(true)\` to face left. Front, rear, top-down and isometric sprites already contain their camera: do not \`setFlipX\` them into a profile. Move a top-down or isometric character in the facing baked into the art; keep a rear-view runner back-to-camera.
+ - Animated characters: when the asset list has a \`spritesheet\` whose \`of\` is a character image id, create the sprite with the
+   CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
+   — BEFORE fit/body, because it swaps the texture to that character's clip sheets (\`<id>_sheet_<anim>\`, or the legacy \`<id>_sheet\`). Each animation is its own image; cells are square with feet on the bottom. Then fit/body as usual
+@@ -67,7 +67,7 @@ export default function createGame(forge, Phaser) {
+   \`anim.update({vx, vy, grounded, dashing, sliding, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/slide/dash/attack/hurt.
+   Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
+   Only the clips listed in the sheet exist; \`attacking\` triggers once on its rising edge. \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
+-  You still flip with \`setFlipX(vx < 0)\`. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
++  Flip with \`setFlipX(vx < 0)\` only for a side-view sprite. Front, rear, top-down and isometric clips stay unflipped. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
+   so ALWAYS use animate for characters that have a spritesheet — never load or slice sheets yourself, never use this.anims directly.
+ - Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
+   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
+diff --git a/lib/sprite-view.ts b/lib/sprite-view.ts
+new file mode 100644
+index 0000000..84c6b82
+--- /dev/null
++++ b/lib/sprite-view.ts
+@@ -0,0 +1,88 @@
++/** Camera baked into a 2D sprite. Side stays the default so a plain platformer still faces right. */
++export type SpriteView = "side" | "front" | "rear" | "top" | "isometric";
++
++const CELL_TAIL =
++  "The same character size in every cell, feet on the same invisible baseline near the bottom of each cell, generous empty margin so no pose touches or crosses into a neighbouring cell.";
++
++const DETECTORS: { view: SpriteView; test: RegExp }[] = [
++  { view: "isometric", test: /isom[eé]tric/i },
++  { view: "rear", test: /vista trasera|desde atr[aá]s|por detr[aá]s|de espalda|back to the camera|seen from behind|from behind|rear view|back view|camera behind/i },
++  { view: "isometric", test: /three[- ]quarters?|tres cuartos|\b3\/4\b/i },
++  { view: "front", test: /vista frontal|de frente|front view|facing (the )?(camera|viewer)|hacia (la |el )?(c[aá]mara|jugador)|cara a la c[aá]mara/i },
++  { view: "top", test: /top[- ]?down|cenital|overhead|bird'?s[- ]?eye|vista superior|vista a[eé]rea|vista en planta|desde arriba/i },
++  { view: "side", test: /side view|side[- ]scroller|vista lateral|de perfil|de lado|facing right/i },
++];
++
++/** Drop "not three-quarter" so a rear instruction is not read as isometric. */
++function withoutNegations(text: string) {
++  return text.replace(/\b(?:not|no|never|sin|without|don'?t|do not|jamais|pas de)\b[^.!?\n]{0,48}/gi, " ");
++}
++
++export function detectSpriteView(text: string): SpriteView | null {
++  const clean = withoutNegations(text);
++  for (const { view, test } of DETECTORS) if (test.test(clean)) return view;
++  return null;
++}
++
++/** The asset prompt wins, then the camera, then the rest of the design. Unknown 2D cameras stay side view. */
++export function characterView(parts: {
++  camera?: string;
++  levelOutline?: string;
++  setting?: string;
++  heroDescription?: string;
++  prompt?: string;
++}): SpriteView {
++  return (
++    detectSpriteView(parts.prompt || "") ||
++    detectSpriteView(parts.camera || "") ||
++    detectSpriteView([parts.levelOutline, parts.setting, parts.heroDescription].filter(Boolean).join("\n")) ||
++    "side"
++  );
++}
++
++export function stillViewLine(view: SpriteView) {
++  switch (view) {
++    case "rear":
++      return " STRICT straight-on rear view, orthographic, camera directly behind the character. Back of the head centered, both shoulders equal, both arms and both legs seen from behind, the character faces away. FORBIDDEN: side profile, front view, isometric, any part of the face, one eye, the torso turned left or right.";
++    case "front":
++      return " STRICT front view, facing the camera, full body. Both eyes visible, shoulders equal. FORBIDDEN: side profile, rear view, top-down, isometric, a single eye.";
++    case "top":
++      return " STRICT top-down view, camera straight above. The top of the head, the shoulders and the feet are seen from overhead, and the character faces toward the bottom of the frame. FORBIDDEN: side profile, front portrait, isometric tilt, rear view.";
++    case "isometric":
++      return " STRICT isometric view, the same elevated three-quarter camera: top of the head visible and the front of the body visible, consistent angle, facing the lower-right. FORBIDDEN: flat side profile, straight-on front, pure top-down, rear view.";
++    default:
++      return " Side view, facing right.";
++  }
++}
++
++export function sheetViewLine(view: SpriteView) {
++  switch (view) {
++    case "rear":
++      return `Exactly one full-body pose per cell, STRICT straight-on rear view in every cell: camera directly behind, both shoulders equal, back of the head centered, face never visible, not a side profile, not a front view, not isometric. Read each pose from behind, so forward means away from the camera. ${CELL_TAIL}`;
++    case "front":
++      return `Exactly one full-body pose per cell, STRICT front view facing the camera in every cell: both eyes visible, shoulders equal, not a side profile, not from behind, not top-down, not isometric. ${CELL_TAIL}`;
++    case "top":
++      return `Exactly one full-body pose per cell, STRICT top-down view in every cell: camera straight above, top of the head and shoulders seen from overhead, the facing direction points toward the bottom of the cell. Not a side profile, not a front portrait, not isometric. ${CELL_TAIL}`;
++    case "isometric":
++      return `Exactly one full-body pose per cell, STRICT isometric view from the same elevated three-quarter camera in every cell: top of the head visible and the front of the body visible, consistent angle, facing the lower-right of the cell. Not a flat side profile, not a straight-on front, not a pure top-down, not from behind. ${CELL_TAIL}`;
++    default:
++      return `Exactly one full-body pose per cell, side view, facing RIGHT in every cell. ${CELL_TAIL}`;
++  }
++}
++
++export function sheetIdentityLine(view: SpriteView) {
++  if (view === "side") return "The reference defines ONLY the character's identity, NOT the pose: do not copy its pose; draw every cell in the pose described for it.";
++  return "The reference defines ONLY the character's identity, NOT the pose and NOT the camera angle. Do not copy a different angle. Draw every cell in the view named below.";
++}
++
++const VIEW_NAME: Record<SpriteView, string> = {
++  side: "side view facing right",
++  front: "strict front view facing the camera",
++  rear: "strict straight-on back view",
++  top: "strict top-down view from straight above",
++  isometric: "strict isometric three-quarter view",
++};
++
++export function cameraOverride(view: SpriteView) {
++  return ` CAMERA OVERRIDE: keep the reference character's species, outfit and colors, but discard its camera angle. Redraw them only as a ${VIEW_NAME[view]}.`;
++}
+-- 
+2.43.0
+

@@ -59,7 +59,7 @@ export default function createGame(forge, Phaser) {
 - Generated images are large single frames (~512–640 px, transparent PNG for sprites). ALWAYS size them with
   \`forge.phaser.fit(gameObject, targetHeightPx)\` (keeps aspect). For physics sprites call \`forge.phaser.body(sprite, {w:0.6, h:0.9})\` AFTER fit
   to set a body as a fraction of the displayed size (bottom‑centered).
-- Sprites are drawn facing right: use \`setFlipX(true)\` to face left.
+- Match the sprite's camera. Side view is drawn facing right: use \`setFlipX(true)\` to face left. Front, rear, top-down and isometric sprites already contain their camera: do not \`setFlipX\` them into a profile. Move a top-down or isometric character in the facing baked into the art; keep a rear-view runner back-to-camera.
 - Animated characters: when the asset list has a \`spritesheet\` whose \`of\` is a character image id, create the sprite with the
   CHARACTER id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
   — BEFORE fit/body, because it swaps the texture to that character's clip sheets (\`<id>_sheet_<anim>\`, or the legacy \`<id>_sheet\`). Each animation is its own image; cells are square with feet on the bottom. Then fit/body as usual
@@ -67,7 +67,7 @@ export default function createGame(forge, Phaser) {
   \`anim.update({vx, vy, grounded, dashing, sliding, attacking, hurt}, deltaSeconds)\` with the physics body velocity; it picks idle/walk/run/jump/fall/land/slide/dash/attack/hurt.
   Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
   Only the clips listed in the sheet exist; \`attacking\` triggers once on its rising edge. \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
-  You still flip with \`setFlipX(vx < 0)\`. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
+  Flip with \`setFlipX(vx < 0)\` only for a side-view sprite. Front, rear, top-down and isometric clips stay unflipped. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
   so ALWAYS use animate for characters that have a spritesheet — never load or slice sheets yourself, never use this.anims directly.
 - Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
