@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { emit } from "@/lib/events";
 import { jsonError, loadProject, type Ctx } from "@/lib/http";
-import { isBusy } from "@/lib/agents/pipeline";
+import { isBusy, reapOrphanJob } from "@/lib/agents/pipeline";
 import { deleteProject, updateProject } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
+  // A job cut off by a restart would keep the studio locked forever: close it before answering.
+  if (await loadProject(id)) await reapOrphanJob(id).catch((e) => console.warn("[forge] reap", e));
   const p = await loadProject(id);
   if (!p) return jsonError("Proyecto no encontrado", 404);
   return NextResponse.json({ ...p, busy: isBusy(id) });

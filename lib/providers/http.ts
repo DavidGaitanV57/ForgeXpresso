@@ -28,7 +28,9 @@ export async function fetchWithRetry(url: string, init: RequestInit, opts: { ret
     const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 180_000);
     try {
       const res = await fetch(url, { ...init, signal: ctrl.signal });
-      if (res.ok) return res;
+      // The body is read under the same timeout: a provider that sends headers and then stalls the
+      // image or audio download would otherwise hang the job forever.
+      if (res.ok) return new Response(await res.arrayBuffer(), { status: res.status, statusText: res.statusText, headers: res.headers });
       const msg = await readError(res);
       const err = new ProviderError(opts.provider, res.status, String(msg));
       if (res.status === 429 || res.status >= 500) {
