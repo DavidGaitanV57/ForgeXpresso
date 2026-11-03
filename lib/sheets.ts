@@ -1,7 +1,21 @@
 import type { ImageAssetSpec } from "./types";
 
-export const SHEET_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "slide", "dash", "attack", "hurt"] as const;
+/** Clips drawn facing the camera (or facing right in a side view). */
+export const FACING_ANIMS = ["idle", "walk", "run", "jump", "fall", "land", "slide", "dash", "attack", "hurt"] as const;
+/**
+ * The same rest and locomotion clips seen from behind, for isometric and top-down games: a character walking
+ * up the screen shows its back. Together with the horizontal flip that gives four directions from two drawings.
+ */
+export const BACK_ANIMS = ["idle_back", "walk_back", "run_back"] as const;
+export const SHEET_ANIMS = [...FACING_ANIMS, ...BACK_ANIMS] as const;
 export type SheetAnimName = (typeof SHEET_ANIMS)[number];
+type FacingAnimName = (typeof FACING_ANIMS)[number];
+
+/** Back clip of a facing clip, if it has one. */
+export const BACK_OF: Partial<Record<SheetAnimName, SheetAnimName>> = { idle: "idle_back", walk: "walk_back", run: "run_back" };
+export const isBackAnim = (name: string) => name.endsWith("_back");
+/** The facing clip a back clip mirrors ("walk_back" → "walk"); a facing clip is its own base. */
+export const baseAnim = (name: SheetAnimName) => name.replace(/_back$/, "") as FacingAnimName;
 
 export interface SheetAnimSpec {
   name: SheetAnimName;
@@ -44,7 +58,7 @@ export const STAND_FILL = 0.72;
 /** Transparent gutter on every side of a cell, so texture filtering never pulls a neighbour frame's pixels in. */
 export const CELL_GUTTER = 0.035;
 /** Bump when clip packing changes: clips packed by an older version are repacked from their original drawing. */
-export const NORM_VERSION = 2;
+export const NORM_VERSION = 3;
 /** Gutter in pixels for a cell size; the runtime puts the feet of the physics body on `cell - cellPad(cell)`. */
 export const cellPad = (cell: number) => Math.max(4, Math.round(cell * CELL_GUTTER));
 export const SHEET_COLS = 4;
@@ -52,7 +66,9 @@ export const SHEET_MAX_FRAMES = 16;
 const SHEET_MAX_ROWS = 4;
 
 /** Concrete per-frame poses: vague cycle names make image models repeat one stride pose. */
-export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number; loop: boolean; poses: string[] }> = {
+type AnimDefaults = { frames: number; fps: number; loop: boolean; poses: string[] };
+
+const FACING_DEFAULTS: Record<FacingAnimName, AnimDefaults> = {
   idle: {
     frames: 2,
     fps: 4,
@@ -67,9 +83,9 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
       "CONTACT: near leg reaching forward with heel touching the ground, far leg stretched behind on its toes (widest stride), far arm swings forward",
       "DOWN: body at its lowest, weight over the front foot, back foot just leaving the ground",
       "PASSING: legs together under the body — far leg swinging forward past the planted near leg with its knee lifted, body at its highest, arms close to the body",
-      "CONTACT MIRRORED: now the FAR leg reaches forward heel-down and the NEAR leg is stretched behind (widest stride), near arm swings forward",
-      "DOWN MIRRORED: body at its lowest on the other foot",
-      "PASSING MIRRORED: legs together again — near leg swinging forward past the planted far leg with its knee lifted",
+      "CONTACT, OTHER LEG (same facing direction as frame 1): now the FAR leg reaches forward heel-down and the NEAR leg is stretched behind (widest stride), near arm swings forward",
+      "DOWN, OTHER LEG (same facing direction as frame 1): body at its lowest on the other foot",
+      "PASSING, OTHER LEG (same facing direction as frame 1): legs together again — near leg swinging forward past the planted far leg with its knee lifted",
     ],
   },
   run: {
@@ -80,9 +96,9 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
       "PUSH-OFF: strong forward lean, far leg fully extended behind pushing off, near knee driving up high",
       "PASSING: legs together under the body, near knee driving forward, arms crossing the torso",
       "FLIGHT: both feet off the ground, legs scissored, arms pumping",
-      "PUSH-OFF MIRRORED: near leg extended behind pushing off, far knee driving up high",
-      "PASSING MIRRORED: legs together again, far knee driving forward, arms crossing the other way",
-      "FLIGHT MIRRORED: both feet off the ground, legs scissored the other way",
+      "PUSH-OFF, OTHER LEG (same facing direction as frame 1): near leg extended behind pushing off, far knee driving up high",
+      "PASSING, OTHER LEG (same facing direction as frame 1): legs together again, far knee driving forward, arms crossing the other way",
+      "FLIGHT, OTHER LEG (same facing direction as frame 1): both feet off the ground, legs scissored the other way",
     ],
   },
   jump: {
@@ -145,6 +161,16 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
       "wobble: off-balance and dizzy in a funny cartoon way, one foot stepping back, arms waving for balance",
     ],
   },
+};
+
+/** A back clip times like its facing clip; its poses are the same body positions seen from behind. */
+const seenFromBehind = (d: AnimDefaults): AnimDefaults => ({ ...d, poses: d.poses.map((p) => `seen from behind: ${p}`) });
+
+export const ANIM_DEFAULTS: Record<SheetAnimName, AnimDefaults> = {
+  ...FACING_DEFAULTS,
+  idle_back: seenFromBehind(FACING_DEFAULTS.idle),
+  walk_back: seenFromBehind(FACING_DEFAULTS.walk),
+  run_back: seenFromBehind(FACING_DEFAULTS.run),
 };
 
 const DEFAULT_SET: SheetAnimName[] = ["idle", "walk", "jump", "fall"];
@@ -228,10 +254,13 @@ export function ownClipList(input: (string | Partial<SheetAnimSpec>)[] | undefin
     out.push({ name, frames });
   }
   if (out.length && !seen.has("idle")) out.unshift({ name: "idle", frames: ANIM_DEFAULTS.idle.frames });
-  if (out.length <= CLIP_CAP) return out;
-  const idle = out.find((a) => a.name === "idle");
-  const rest = out.filter((a) => a.name !== "idle");
-  return idle ? [idle, ...rest.slice(0, CLIP_CAP - 1)] : out.slice(0, CLIP_CAP);
+  // The cap counts facing clips only; a back clip is kept when its facing clip is.
+  const facing = out.filter((a) => !isBackAnim(a.name));
+  const idle = facing.find((a) => a.name === "idle");
+  const rest = facing.filter((a) => a.name !== "idle");
+  const kept = facing.length <= CLIP_CAP ? facing : idle ? [idle, ...rest.slice(0, CLIP_CAP - 1)] : facing.slice(0, CLIP_CAP);
+  const names = new Set(kept.map((a) => a.name));
+  return [...kept, ...out.filter((a) => isBackAnim(a.name) && names.has(baseAnim(a.name)))];
 }
 
 /** Clamp an anim list to known names, fixed frame counts and the sheet's frame budget. */
@@ -332,7 +361,7 @@ export function animsMentioned(text: string): SheetAnimName[] {
 export function fluidCycles(anims: SheetAnimSpec[]): SheetAnimSpec[] {
   if (anims.length === 1) {
     const a = anims[0];
-    const goal = a.name === "run" || a.name === "walk" ? Math.max(a.frames, ANIM_DEFAULTS[a.name].frames) : a.frames;
+    const goal = baseAnim(a.name) === "run" || baseAnim(a.name) === "walk" ? Math.max(a.frames, ANIM_DEFAULTS[a.name].frames) : a.frames;
     return [{ name: a.name, frames: Math.max(1, Math.min(8, goal)) }];
   }
   const specs = anims.map((a) => ({ name: a.name, frames: a.frames }));

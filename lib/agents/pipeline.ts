@@ -589,9 +589,11 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
       }
       if (p.dimension === "2d") {
         for (const an of plan.animate || []) {
+          const wasAnimated = sheetsForCharacter(pp.assets, an.id).length > 0;
           const recs = ensureClipSheets(d, pp.assets, an.id, an.animations);
           if (!recs.length) continue;
-          animated.push(an.id);
+          // A sprite that already plays clips picks up new ones (back views included) without a code change.
+          if (!wasAnimated) animated.push(an.id);
           for (const rec of recs) {
             rec.liked = 0;
             if (!toGenerate.includes(rec)) toGenerate.push(rec);

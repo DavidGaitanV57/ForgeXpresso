@@ -1,8 +1,9 @@
 import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
-import { clipSpecFor, SHEET_ANIMS } from "../sheets";
+import { clipSpecFor, FACING_ANIMS } from "../sheets";
+import { characterView } from "../sprite-view";
 import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
-import { animationClips, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
+import { animationClips, directionalView, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const str = { type: "string" };
@@ -58,7 +59,7 @@ const schema = obj({
       aspect: { type: "string", enum: ASPECTS },
       usage: str,
       seamless: bool,
-      animations: arr({ type: "string", enum: [...SHEET_ANIMS] }),
+      animations: arr({ type: "string", enum: [...FACING_ANIMS] }),
     }),
   ),
   audio: arr(
@@ -327,7 +328,8 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     }
     for (const img of [...images]) {
       if (img.sheet) continue;
-      const list = animationClips(img.role, listedAnims.get(img.id));
+      const view = characterView({ camera: r.camera, levelOutline: r.levelOutline, prompt: img.prompt });
+      const list = animationClips(img.role, listedAnims.get(img.id), directionalView(view));
       for (const anim of list) {
         const spec = clipSpecFor(img, anim);
         if (used.has(spec.id)) continue;

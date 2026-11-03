@@ -66,7 +66,11 @@ export default function createGame(forge, Phaser) {
 - Character scale on the 1280×720 stage: a standing playable character or enemy is 180–280 px tall in platformers, runners and
   top-down games, and at most 320 px in a one-screen duel or boxing game. Leave the upper third of the screen for the arena and the HUD;
   never make a character taller than 45% of the screen. Sprites are drawn at ~370 px, so going larger than that blurs them.
-- Match the sprite's camera. Side view is drawn facing right: use \`setFlipX(true)\` to face left. Front, rear, top-down and isometric sprites already contain their camera: do not \`setFlipX\` them into a profile. Move a top-down or isometric character in the facing baked into the art; keep a rear-view runner back-to-camera.
+- Match the sprite's camera. Side view is drawn facing right: use \`setFlipX(true)\` to face left. An isometric sprite is drawn
+  facing the lower-right: mirror it with \`setFlipX(vx < 0)\` to face the lower-left (that is how isometric games turn). Strict front,
+  rear and top-down sprites are not mirrored into a profile; keep a rear-view runner back-to-camera.
+- Isometric and top-down characters may have back clips (\`idle_back\`, \`walk_back\`, \`run_back\`). Then \`anim.update({vx, vy, …})\` picks
+  front or back from vy and mirrors from vx by itself: pass the real velocity in both axes and do NOT call \`setFlipX\` on that sprite.
 - Animated sprites: every \`spritesheet\` belongs to the still image in its \`of\` field — the hero, each companion, each enemy, and any prop that cycles on its own. Create the sprite with that BASE id (e.g. \`this.physics.add.sprite(x, y, "hero_kuro")\`) and IMMEDIATELY call \`const anim = forge.phaser.animate(sprite)\`
   — BEFORE fit/body, because it swaps the texture to that character's clip sheets (\`<id>_sheet_<anim>\`, or the legacy \`<id>_sheet\`). Each animation is its own image; cells are square with feet on the bottom and every clip shares the character's body scale. Then
   \`forge.phaser.fit(sprite, standingHeightPx)\` — after animate, fit sizes the STANDING character, not the cell, so a lunge or crouch keeps the same body size — and
@@ -75,7 +79,7 @@ export default function createGame(forge, Phaser) {
   Pass \`sliding: true\` the whole time the character crouches or slides under an obstacle, and \`dashing: true\` only for a forward speed burst — they are different clips.
   dash, slide, jump, land, attack and hurt play ONCE and hold their last pose while the flag stays true; they restart only when the flag goes false and true again. So a hold-to-dodge must keep \`dashing\` true for the whole hold (or end it after a fixed burst) and must not toggle it every frame.
   Only the clips listed in the sheet exist; \`attacking\` triggers once on its rising edge. \`anim.play(name)\` forces a clip, \`anim.has(name)\`, \`anim.current\`.
-  Flip with \`setFlipX(vx < 0)\` only for a side-view sprite. Front, rear, top-down and isometric clips stay unflipped. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
+  Flip with \`setFlipX(vx < 0)\` for a side-view or isometric sprite without back clips; a sprite with back clips is flipped by the runtime. Strict front, rear and top-down clips stay unflipped. If the sheet is missing/not ready, \`animate\` transparently falls back to the puppet below (\`anim.animated === false\`),
   so ALWAYS use animate for every sprite that has a spritesheet, including enemies and moving props — never load or slice sheets yourself, never use this.anims directly. A prop whose only motion is a loop can \`anim.play\` that clip and keep calling \`anim.update\`.
 - Characters without a spritesheet: bring them to life with \`const p = forge.phaser.puppet(sprite)\` (after fit/body) and call
   \`p.update({vx, vy, grounded, attacking, hurt}, deltaSeconds)\` every frame (breathing, run bob/lean, jump stretch, landing squash).
