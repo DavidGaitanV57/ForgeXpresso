@@ -69,26 +69,32 @@ export function isBusy(id: string) {
 
 const INTERRUPTED = "Interrumpido: el servidor se reinició (por ejemplo, un despliegue) mientras se generaba. Vuelve a intentarlo.";
 
+const stuck = (a: AssetRecord) => a.status === "generating" || a.status === "pending";
+
 /**
- * A job saved as unfinished that this process is not running was cut off by a restart: the registry of
- * live jobs is in memory and dies with the process, the saved job and its "generating" assets do not.
- * Close it so the studio unlocks the game: the job and its open stages end in error, an asset that had
- * an earlier revision goes back to it, one that never had a file is marked as failed.
+ * Work this process is not running was cut off by a restart: the registry of live jobs is in memory and
+ * dies with the process, the saved job and its "generating" assets do not. A later job can even replace
+ * the saved one and leave those assets behind. So whenever nothing runs for the game: an unfinished job
+ * and its open stages end in error, an asset that had an earlier revision goes back to it, and one that
+ * never had a file is marked as failed. The studio then unlocks the game and lets it be regenerated.
  */
 export async function reapOrphanJob(projectId: string): Promise<boolean> {
   if (running.has(projectId)) return false;
   const p = await getProject(projectId);
-  if (!p?.job || p.job.finishedAt) return false;
+  if (!p) return false;
+  if (!(p.job && !p.job.finishedAt) && !Object.values(p.assets).some(stuck)) return false;
   const touched: AssetRecord[] = [];
   let closed = false;
   const updated = await updateProject(projectId, (pp) => {
-    if (!pp.job || pp.job.finishedAt || running.has(projectId)) return;
-    closed = true;
-    pp.job.finishedAt = Date.now();
-    pp.job.error = INTERRUPTED;
-    for (const s of pp.job.stages) if (s.status === "run" || s.status === "wait") s.status = "error";
+    if (running.has(projectId)) return;
+    if (pp.job && !pp.job.finishedAt) {
+      closed = true;
+      pp.job.finishedAt = Date.now();
+      pp.job.error = INTERRUPTED;
+      for (const s of pp.job.stages) if (s.status === "run" || s.status === "wait") s.status = "error";
+    }
     for (const a of Object.values(pp.assets)) {
-      if (a.status !== "generating" && a.status !== "pending") continue;
+      if (!stuck(a)) continue;
       if (a.file) Object.assign(a, { status: "ready", error: undefined });
       else Object.assign(a, { status: "error", error: INTERRUPTED });
       a.updatedAt = Date.now();
@@ -96,11 +102,11 @@ export async function reapOrphanJob(projectId: string): Promise<boolean> {
     }
     if (pp.status === "generating") pp.status = pp.versions.length ? "ready" : "error";
   });
-  if (!closed || !updated.job) return false;
-  emit(projectId, { type: "job", job: updated.job });
+  if (!closed && !touched.length) return false;
+  if (closed && updated.job) emit(projectId, { type: "job", job: updated.job });
   for (const a of touched) emit(projectId, { type: "asset", asset: a });
   emit(projectId, { type: "status", status: updated.status });
-  console.warn(`[forge] closed orphaned ${updated.job.kind} job of ${projectId} (${touched.length} assets)`);
+  console.warn(`[forge] closed interrupted work of ${projectId}: job ${closed ? "closed" : "none"}, ${touched.length} assets`);
   return true;
 }
 
@@ -673,6 +679,17 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
 /* ---------------- Repair ---------------- */
 
 export const MAX_REPAIRS = 3;
+
+/**
+ * An error raised by a browser extension (a wallet such as MetaMask, an ad blocker, a translator), not by the
+ * game. Repairing it would spend a code-model call rewriting a module that works.
+ * Same test as foreignError in public/runtime/forge-runtime.js.
+ */
+export function isForeignError(message: string, stack = "") {
+  return /(chrome|moz|safari(-web)?|ms-browser|edge)-extension:\/\/|webkit-masked-url:|\binpage\.js\b|metamask|ethereum|web3|solana|phantom|__gCrWeb|ResizeObserver loop/i.test(
+    `${message}\n${stack}`,
+  ) || /^script error\.?$/i.test(message.trim());
+}
 
 export function startRepair(projectId: string, error: string) {
   background(projectId, () => repairFlow(projectId, error));
