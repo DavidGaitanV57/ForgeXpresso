@@ -70,6 +70,20 @@ export function sheetViewLine(view: SpriteView) {
   }
 }
 
+/**
+ * View for a back clip (idle_back, walk_back, run_back): the same camera, the character turned away.
+ * In isometric it faces the upper-right, so the runtime's horizontal flip gives the upper-left.
+ */
+export function sheetBackViewLine(view: SpriteView) {
+  if (view === "isometric") {
+    return `Exactly one full-body pose per cell, STRICT isometric REAR three-quarter view in every cell: the same elevated camera as the reference, but the character is turned away from the camera, facing and moving toward the UPPER-RIGHT of the cell. The back of the head, the back and anything worn on the back (backpack, cape, quiver) are visible; the face is hidden, at most the edge of one cheek. Not facing the camera, not a flat side profile, not a straight-on back view, not top-down. ${CELL_TAIL}`;
+  }
+  if (view === "top") {
+    return `Exactly one full-body pose per cell, STRICT top-down view in every cell: camera straight above, the character faces and moves toward the TOP of the cell, so the back of the head and the shoulders are seen from overhead and the face is not visible. Not a side profile, not a front portrait, not isometric. ${CELL_TAIL}`;
+  }
+  return sheetViewLine("rear");
+}
+
 export function sheetIdentityLine(view: SpriteView) {
   if (view === "side") return "The reference defines ONLY the character's identity, NOT the pose: do not copy its pose; draw every cell in the pose described for it.";
   return "The reference defines ONLY the character's identity, NOT the pose and NOT the camera angle. Do not copy a different angle. Draw every cell in the view named below.";

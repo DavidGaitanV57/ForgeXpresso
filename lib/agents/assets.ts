@@ -5,11 +5,11 @@ import { isSafetyRejection } from "../providers/http";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
 import { CHROMA, measureStill, pickChroma, processSheet, repackClip, type Chroma, type SheetRef } from "../sheetproc";
-import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, ownClipList, sheetAspect, sheetAnimsFor, sheetIdFor, NORM_VERSION, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
+import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, isBackAnim, ownClipList, sheetAspect, sheetAnimsFor, sheetIdFor, NORM_VERSION, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
 import sharp from "sharp";
 import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec, Project } from "../types";
-import { cameraOverride, characterView, sheetIdentityLine, sheetViewLine, stillViewLine } from "../sprite-view";
+import { cameraOverride, characterView, sheetBackViewLine, sheetIdentityLine, sheetViewLine, stillViewLine } from "../sprite-view";
 import { sanitizeVoicePrompt } from "./voice-prompt";
 
 /** Image id paired with a `*_3d` model (lumi_hero_3d → lumi_hero). */
@@ -131,7 +131,7 @@ export async function queueClipRedraws(projectId: string, project: Project, rec:
 
 /** A regenerate id like `hero_sheet_slide` when that clip does not exist yet. */
 export function clipIdParts(id: string): { baseId: string; name: SheetAnimName } | null {
-  const m = /^(.*)_sheet_([a-z]+)$/.exec(id);
+  const m = /^(.*)_sheet_([a-z]+(?:_back)?)$/.exec(id);
   if (!m) return null;
   const name = m[2] as SheetAnimName;
   if (!(SHEET_ANIMS as readonly string[]).includes(name)) return null;
@@ -169,6 +169,12 @@ function repackSource(rec: AssetRecord): { file: string; rev: number } {
   // First-version repacks recorded no source: the newest revision never repacked is the drawing.
   for (let n = cur - 1; n >= 1; n--) if (!sheet.norm?.[n]) return at(n);
   return { file: rec.file!, rev: cur };
+}
+
+/** Clips whose every frame must face like the still: facing clips of a side or isometric character. */
+function mustFace(design: GameDesign, base: ImageAssetSpec, anims: SheetAnimSpec[]) {
+  const view = designView(design, base.prompt);
+  return (view === "side" || view === "isometric") && !anims.some((a) => isBackAnim(a.name));
 }
 
 const harmonizing = new Map<string, Promise<void>>();
@@ -225,7 +231,8 @@ async function harmonizeNow(projectId: string, baseId?: string) {
       });
       const anims = sheetAnimsFor(sheet, src.file);
       // The source grid is split from its own width; the output uses the character's shared cell.
-      const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true, cell: target.get(sheet.of) });
+      const facing = !!project.design && mustFace(project.design, base.spec as ImageAssetSpec, anims);
+      const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true, cell: target.get(sheet.of), facing });
       const done = await finish(projectId, rec, "png", fresh.data, "image/png", rec.provider || "Forge");
       if (done) {
         const spec = { ...(done.spec as ImageAssetSpec), sheet: { ...(done.spec as ImageAssetSpec).sheet!, anims } };
@@ -397,7 +404,7 @@ export async function generateImageAsset(projectId: string, rec: AssetRecord, de
 }
 
 /** Anim names as shown to the image model; "hurt"/"attack" alone can trip image safety filters. */
-const PROMPT_ANIM_LABEL: Record<string, string> = { hurt: "bump", attack: "action" };
+const PROMPT_ANIM_LABEL: Record<string, string> = { hurt: "bump", attack: "action", idle_back: "idle", walk_back: "walk", run_back: "run" };
 
 function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayout; chroma: Chroma; withRef: boolean; extra: string; retry: string; safe?: boolean }) {
   const { layout, chroma } = o;
@@ -418,7 +425,8 @@ function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayo
     `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells (${W}x${H} px canvas, each cell ${cw}x${ch} px) on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
     `SCALE: one constant body scale in every cell. Standing, the character is about ${stand} px from the top of the head to the soles, and the head, torso, hands and feet keep exactly the same pixel size in every frame. A crouch, slide or lunge is shorter or wider than standing — never enlarged to fill its cell. Keep the feet of grounded poses on the same baseline near the bottom of each cell.`,
     `MARGINS: each figure stays fully inside its own cell with at least ${Math.round(Math.min(cw, ch) * 0.08)} px of empty ${c.label} on all four sides. No hair, glove, foot, weapon or effect touches a cell edge or crosses into the next cell. A wide pose is drawn more compact, not cut off.`,
-    sheetViewLine(view),
+    // A back clip keeps the camera but turns the character away; every other clip faces the camera.
+    o.layout.anims.every((a) => isBackAnim(a.name)) ? sheetBackViewLine(view) : sheetViewLine(view),
     "Each animation reads left to right as consecutive frames: neighbouring frames of a cycle MUST show clearly different leg and arm positions exactly as described (never the same stride repeated).",
     `FORBIDDEN: grid lines, cell borders, divider strokes, frames around cells, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, motion trails, any ${c.label} on the character.`,
     ...rows,
@@ -484,6 +492,8 @@ export async function generateSheetAsset(projectId: string, rec: AssetRecord, de
     const ref = provider === "openai" ? await sheetReference(baseBuf, chroma) : null;
     // Every clip of this character is packed at the still image's body size, so switching clips never resizes the sprite.
     const still = await measureStill(baseBuf);
+    // Side and isometric clips face like the still; a frame drawn the other way is mirrored back.
+    const facing = mustFace(design, baseSpec, sheet.anims);
     let best: { data: Buffer; reasons: string[]; layout: SheetLayout } | null = null;
     let safe = false;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -518,7 +528,8 @@ export async function generateSheetAsset(projectId: string, rec: AssetRecord, de
       calls++;
       spentUsd += raw.estimatedUsd;
       spentMs += raw.ms;
-      const out = await processSheet(raw.data, sheet.anims, { chroma, ref: still });
+      const out = await processSheet(raw.data, sheet.anims, { chroma, ref: still, facing });
+      if (out.mirrored) console.warn(`[forge] sheet ${rec.id}: ${out.mirrored} frame(s) faced the other way, mirrored`);
       if (!best || out.reasons.length < best.reasons.length) best = { data: out.data, reasons: out.reasons, layout: out.layout };
       if (!out.reasons.length) break;
       lastErr = out.reasons.join("; ");

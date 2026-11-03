@@ -1,5 +1,5 @@
 import type { AssetRecord, GameDesign, ImageAssetSpec } from "../types";
-import { normalizeSheetAnims, ownClipList, type SheetAnimName } from "../sheets";
+import { BACK_OF, normalizeSheetAnims, ownClipList, type SheetAnimName } from "../sheets";
 
 /** Animations a 2D game must ship, read from the idea and the design text. */
 const ANIM_CUES: [SheetAnimName, RegExp][] = [
@@ -41,12 +41,20 @@ const FORGOTTEN_CAST = ["idle", "walk", "hurt"];
  * An empty list on a hero, companion or enemy means the director forgot: they get a walk cycle, not a scan of the idea.
  * A prop, hazard, pickup, goal or platform is animated only when its own list names clips.
  */
-export function animationClips(role: string, listed: string[] | undefined) {
+export function animationClips(role: string, listed: string[] | undefined, directional = false) {
   const names = (listed || []).map((n) => String(n || "").toLowerCase().trim()).filter(Boolean);
-  if (role === "hero" || role === "npc" || role === "enemy") return ownClipList(names.length ? names : FORGOTTEN_CAST);
+  if (role === "hero" || role === "npc" || role === "enemy") {
+    const facing = ownClipList(names.length ? names : FORGOTTEN_CAST);
+    // Isometric and top-down characters move up the screen too: their rest and locomotion clips get a back version.
+    if (!directional) return facing;
+    return ownClipList([...facing.map((a) => a.name), ...facing.flatMap((a) => (BACK_OF[a.name] ? [BACK_OF[a.name]!] : []))]);
+  }
   if (names.length && ANIMATED_OBJECT_ROLES.has(role)) return ownClipList(names);
   return [];
 }
+
+/** Cameras where a character walks up the screen and must show its back. */
+export const directionalView = (view: string) => view === "isometric" || view === "top";
 
 export interface ScenerySpec {
   id: string;

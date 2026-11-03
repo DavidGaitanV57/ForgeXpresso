@@ -24,6 +24,8 @@ export interface ProcessedSheet {
   /** Rows/cells where the detected grid didn't match and an even split was used. */
   irregular: number;
   reasons: string[];
+  /** Frames that faced the other way and were mirrored to match the still. */
+  mirrored: number;
 }
 
 type Raw = { data: Buffer; w: number; h: number };
@@ -226,12 +228,51 @@ function hollowRatio(px: Buffer, w: number, h: number) {
 export interface SheetRef {
   height: number;
   area: number;
+  /** Colour of each half of the still, to tell which way a frame faces. */
+  sides?: Sides;
+}
+
+type Sides = { L: number[]; R: number[] };
+const SIDE_BINS = 4;
+
+/**
+ * Alpha-weighted colour histogram of the left and right half of a silhouette, split at its body centre.
+ * A face, visor, backpack or weapon sits on one side, so the halves tell the facing whatever the pose.
+ */
+function sidesOf(px: Buffer, w: number, b: { x0: number; y0: number; x1: number; y1: number }): Sides {
+  const cx = bodyCenterX(px, w, b);
+  const n = SIDE_BINS ** 3;
+  const L = new Array<number>(n).fill(0), R = new Array<number>(n).fill(0);
+  for (let y = b.y0; y <= b.y1; y++) {
+    for (let x = b.x0; x <= b.x1; x++) {
+      const i = (y * w + x) * 4;
+      const a = px[i + 3];
+      if (a <= 24) continue;
+      const bin = ((px[i] * SIDE_BINS) >> 8) * SIDE_BINS * SIDE_BINS + ((px[i + 1] * SIDE_BINS) >> 8) * SIDE_BINS + ((px[i + 2] * SIDE_BINS) >> 8);
+      (x < cx ? L : R)[bin] += a;
+    }
+  }
+  const norm = (v: number[]) => {
+    const t = v.reduce((s, x) => s + x, 0) || 1;
+    return v.map((x) => x / t);
+  };
+  return { L: norm(L), R: norm(R) };
+}
+
+const sideDist = (a: number[], b: number[]) => a.reduce((s, x, i) => s + Math.abs(x - b[i]), 0);
+
+/** The frame's halves match the still's halves swapped: it was drawn facing the other way. */
+function facesAway(frame: Sides, still: Sides) {
+  const same = sideDist(frame.L, still.L) + sideDist(frame.R, still.R);
+  const flip = sideDist(frame.L, still.R) + sideDist(frame.R, still.L);
+  // Correct frames score from ~0.9 up (arms flung out, a dizzy wobble); a turned-around frame scores ~0.2-0.4.
+  return flip < same * 0.6;
 }
 
 export async function measureStill(buf: Buffer): Promise<SheetRef | null> {
   const { data, w, h } = await toRaw(buf);
   const b = alphaBox(data, w, 0, 0, w, h);
-  return b ? { height: b.y1 - b.y0 + 1, area: b.area } : null;
+  return b ? { height: b.y1 - b.y0 + 1, area: b.area, sides: sidesOf(data, w, b) } : null;
 }
 
 /**
@@ -339,7 +380,8 @@ export async function processSheet(
   input: Buffer,
   anims: SheetAnimSpec[],
   /** `exact`: the input is already a strict grid (a stored clip being repacked), so cells are split evenly. */
-  o: { chroma: Chroma; keyed?: boolean; ref?: SheetRef | null; cell?: number; exact?: boolean },
+  /** `facing`: every frame must face like the still (side and isometric facing clips); frames drawn the other way are mirrored. */
+  o: { chroma: Chroma; keyed?: boolean; ref?: SheetRef | null; cell?: number; exact?: boolean; facing?: boolean },
 ): Promise<ProcessedSheet> {
   const layout = sheetLayout(anims, o.cell || (o.ref ? CLIP_CELL : undefined));
   const grid = sheetRows(layout);
@@ -412,6 +454,7 @@ export async function processSheet(
   const src = sharp(px, { raw: { width: w, height: h, channels: 4 } });
   const comps: OverlayOptions[] = [];
   const frames: SheetFrameInfo[] = [];
+  let mirrored = 0;
   for (let k = 0; k < cells.length; k++) {
     const b = boxes[k];
     const meta = cells[k];
@@ -428,10 +471,16 @@ export async function processSheet(
     const s = refArea ? Math.min(Math.max(own, scale * 0.7), scale * 1.45, room / bw, room / bh) : scale;
     const nw = Math.max(1, Math.min(room, Math.round(bw * s)));
     const nh = Math.max(1, Math.min(room, Math.round(bh * s)));
-    const cx = (bodyCenterX(px, w, b) - b.x0) * s;
+    // The image model sometimes turns half a cycle around ("the other leg" read as "mirror the character").
+    const mirror = !!(o.facing && o.ref?.sides && facesAway(sidesOf(px, w, b), o.ref.sides));
+    if (mirror) mirrored++;
+    const bodyX = (bodyCenterX(px, w, b) - b.x0) * s;
+    const cx = mirror ? nw - bodyX : bodyX;
     const left = Math.max(pad, Math.min(cell - pad - nw, Math.round(cell / 2 - cx)));
     const top = Math.max(pad, cell - pad - nh);
-    const piece = await src.clone().extract({ left: b.x0, top: b.y0, width: bw, height: bh }).resize(nw, nh, { kernel: "lanczos3" }).raw().toBuffer();
+    let cut = src.clone().extract({ left: b.x0, top: b.y0, width: bw, height: bh }).resize(nw, nh, { kernel: "lanczos3" });
+    if (mirror) cut = cut.flop();
+    const piece = await cut.raw().toBuffer();
     comps.push({
       input: piece,
       raw: { width: nw, height: nh, channels: 4 },
@@ -452,10 +501,11 @@ export async function processSheet(
   const median = areas[Math.floor(areas.length / 2)] || 0;
   for (const f of frames) if (f.area < median * 0.25) reasons.push(`frame ${f.anim}#${f.i + 1} vacío o incompleto`);
   // Only upright poses: a lunge, punch or dizzy wobble leaves its bounding box legitimately empty inside.
-  const upright = frames.filter((f) => f.anim === "idle" || f.anim === "walk" || f.anim === "run");
+  const standing = (anim: string) => /^(idle|walk|run)(_back)?$/.test(anim);
+  const upright = frames.filter((f) => standing(f.anim));
   const hollows = upright.map((f) => f.hollow).sort((a, b) => a - b);
   if ((hollows[Math.floor(hollows.length / 2)] ?? 0) > 0.42) reasons.push("siluetas vaciadas por el recorte");
-  const grounded = frames.filter((f) => (f.anim === "idle" || f.anim === "walk" || f.anim === "run") && f.h > 0).map((f) => f.h);
+  const grounded = frames.filter((f) => standing(f.anim) && f.h > 0).map((f) => f.h);
   if (grounded.length > 1 && Math.max(...grounded) / Math.min(...grounded) > 1.45) reasons.push("escala inconsistente entre frames");
   // Same area but a different height means the model redrew the proportions (chibi, stretched): not the same character.
   if (fill && grounded.length) {
@@ -465,14 +515,14 @@ export async function processSheet(
   if (irregular > Math.max(1, layout.rows / 2)) reasons.push("la grilla no respeta las filas/columnas pedidas");
   // A walk/run that never closes the legs (no passing pose) reads as a two-frame wobble in game.
   for (const a of layout.anims) {
-    if ((a.name !== "walk" && a.name !== "run") || a.frames < 3) continue;
+    if (!/^(walk|run)(_back)?$/.test(a.name) || a.frames < 3) continue;
     const spans = frames.filter((f) => f.anim === a.name && f.feet > 0).map((f) => f.feet);
     if (spans.length >= 3 && Math.max(...spans) / Math.min(...spans) < 1.08) {
       reasons.push(`el ciclo ${a.name} repite la misma zancada en todos los frames (falta la pose de paso con las piernas juntas)`);
     }
   }
 
-  return { data, layout: { ...layout, fill }, frames, irregular, reasons };
+  return { data, layout: { ...layout, fill }, frames, irregular, reasons, mirrored };
 }
 
 /** Copy one animation's cells out of a normalized combined sheet into that clip's own grid. */

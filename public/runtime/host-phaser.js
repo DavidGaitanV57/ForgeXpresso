@@ -381,6 +381,12 @@ function helpers(Phaser, forge) {
       const first = byName.has("idle") ? "idle" : names[0];
       const has = (n) => byName.has(n);
       let cur = null, curMeta = null, oneShot = null, wasGrounded = true, wasAttacking = false, landT = 0;
+      // Isometric / top-down sprites with back clips (idle_back, walk_back, run_back): moving up the screen shows
+      // the back, moving down the front, and moving left mirrors either one. The last facing is kept when stopped.
+      const directional = o.directional !== false && names.some((n) => n.endsWith("_back"));
+      const flipTarget = o.flipTarget || sprite;
+      let back = false, faceLeft = !!flipTarget.flipX;
+      const facing = (n) => (directional && back && byName.has(`${n}_back`) ? `${n}_back` : n);
       // A game that called fit() on the still image before animate() keeps that on-screen height.
       const stillH = !sprite.texture.key.includes("_sheet") && Math.abs(sprite.scaleY) !== 1 ? Math.abs(sprite.displayHeight) : 0;
       const play = (n, force) => {
@@ -426,6 +432,14 @@ function helpers(Phaser, forge) {
           const vx = +s.vx || 0, vy = +s.vy || 0;
           const grounded = s.grounded !== false;
           const attacking = !!s.attacking;
+          if (directional) {
+            const dz = 12;
+            if (vy < -dz) back = true;
+            else if (vy > dz) back = false;
+            if (vx < -dz) faceLeft = true;
+            else if (vx > dz) faceLeft = false;
+            if (!!flipTarget.flipX !== faceLeft) flipTarget.setFlipX(faceLeft);
+          }
           if (grounded && !wasGrounded && has("land")) {
             const l = byName.get("land").spec;
             landT = l.frames / Math.max(1, l.fps);
@@ -452,14 +466,15 @@ function helpers(Phaser, forge) {
           if ((s.sliding || s.dashing) && has("slide")) return void play("slide");
           if (!grounded) return void play(vy < 0 ? (has("jump") ? "jump" : "fall") : has("fall") ? "fall" : "jump");
           if (landT > 0) return void play("land");
-          const sp = Math.abs(vx);
-          if (sp > (o.runSpeed ?? 380) && has("run")) return void play("run");
+          // A directional sprite walks in any direction, so its speed is the length of the velocity.
+          const sp = directional ? Math.hypot(vx, vy) : Math.abs(vx);
+          if (sp > (o.runSpeed ?? 380) && has("run")) return void play(facing("run"));
           if (sp > (o.walkMin ?? 20) && (has("walk") || has("run"))) {
-            play(has("walk") ? "walk" : "run");
+            play(facing(has("walk") ? "walk" : "run"));
             sprite.anims.timeScale = clamp(sp / (o.walkSpeed ?? 220), 0.6, 1.8);
             return;
           }
-          play(has("idle") ? "idle" : first);
+          play(facing(has("idle") ? "idle" : first));
         },
       };
     },
@@ -501,7 +516,7 @@ function helpers(Phaser, forge) {
       const scene = sprite.scene;
       sprite.__forgeAnim = true;
       const vis = scene.add.sprite(sprite.x, sprite.y, meta.id, 0).setOrigin(0.5, 1);
-      const ctl = this.animate(vis, { character: sprite.texture.key });
+      const ctl = this.animate(vis, { character: sprite.texture.key, flipTarget: sprite });
       sprite.renderWebGL = noRender;
       sprite.renderCanvas = noRender;
       let manual = null;
