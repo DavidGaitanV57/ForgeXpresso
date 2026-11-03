@@ -33,7 +33,10 @@ export interface ImageAssetSpec {
   /** Must tile on X (left≈right). Only abstract layers; never unique landmarks. */
   seamless?: boolean;
   /** 2D animation spritesheet derived from the base character image `of`. */
-  sheet?: { of: string; anims: SheetAnimSpec[]; /** Frame list each revision was drawn with (layouts differ across revisions). */ revs?: Record<string, SheetAnimSpec[]> };
+  sheet?: { of: string; anims: SheetAnimSpec[]; /** Frame list each revision was drawn with (layouts differ across revisions). */ revs?: Record<string, SheetAnimSpec[]>;
+    /** Cell size and standing fill each normalized revision was packed with. Missing = legacy 256 px cell filled per clip. */
+    norm?: Record<string, { cell: number; fill: number; /** Packing version (NORM_VERSION). */ v?: number; /** Revision this one was repacked from; absent = packed from the model's drawing. */ from?: number }>;
+  };
 }
 
 export type UiControlType = "toggle" | "slider" | "select";
@@ -295,7 +298,7 @@ export interface Project {
   /** Play the cinematic before the start screen. */
   cineAuto?: boolean;
   /** Cached start-menu copy (genre/tagline/objective) per studio locale when it differs from the design language. */
-  playCopy?: Partial<Record<"es" | "en" | "fr", { sourceKey: string; genre: string; tagline: string; objective: string }>>;
+  playCopy?: Partial<Record<"es" | "en" | "fr", { sourceKey: string; genre: string; tagline: string; objective: string; controls?: string[] }>>;
 }
 
 export type ForgeEvent =

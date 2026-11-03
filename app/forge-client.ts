@@ -4,6 +4,7 @@ import { formatDuration, formatUsd, PROVIDER_LABEL as API_LABEL } from "@/lib/us
 import { applyDomI18n, getLocale, initLocale, setLocale, t, type Locale } from "@/lib/i18n";
 import { sheetAnimsFor, sheetLayout, type SheetAnimSpec } from "@/lib/sheets";
 import { IDEA_MAX_CHARS } from "@/lib/limits";
+import { genreLabel } from "@/lib/genres";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
 type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null; thumbFit?: "cover" | "contain" };
@@ -66,7 +67,6 @@ const S = {
   playing: false,
   sound: true,
   volume: 0.9,
-  debug: false,
   gameVersion: 0,
   gameReady: false,
   gameScreen: "",
@@ -81,6 +81,7 @@ const assets = () => (S.p ? Object.values(S.p.assets) : []);
 const roleOf = (a: AssetRecord) => (a.type === "image" ? (a.spec as ImageAssetSpec).role : a.type === "audio" ? (a.spec as AudioAssetSpec).kind : "model");
 const kindOf = (a: AssetRecord) => (a.type === "image" ? roleLabel(roleOf(a)) : a.type === "audio" ? audioLabel(roleOf(a)) : t("kind.model"));
 const sorted = (list: AssetRecord[]) => list.slice().sort((a, b) => ORDER.indexOf(roleOf(a)) - ORDER.indexOf(roleOf(b)) || a.name.localeCompare(b.name));
+const isClip = (a: AssetRecord) => a.type === "image" && !!(a.spec as ImageAssetSpec).sheet;
 const jobRunning = () => !!S.p?.job && !S.p.job.finishedAt;
 const design = () => S.p?.design;
 
@@ -149,7 +150,6 @@ async function onGameMessage(e: MessageEvent) {
     S.gameReady = true;
     postGame({ type: "mute", on: !S.sound });
     postGame({ type: "volume", master: S.volume });
-    if (S.debug) postGame({ type: "debug", on: true });
     if (design()?.tuning) postGame({ type: "tuning", tuning: design()!.tuning });
     if (S.playing) postGame({ type: "focus" });
   } else if (m.type === "screen") {
@@ -1015,13 +1015,14 @@ function renderTop() {
     d = design();
   if (!p) return;
   const title = d?.title || p.idea.slice(0, 40);
-  $("#bnEyebrow").textContent = d ? `${d.genre} · ${DIM_LABEL[d.dimension]}` : DIM_LABEL[p.dimension];
+  $("#bnEyebrow").textContent = d ? `${genreLabel(d.genre, getLocale())} · ${DIM_LABEL[d.dimension]}` : DIM_LABEL[p.dimension];
   $("#stHero").textContent = title;
   $("#stIdea").textContent = d?.tagline || `“${p.idea}”`;
   $("#stIdea").title = p.idea;
   $("#projName").textContent = title;
   $("#playTitle").textContent = title;
-  $("#loopPill").textContent = d?.genre || t("guide.game");
+  $("#loopPill").textContent = d ? genreLabel(d.genre, getLocale()) : t("guide.game");
+  $("#loopPill").title = d?.genre || "";
   $("#verPill").textContent = t("guide.versionN", { n: p.currentVersion || 0 });
   document.title = `${title} · Forge Xpresso`;
 }
@@ -1054,7 +1055,11 @@ function renderUsageBtn() {
   if (!btn) return;
   const { primary } = usageSummary();
   btn.hidden = S.screen !== "studio" || !S.p;
-  btn.textContent = primary ? `${t("guide.usage")} · ${formatUsd(primary.totals.estimatedUsd)}` : t("guide.usage");
+  // Icon only: the dollar sign; the label and running total live in the tooltip.
+  const label = primary ? `${t("guide.usage")} · ${formatUsd(primary.totals.estimatedUsd)}` : t("guide.usage");
+  btn.textContent = "$";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
 }
 function openUsagePop() {
   const { primary, job, showJob } = usageSummary();
@@ -1139,7 +1144,16 @@ function cardHTML(a: AssetRecord, i: number) {
 }
 function renderAssets() {
   const list = sorted(assets());
-  $("#assets").innerHTML = list.length ? list.map((a, i) => cardHTML(a, i)).join("") : `<div class="empty-n">${esc(t("asset.empty"))}</div>`;
+  const root = $("#assets");
+  if (!list.length) {
+    root.innerHTML = `<div class="empty-n">${esc(t("asset.empty"))}</div>`;
+    return;
+  }
+  const still = list.filter((a) => !isClip(a));
+  const clips = list.filter(isClip);
+  const group = (id: string, title: string, items: AssetRecord[]) =>
+    `<div class="asset-group"><div class="asset-group-h"><span>${esc(title)}</span><em>${items.length}</em></div><div class="assets" id="${id}">${items.length ? items.map((a, i) => cardHTML(a, i)).join("") : `<div class="empty-n">${esc(t("asset.groupEmpty"))}</div>`}</div></div>`;
+  root.innerHTML = group("assetsStill", t("asset.still"), still) + group("assetsAnim", t("asset.anims"), clips);
 }
 function updateAssetCard(a: AssetRecord) {
   const el = $("#assets").querySelector<HTMLElement>(`.asset[data-id="${CSS.escape(a.id)}"]`);
@@ -1225,9 +1239,10 @@ const PTABS = (): [typeof S.ptab, string][] => [
   ["cine", t("tab.cine")],
 ];
 const LIBTABS = (): [string, string, (a: AssetRecord) => boolean][] => [
-  ["chars", t("lib.chars"), (a) => a.type === "image" && ["hero", "enemy", "npc", "portrait"].includes(roleOf(a))],
-  ["objs", t("lib.objs"), (a) => a.type === "image" && ["collectible", "hazard", "prop", "goal", "platform", "tile", "ui"].includes(roleOf(a))],
-  ["bgs", t("lib.bgs"), (a) => a.type === "image" && ["background", "texture", "keyart"].includes(roleOf(a))],
+  ["chars", t("lib.chars"), (a) => !isClip(a) && a.type === "image" && ["hero", "enemy", "npc", "portrait"].includes(roleOf(a))],
+  ["anims", t("lib.anims"), (a) => isClip(a)],
+  ["objs", t("lib.objs"), (a) => !isClip(a) && a.type === "image" && ["collectible", "hazard", "prop", "goal", "platform", "tile", "ui"].includes(roleOf(a))],
+  ["bgs", t("lib.bgs"), (a) => !isClip(a) && a.type === "image" && ["background", "texture", "keyart"].includes(roleOf(a))],
   ["m3d", t("lib.m3d"), (a) => a.type === "model"],
   ["audio", t("lib.audio"), (a) => a.type === "audio"],
 ];
@@ -1417,7 +1432,7 @@ function renderChat() {
   lg.scrollTop = lg.scrollHeight;
   $("#chatCtx").innerHTML = S.playing
     ? `<span class="ctx-chip">${esc(t("chat.inGame"))}</span>${esc(t("chat.inGameHint"))}`
-    : `<span class="ctx-chip">${esc(design()?.title || "")}</span>${esc(design()?.genre || "")}`;
+    : `<span class="ctx-chip">${esc(design()?.title || "")}</span>${esc(design() ? genreLabel(design()!.genre, getLocale()) : "")}`;
 }
 async function sendChat(text: string) {
   text = text.trim();
@@ -1594,7 +1609,8 @@ async function useAssetRev(rev: number) {
     updateAssetCard(out);
     if (S.ptab === "recursos") renderFlow();
     const url = FILE(out);
-    if ((out.type === "image" || out.type === "audio") && url && S.gameReady) {
+    // A clip sheet may come back with a different cell size: the running game must reload its layout.
+    if ((out.type === "image" || out.type === "audio") && url && S.gameReady && !isClip(out)) {
       postGame({ type: "swapAsset", id: out.id, url, assetType: out.type });
     } else if (S.p?.versions.length) {
       reloadGameSoon();
@@ -1757,7 +1773,8 @@ function viewSheet(url: string, cv: HTMLCanvasElement, anims: SheetAnimSpec[]) {
     const k = pick.loop ? step % pick.frames : Math.min(pick.frames - 1, step);
     if (!pick.loop && step >= pick.frames + Math.ceil(pick.fps * 0.6)) t0 = now;
     const idx = pick.start + k;
-    const cell = layout.cell;
+    // Older clips use 256 px cells, normalized ones are larger: read the cell from the image itself.
+    const cell = im.naturalHeight / layout.rows;
     const size = Math.min(h * 0.82, w * 0.7);
     const floor = h * 0.9;
     x.imageSmoothingQuality = "high";
@@ -1980,7 +1997,7 @@ function openPro() {
     pro.classList.remove("leaving");
     const d = design();
     $("#proProj").textContent = d?.title || "";
-    $("#proMeta").textContent = `${d?.genre || ""} · ${t("pro.meta", { versions: S.p?.versions.length || 0, assets: assets().filter((a) => a.status === "ready").length })}`;
+    $("#proMeta").textContent = `${d ? genreLabel(d.genre, getLocale()) : ""} · ${t("pro.meta", { versions: S.p?.versions.length || 0, assets: assets().filter((a) => a.status === "ready").length })}`;
     const imgs = sorted(assets().filter((a) => a.type === "image" && a.status === "ready" && !(a.spec as ImageAssetSpec).sheet));
     const pick = [imgs.find((a) => roleOf(a) === "hero"), imgs.find((a) => roleOf(a) === "background"), imgs.find((a) => !["hero", "background"].includes(roleOf(a)))];
     $$<HTMLElement>(".pc-img").forEach((el, i) => {
@@ -2078,7 +2095,7 @@ function startSky() {
 }
 
 /* ---------- Tour ---------- */
-const TOUR_SELS = [null, "#vp", "#playBtn", "#dock", ".st-assets", "#flow", "#exportBtn", "#homeBtn"] as const;
+const TOUR_SELS = [null, "#vp", "#vpExpand", "#dock", ".st-assets", "#flow", "#exportBtn", "#homeBtn"] as const;
 const tourSteps = () => TOUR_SELS.map((sel, i) => ({ sel, t: t(`tour.${i + 1}.t`), d: t(`tour.${i + 1}.d`) }));
 let tourI = 0;
 function startTour() {
@@ -2275,6 +2292,8 @@ function refreshLocaleUI() {
     renderUsageBtn();
     syncAssetsCollapse();
   }
+  // Genre and version pills are written by renderTop, not by data-i18n.
+  if (S.p) renderTop();
   if (S.screen === "loader") {
     $("#ldEyebrow").textContent = t("loader.eyebrow");
     LD.typed = "";
@@ -2626,7 +2645,6 @@ export function mount() {
   $("#helpBtn").addEventListener("click", startTour);
   $("#proBtn").addEventListener("click", openPro);
   $("#exportBtn").addEventListener("click", () => void openExport());
-  $("#playBtn").addEventListener("click", openPlay);
   $("#vpExpand").addEventListener("click", (e) => {
     e.stopPropagation();
     openPlay();
@@ -2639,12 +2657,6 @@ export function mount() {
   for (const id of ["#volSlider", "#volSlider2"]) {
     $(id)?.addEventListener("input", (e) => setVolume(Number((e.target as HTMLInputElement).value)));
   }
-  $("#dbgBtn").addEventListener("click", () => {
-    S.debug = !S.debug;
-    $("#dbgBtn").classList.toggle("on", S.debug);
-    postGame({ type: "debug", on: S.debug });
-    toast(S.debug ? t("play.debugOn") : t("play.debugOff"));
-  });
   $("#rstBtn").addEventListener("click", () => {
     postGame({ type: "restart" });
     gameFrame().focus();

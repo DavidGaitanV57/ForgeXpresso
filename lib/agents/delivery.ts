@@ -1,5 +1,5 @@
 import type { AssetRecord, GameDesign, ImageAssetSpec } from "../types";
-import { normalizeSheetAnims, type SheetAnimName } from "../sheets";
+import { normalizeSheetAnims, ownClipList, type SheetAnimName } from "../sheets";
 
 /** Animations a 2D game must ship, read from the idea and the design text. */
 const ANIM_CUES: [SheetAnimName, RegExp][] = [
@@ -22,11 +22,30 @@ export function requiredAnims(text: string): SheetAnimName[] {
   return ANIM_ORDER.filter((n) => out.has(n));
 }
 
-/** Mechanic cues first, so a tight frame budget never drops slide/jump/dash in favor of idle. */
+/**
+ * Union of every animation verb in a whole text. Do not use this to build one sprite:
+ * a jump written for a rival would land on the hero. Per-sprite lists go through animationClips.
+ */
 export function mergeAnims(text: string, fromModel: string[]): ReturnType<typeof normalizeSheetAnims> {
   const must = requiredAnims(text);
   const extra = fromModel.map((n) => n.toLowerCase().trim()).filter((n) => !must.includes(n as SheetAnimName));
   return normalizeSheetAnims([...must, ...extra]);
+}
+
+const ANIMATED_OBJECT_ROLES = new Set(["prop", "hazard", "collectible", "goal", "platform"]);
+const FORGOTTEN_CAST = ["idle", "walk", "hurt"];
+
+/**
+ * Clips to draw for one still image.
+ * The array on that image is the whole list. Verbs written for another character stay on that character.
+ * An empty list on a hero, companion or enemy means the director forgot: they get a walk cycle, not a scan of the idea.
+ * A prop, hazard, pickup, goal or platform is animated only when its own list names clips.
+ */
+export function animationClips(role: string, listed: string[] | undefined) {
+  const names = (listed || []).map((n) => String(n || "").toLowerCase().trim()).filter(Boolean);
+  if (role === "hero" || role === "npc" || role === "enemy") return ownClipList(names.length ? names : FORGOTTEN_CAST);
+  if (names.length && ANIMATED_OBJECT_ROLES.has(role)) return ownClipList(names);
+  return [];
 }
 
 export interface ScenerySpec {
@@ -121,23 +140,35 @@ export function deliveryGaps(code: string, assets: AssetRecord[]): string | null
   if (anims.has("dash") && !/\bdashing\b/.test(code)) missing.push("dashing:true durante el acelerón");
   if (anims.has("jump") && !/jump/i.test(code)) missing.push("el salto (la animación jump no se usa)");
   if (anims.has("attack") && !/\battacking\b/.test(code)) missing.push("attacking:true durante el ataque");
+  if (anims.size && !/forge\.phaser\.animate\(/.test(code)) missing.push("forge.phaser.animate(sprite) en cada sprite con spritesheet, antes de fit/body");
+  // A HUD icon is drawn from an image id or is one emoji; any other word would print as text in the chip.
+  const imageIds = new Set(assets.filter((a) => a.type === "image").map((a) => a.id));
+  for (const m of code.matchAll(/\bicon\s*:\s*["'`]([^"'`]{1,40})["'`]/g)) {
+    const v = m[1];
+    if (/^[\w-]+$/.test(v) && !imageIds.has(v)) missing.push(`icon:"${v}" en forge.hud (usa el id de una imagen ui existente o un emoji)`);
+  }
   return missing.length ? `Falta usar en el juego: ${missing.join(", ")}.` : null;
 }
 
 /** Ids and animation states the programmer has to wire, shown in its prompt. */
 export function deliveryBrief(design: GameDesign, assets: AssetRecord[]): string {
   const ids = assets.filter((a) => !(a.type === "image" && ((a.spec as ImageAssetSpec).sheet || (a.spec as ImageAssetSpec).role === "keyart"))).map((a) => a.id);
-  const anims = [
-    ...new Set(
-      assets
-        .filter((a) => a.type === "image" && (a.spec as ImageAssetSpec).sheet?.of && /hero/i.test((a.spec as ImageAssetSpec).sheet!.of + a.id))
-        .flatMap((a) => (a.spec as ImageAssetSpec).sheet!.anims.map((x) => x.name)),
-    ),
-  ];
+  const groups = new Map<string, string[]>();
+  for (const a of assets) {
+    if (a.type !== "image") continue;
+    const sheet = (a.spec as ImageAssetSpec).sheet;
+    if (!sheet?.of) continue;
+    const cur = groups.get(sheet.of) || [];
+    for (const n of sheet.anims) if (!cur.includes(n.name)) cur.push(n.name);
+    groups.set(sheet.of, cur);
+  }
+  const cast = [...groups.entries()].map(([id, names]) => `${id} [${names.join(", ")}]`).join("; ");
   return [
     "DELIVERY CONTRACT — the module is rejected otherwise:",
     `Use every asset id as a string literal, on screen or as audio: ${ids.join(", ")}.`,
-    anims.length ? `The hero sheet has [${anims.join(", ")}]. Pass sliding:true the whole time the character crouches or slides, dashing:true only for a speed burst, attacking:true while striking, and a real jump when "jump" is listed.` : "",
+    cast
+      ? `These sprites each have their own animation clips — do not draw the *_sheet_* images as pictures: ${cast}. Create every one of them from its base id and call forge.phaser.animate(sprite) before fit/body, then anim.update every frame. A prop that only loops can anim.play its clip. Pass sliding, dashing, attacking and a real jump only for clips that exist on that sprite.`
+      : "",
     design.dimension === "2d" && isPerspectiveRoad(`${design.camera} ${design.levelOutline}`)
       ? "The ground texture is grain only. Draw rails, sleepers and lane lines yourself, in the same perspective as the obstacles. Place every scenery prop image (buildings, trees, fences, signs) scaled with distance; do not replace them with rectangles."
       : "Place every scenery prop image in the level; do not redraw those subjects with graphics primitives.",

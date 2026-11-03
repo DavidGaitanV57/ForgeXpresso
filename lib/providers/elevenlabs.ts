@@ -64,7 +64,7 @@ export async function soundEffect(prompt: string, durationSec: number, loop: boo
   const duration = Math.min(30, Math.max(0.5, durationSec || 1.5));
   const url = `${BASE}/sound-generation?output_format=${FORMAT}`;
   try {
-    return await audio(url, { text: prompt, duration_seconds: duration, prompt_influence: 0.6, loop, model_id: "eleven_text_to_sound_v2" }, "sfx", duration);
+    return await audio(url, { text: prompt, duration_seconds: duration, prompt_influence: 0.6, loop, model_id: "eleven_text_to_sound_v3" }, "sfx", duration);
   } catch (e) {
     if (e instanceof ProviderError && e.status === 422) return audio(url, { text: prompt, duration_seconds: duration, prompt_influence: 0.6 }, "sfx", duration);
     throw e;

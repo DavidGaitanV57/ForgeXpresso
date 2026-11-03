@@ -414,6 +414,18 @@ function wireVolumeSliders(rootEl = document) {
 /* ---------------- HUD ---------------- */
 const hudEl = $("#fxHud");
 const hudItems = new Map();
+/**
+ * A HUD icon is an image asset id (drawn as that picture) or a short emoji/symbol.
+ * An id-like word with no ready image is dropped: the player must never read "heart_icon".
+ */
+function hudIcon(icon) {
+  if (!icon) return "";
+  const s = String(icon);
+  const img = assets.image(s);
+  if (img?.url && !img.sheet) return `<img class="ic" src="${esc(img.url)}" alt="" draggable="false">`;
+  if (img || /^[a-z0-9]+(?:[_-][a-z0-9]+)+$/i.test(s) || /^[a-z]{4,}$/i.test(s)) return "";
+  return `<span class="ic">${esc(s)}</span>`;
+}
 const hud = {
   set(key, value, o = {}) {
     let el = hudItems.get(key);
@@ -423,7 +435,7 @@ const hud = {
       hudEl.appendChild(el);
       hudItems.set(key, el);
     }
-    const html = `${o.icon ? esc(o.icon) + " " : ""}<span class="lb">${esc(o.label ?? key)}</span> <b>${esc(value)}</b>`;
+    const html = `${hudIcon(o.icon)}<span class="lb">${esc(o.label ?? key)}</span> <b>${esc(value)}</b>`;
     if (el._h !== html) {
       el._h = html;
       el.innerHTML = html;
@@ -613,13 +625,63 @@ function showOverlay(kind, html) {
 function hideOverlay() {
   $("#fxOv").hidden = true;
 }
+/** Named keys the director may write in any language, mapped to one canonical key. */
+const KEY_WORDS = [
+  [/^(space|espacio|espace|spacebar|barra)$/i, "space"],
+  [/^(enter|entrar|intro|entrée|entree|return)$/i, "enter"],
+  [/^(esc|escape|échap|echap)$/i, "esc"],
+  [/^(shift|mayús|mayus|maj)$/i, "shift"],
+  [/^(ctrl|control|contrôle)$/i, "ctrl"],
+  [/^(tab|tabulador)$/i, "tab"],
+  [/^(clic|click|mouse|ratón|raton|souris)$/i, "mouse"],
+];
+const KEY_TEXT = {
+  es: { space: "Espacio", enter: "Intro", esc: "Esc", shift: "Mayús", ctrl: "Ctrl", tab: "Tab", mouse: "Clic" },
+  en: { space: "Space", enter: "Enter", esc: "Esc", shift: "Shift", ctrl: "Ctrl", tab: "Tab", mouse: "Click" },
+  fr: { space: "Espace", enter: "Entrée", esc: "Échap", shift: "Maj", ctrl: "Ctrl", tab: "Tab", mouse: "Clic" },
+};
+const ARROWS = { "←": "←", "→": "→", "↑": "↑", "↓": "↓", "⬅": "←", "➡": "→", "⬆": "↑", "⬇": "↓" };
+const ARROW_WORD = /^(flechas?|arrows?|fl[eè]ches?|cursores)$/i;
+
+/**
+ * Keys named in a free-text control ("Flecha ↑ / W / Espacio (o deslizar arriba)") → ["↑", "W", "Espacio"].
+ * Connectors, touch hints in parentheses and descriptive words are dropped: only real keys become keycaps.
+ */
+function controlKeys(input) {
+  const text = String(input || "").replace(/\([^)]*\)/g, " ");
+  const names = KEY_TEXT[rtLocale()] || KEY_TEXT.en;
+  const out = [];
+  let arrowWord = false;
+  for (const raw of text.split(/[\s/,+|]+/)) {
+    const tok = raw.replace(/^[^\p{L}\p{N}←→↑↓⬅➡⬆⬇]+|[^\p{L}\p{N}←→↑↓⬅➡⬆⬇]+$/gu, "");
+    if (!tok) continue;
+    if ([...tok].every((ch) => ARROWS[ch])) {
+      for (const ch of tok) out.push(ARROWS[ch]);
+      continue;
+    }
+    if (ARROW_WORD.test(tok)) {
+      arrowWord = true;
+      continue;
+    }
+    const named = KEY_WORDS.find(([re]) => re.test(tok));
+    if (named) out.push(names[named[1]]);
+    else if (/^wasd$/i.test(tok)) out.push("W", "A", "S", "D");
+    // A lone lowercase letter is a connector ("o", "y", "u"); keys are written in capitals.
+    else if (/^[A-Z0-9]$/.test(tok)) out.push(tok);
+  }
+  if (!out.some((k) => /[←→↑↓]/.test(k)) && arrowWord) out.unshift("←", "→");
+  return [...new Set(out)];
+}
+
 function controlsHtml() {
   const c = BOOT.design?.controls || [];
   if (!c.length) return "";
-  return `<div class="fx-keys">${c
-    .slice(0, 6)
-    .map((k) => `<span>${String(k.input).split(/\s+/).map((p) => `<kbd>${esc(p)}</kbd>`).join("")} ${esc(controlActionLabel(k.input, k.action))}</span>`)
-    .join("")}</div>`;
+  const rows = c.slice(0, 6).map((k) => {
+    const keys = controlKeys(k.input);
+    const caps = keys.length ? keys.map((p) => `<kbd>${esc(p)}</kbd>`).join('<i class="sep">/</i>') : `<span class="raw">${esc(k.input)}</span>`;
+    return `<span class="k">${caps}</span><span class="a">${esc(String(k.action || "").trim() || controlActionLabel(k.input, ""))}</span>`;
+  });
+  return `<div class="fx-keys">${rows.join("")}</div>`;
 }
 function showStart() {
   state.screen = "start";

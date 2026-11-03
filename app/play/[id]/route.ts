@@ -1,3 +1,4 @@
+import { harmonizeClips } from "@/lib/agents/assets";
 import { loadProject, type Ctx } from "@/lib/http";
 import { designForPlayLocale } from "@/lib/localize-play";
 import { buildPlayHtml } from "@/lib/play";
@@ -6,6 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: Ctx) {
   const { id } = await params;
+  // Games made before shared-scale clips get their clip sheets repacked once, locally, before they are served.
+  if (await loadProject(id)) await harmonizeClips(id);
   const p = await loadProject(id);
   if (!p?.design || !p.versions.length) return new Response("Juego no disponible todavía", { status: 404 });
   const url = new URL(req.url);

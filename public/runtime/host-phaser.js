@@ -83,6 +83,8 @@ export async function createHost(createGame, ctx) {
         backgroundColor: def.background || boot.design?.palette?.[0] || "#0b0e17",
         pixelArt: !!def.pixelArt,
         antialias: !def.pixelArt,
+        // Sprites are drawn larger than they are shown; mipmaps keep them smooth instead of jagged when shrunk.
+        mipmapFilter: def.pixelArt ? "" : "LINEAR_MIPMAP_LINEAR",
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         physics,
         loader: { crossOrigin: "anonymous" },
@@ -253,6 +255,11 @@ function makeSheetAnims(anims, img) {
   }
 }
 
+/** Legacy clips filled their own cell; normalized clips carry the standing fill of their still image. */
+const LEGACY_FILL = 0.94;
+/** Height of the standing character inside one cell of this sheet, in frame pixels. */
+const unitOf = (meta) => meta.sheet.cell * (meta.sheet.fill || LEGACY_FILL);
+
 function helpers(Phaser, forge) {
   const noRender = () => {};
   return {
@@ -274,13 +281,23 @@ function helpers(Phaser, forge) {
       const names = [...byName.keys()];
       const first = byName.has("idle") ? "idle" : names[0];
       const has = (n) => byName.has(n);
-      let cur = null, oneShot = null, wasGrounded = true, wasAttacking = false, landT = 0;
+      let cur = null, curMeta = null, oneShot = null, wasGrounded = true, wasAttacking = false, landT = 0;
+      // A game that called fit() on the still image before animate() keeps that on-screen height.
+      const stillH = !sprite.texture.key.includes("_sheet") && Math.abs(sprite.scaleY) !== 1 ? Math.abs(sprite.displayHeight) : 0;
       const play = (n, force) => {
         const hit = byName.get(n);
         if (!hit) return false;
         if (cur === n && !force) return true;
         cur = n;
         if (sprite.texture.key !== hit.meta.id) sprite.setTexture(hit.meta.id, hit.spec.start || 0);
+        // Clips packed at different body scales (an old clip next to a redrawn one) must not resize the character.
+        if (curMeta && curMeta !== hit.meta) {
+          const k = unitOf(curMeta) / unitOf(hit.meta);
+          if (Math.abs(k - 1) > 0.01) sprite.setScale(sprite.scaleX * k, sprite.scaleY * k);
+        }
+        curMeta = hit.meta;
+        sprite.__forgeUnit = hit.meta.sheet.fill ? unitOf(hit.meta) : 0;
+        sprite.__forgePad = hit.meta.sheet.pad || 0;
         sprite.anims.play(`${hit.meta.id}:${n}`);
         return true;
       };
@@ -288,6 +305,10 @@ function helpers(Phaser, forge) {
         if (oneShot && anim.key && anim.key.endsWith(`:${oneShot}`)) oneShot = null;
       });
       play(first);
+      if (stillH) {
+        const s = stillH / unitOf(curMeta);
+        sprite.setScale(Math.sign(sprite.scaleX || 1) * s, Math.sign(sprite.scaleY || 1) * s);
+      }
       return {
         animated: true,
         names,
@@ -344,7 +365,8 @@ function helpers(Phaser, forge) {
       };
     },
     fit(obj, targetHeight) {
-      const h = obj.frame ? obj.frame.realHeight : obj.height;
+      // An animated sprite's cell has headroom for jumps and lunges: the standing character, not the cell, gets the height.
+      const h = obj.__forgeUnit || (obj.frame ? obj.frame.realHeight : obj.height);
       const s = targetHeight / Math.max(1, h);
       obj.setScale(s);
       return obj;
@@ -356,10 +378,12 @@ function helpers(Phaser, forge) {
       if (!b || !b.setSize) return sprite;
       const fw = sprite.frame ? sprite.frame.realWidth : sprite.width;
       const fh = sprite.frame ? sprite.frame.realHeight : sprite.height;
-      const w = fw * (o.w ?? 0.6);
-      const h = fh * (o.h ?? 0.9);
+      // Normalized clips: fractions are of the standing character (a unit x unit box), feet on the cell's gutter line.
+      const unit = sprite.__forgeUnit || 0;
+      const w = (unit || fw) * (o.w ?? 0.6);
+      const h = (unit || fh) * (o.h ?? 0.9);
       b.setSize(w, h, false);
-      b.setOffset((fw - w) / 2, fh - h);
+      b.setOffset((fw - w) / 2, fh - (unit ? sprite.__forgePad || 0 : 0) - h);
       return sprite;
     },
     /** Ready spritesheet for a character texture key, or null. */
@@ -382,7 +406,7 @@ function helpers(Phaser, forge) {
       sprite.renderWebGL = noRender;
       sprite.renderCanvas = noRender;
       let manual = null;
-      const fill = 0.92;
+      const fill = meta.sheet.fill || 0.92;
       const sync = () => {
         if (!sprite.active) return;
         const b = sprite.body;
@@ -394,9 +418,11 @@ function helpers(Phaser, forge) {
             : { vx: Math.hypot(b.velocity.x, b.velocity.y), vy: 0, grounded: true };
         }
         ctl.update(st || {}, (scene.game.loop.delta || 16) / 1000);
-        vis.setScale((Math.abs(sprite.displayHeight) / (meta.sheet.cell * fill)) || 1);
+        const sc = Math.abs(sprite.displayHeight) / (meta.sheet.cell * fill) || 1;
+        vis.setScale(sc);
         vis.x = sprite.x + (0.5 - sprite.originX) * sprite.displayWidth;
-        vis.y = sprite.y + (1 - sprite.originY) * sprite.displayHeight;
+        // Feet sit on the cell's gutter line, not on its edge.
+        vis.y = sprite.y + (1 - sprite.originY) * sprite.displayHeight + (meta.sheet.pad || 0) * sc;
         vis.rotation = sprite.rotation;
         vis.setFlipX(sprite.flipX);
         vis.alpha = sprite.alpha;

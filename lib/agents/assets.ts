@@ -1,11 +1,11 @@
 import { config } from "../config";
 import { processImage, validateImageQa } from "../imageproc";
-import { availableImageProvider, editImageOpenAI, generateImage } from "../providers/images";
+import { availableImageProvider, editImageOpenAI, generateImage, openaiSize } from "../providers/images";
 import { isSafetyRejection } from "../providers/http";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
-import { CHROMA, pickChroma, processSheet, repackClip, type Chroma } from "../sheetproc";
-import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, normalizeSheetAnims, sheetAspect, sheetAnimsFor, sheetIdFor, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
+import { CHROMA, measureStill, pickChroma, processSheet, repackClip, type Chroma, type SheetRef } from "../sheetproc";
+import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, ownClipList, sheetAspect, sheetAnimsFor, sheetIdFor, NORM_VERSION, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
 import sharp from "sharp";
 import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
 import type { AssetRecord, AudioAssetSpec, GameDesign, ImageAssetSpec, ImageProvider, ImageRole, ModelAssetSpec, Project } from "../types";
@@ -31,7 +31,7 @@ export function ensureClipSheets(design: GameDesign, assets: Record<string, Asse
   if (!base || base.type !== "image") return [];
   const bs = base.spec as ImageAssetSpec;
   if (bs.sheet || !SHEET_ROLES.has(bs.role)) return [];
-  const list = normalizeSheetAnims(anims);
+  const list = ownClipList(anims);
   const have = new Set<string>();
   const legacy = assets[sheetIdFor(baseId)];
   const legacySheet = legacy?.type === "image" ? (legacy.spec as ImageAssetSpec).sheet : undefined;
@@ -142,6 +142,82 @@ export function clipIdParts(id: string): { baseId: string; name: SheetAnimName }
 export function withSheetRev(spec: ImageAssetSpec, rev: number): ImageAssetSpec {
   if (!spec.sheet) return spec;
   return { ...spec, sheet: { ...spec.sheet, revs: { ...spec.sheet.revs, [rev]: spec.sheet.anims } } };
+}
+
+/** Remember the cell size and standing fill revision `rev` was packed with (only for shared-scale clips). */
+export function withSheetNorm(spec: ImageAssetSpec, rev: number, layout: SheetLayout, from?: number): ImageAssetSpec {
+  if (!spec.sheet || !layout.fill) return spec;
+  const entry = { cell: layout.cell, fill: layout.fill, v: NORM_VERSION, ...(from ? { from } : {}) };
+  return { ...spec, sheet: { ...spec.sheet, norm: { ...spec.sheet.norm, [rev]: entry } } };
+}
+
+const revOf = (file: string) => Number(/\.r(\d+)\.[^.]+$/.exec(file)?.[1]) || 0;
+
+/**
+ * The drawing a repack should start from: the revision this one was repacked from, else the newest
+ * revision that was never repacked. Repacking a repack would resample the pixels again each version.
+ */
+function repackSource(rec: AssetRecord): { file: string; rev: number } {
+  const sheet = (rec.spec as ImageAssetSpec).sheet!;
+  const cur = revOf(rec.file!);
+  const norm = sheet.norm?.[cur];
+  if (!norm) return { file: rec.file!, rev: cur };
+  const at = (n: number) => ({ file: rec.file!.replace(/\.r\d+\.([^.]+)$/, `.r${n}.$1`), rev: n });
+  if (norm.from) return at(norm.from);
+  for (let n = cur - 1; n >= 1; n--) if (!sheet.norm?.[n]) return at(n);
+  return { file: rec.file!, rev: cur };
+}
+
+const harmonizing = new Map<string, Promise<void>>();
+
+/**
+ * Repack every ready clip of a character that still has the old per-clip scale, at the still image's body size.
+ * Runs locally on the stored PNG (no image API call), as a new revision, so a game that mixes an old clip
+ * with a new one never changes the sprite's size when it switches animation. User uploads are left alone.
+ */
+export function harmonizeClips(projectId: string, baseId?: string): Promise<void> {
+  const key = `${projectId}:${baseId || "*"}`;
+  const prev = harmonizing.get(key) || Promise.resolve();
+  const next = prev.then(() => harmonizeNow(projectId, baseId)).catch((e) => console.warn(`[forge] harmonize ${key} failed`, e));
+  harmonizing.set(key, next);
+  return next;
+}
+
+async function harmonizeNow(projectId: string, baseId?: string) {
+  const project = await getProject(projectId);
+  if (!project) return;
+  const stale = Object.values(project.assets).filter((a) => {
+    const sheet = a.type === "image" ? (a.spec as ImageAssetSpec).sheet : undefined;
+    if (!sheet || (baseId && sheet.of !== baseId) || a.status !== "ready" || !a.file || a.custom) return false;
+    if (a.id === sheetIdFor(sheet.of) || sheetAnimsFor(sheet, a.file).length !== 1) return false;
+    return sheet.norm?.[revOf(a.file)]?.v !== NORM_VERSION;
+  });
+  const refs = new Map<string, SheetRef | null>();
+  for (const rec of stale) {
+    const sheet = (rec.spec as ImageAssetSpec).sheet!;
+    const base = project.assets[sheet.of];
+    if (!base?.file || base.status !== "ready") continue;
+    if (!refs.has(sheet.of)) refs.set(sheet.of, await measureStill(await readProjectFile(projectId, base.file)).catch(() => null));
+    const ref = refs.get(sheet.of);
+    if (!ref) continue;
+    try {
+      let src = repackSource(rec);
+      const png = await readProjectFile(projectId, src.file).catch(() => {
+        src = { file: rec.file!, rev: revOf(rec.file!) };
+        return readProjectFile(projectId, rec.file!);
+      });
+      const anims = sheetAnimsFor(sheet, src.file);
+      // The source grid is split from its own width; the output always uses the CLIP_CELL layout.
+      const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true });
+      const done = await finish(projectId, rec, "png", fresh.data, "image/png", rec.provider || "Forge");
+      if (done) {
+        const spec = { ...(done.spec as ImageAssetSpec), sheet: { ...(done.spec as ImageAssetSpec).sheet!, anims } };
+        await patchAsset(projectId, rec.id, { spec: withSheetNorm(withSheetRev(spec, done.rev), done.rev, fresh.layout, src.rev) });
+      }
+    } catch (e) {
+      console.warn(`[forge] harmonize ${rec.id} failed`, e);
+    }
+  }
 }
 
 export const isSheetRecord = (r: AssetRecord) => r.type === "image" && !!(r.spec as ImageAssetSpec).sheet;
@@ -315,13 +391,19 @@ function sheetPrompt(o: { subject: string; design: GameDesign; layout: SheetLayo
     return `Row ${r + 1}:\n  ${cells.join("\n  ")}`;
   });
   const view = designView(o.design, [o.subject, o.extra].filter(Boolean).join("\n"));
+  const [W, H] = openaiSize(sheetAspect(layout)).split("x").map(Number);
+  const cw = Math.round(W / layout.cols);
+  const ch = Math.round(H / layout.rows);
+  const stand = Math.round(Math.min(ch * 0.7, cw * 1.6));
   return [
     `2D game sprite sheet: ${o.withRef ? "the EXACT same character as the reference image (identical proportions, colors, outfit, accessories, line and shading style)" : "one single consistent character"}.`,
     o.withRef ? sheetIdentityLine(view) : "",
-    `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
+    `Layout: a strict grid of ${layout.rows} rows x ${layout.cols} columns of equal cells (${W}x${H} px canvas, each cell ${cw}x${ch} px) on a perfectly flat solid ${c.label} (${c.hex}) background — that one flat color everywhere, including gaps between legs, arms and tail.`,
+    `SCALE: one constant body scale in every cell. Standing, the character is about ${stand} px from the top of the head to the soles, and the head, torso, hands and feet keep exactly the same pixel size in every frame. A crouch, slide or lunge is shorter or wider than standing — never enlarged to fill its cell. Keep the feet of grounded poses on the same baseline near the bottom of each cell.`,
+    `MARGINS: each figure stays fully inside its own cell with at least ${Math.round(Math.min(cw, ch) * 0.08)} px of empty ${c.label} on all four sides. No hair, glove, foot, weapon or effect touches a cell edge or crosses into the next cell. A wide pose is drawn more compact, not cut off.`,
     sheetViewLine(view),
     "Each animation reads left to right as consecutive frames: neighbouring frames of a cycle MUST show clearly different leg and arm positions exactly as described (never the same stride repeated).",
-    `FORBIDDEN: grid lines, borders, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, any ${c.label} on the character.`,
+    `FORBIDDEN: grid lines, cell borders, divider strokes, frames around cells, labels, text, numbers, ground, cast shadows, dust clouds, speed lines, motion trails, any ${c.label} on the character.`,
     ...rows,
     `Character: ${o.subject}.`,
     o.safe
@@ -383,7 +465,9 @@ export async function generateSheetAsset(projectId: string, rec: AssetRecord, de
     const baseBuf = await readProjectFile(projectId, base.file);
     const chroma = await pickChroma(baseBuf);
     const ref = provider === "openai" ? await sheetReference(baseBuf, chroma) : null;
-    let best: { data: Buffer; reasons: string[] } | null = null;
+    // Every clip of this character is packed at the still image's body size, so switching clips never resizes the sprite.
+    const still = await measureStill(baseBuf);
+    let best: { data: Buffer; reasons: string[]; layout: SheetLayout } | null = null;
     let safe = false;
     for (let attempt = 0; attempt < 2; attempt++) {
       let raw;
@@ -417,15 +501,16 @@ export async function generateSheetAsset(projectId: string, rec: AssetRecord, de
       calls++;
       spentUsd += raw.estimatedUsd;
       spentMs += raw.ms;
-      const out = await processSheet(raw.data, sheet.anims, { chroma });
-      if (!best || out.reasons.length < best.reasons.length) best = { data: out.data, reasons: out.reasons };
+      const out = await processSheet(raw.data, sheet.anims, { chroma, ref: still });
+      if (!best || out.reasons.length < best.reasons.length) best = { data: out.data, reasons: out.reasons, layout: out.layout };
       if (!out.reasons.length) break;
       lastErr = out.reasons.join("; ");
       console.warn(`[forge] sheet QA failed ${rec.id} attempt ${attempt + 1}: ${lastErr}`);
     }
     const done = await finish(projectId, rec, "png", best!.data, "image/png", provider === "openai" ? "OpenAI" : "MiniMax");
-    if (done) await patchAsset(projectId, rec.id, { spec: withSheetRev(done.spec as ImageAssetSpec, done.rev) });
+    if (done) await patchAsset(projectId, rec.id, { spec: withSheetNorm(withSheetRev(done.spec as ImageAssetSpec, done.rev), done.rev, best!.layout) });
     if (best!.reasons.length) await patchAsset(projectId, rec.id, { error: `QA débil: ${best!.reasons.join("; ")}`.slice(0, 300) });
+    await harmonizeClips(projectId, sheet.of);
     return { provider, label: `sheet:${rec.id}`, estimatedUsd: spentUsd, ms: spentMs, images: calls };
   } catch (e) {
     await fail(projectId, rec, e);
