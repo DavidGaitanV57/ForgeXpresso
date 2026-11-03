@@ -67,6 +67,43 @@ export function isBusy(id: string) {
   return running.has(id);
 }
 
+const INTERRUPTED = "Interrumpido: el servidor se reinició (por ejemplo, un despliegue) mientras se generaba. Vuelve a intentarlo.";
+
+/**
+ * A job saved as unfinished that this process is not running was cut off by a restart: the registry of
+ * live jobs is in memory and dies with the process, the saved job and its "generating" assets do not.
+ * Close it so the studio unlocks the game: the job and its open stages end in error, an asset that had
+ * an earlier revision goes back to it, one that never had a file is marked as failed.
+ */
+export async function reapOrphanJob(projectId: string): Promise<boolean> {
+  if (running.has(projectId)) return false;
+  const p = await getProject(projectId);
+  if (!p?.job || p.job.finishedAt) return false;
+  const touched: AssetRecord[] = [];
+  let closed = false;
+  const updated = await updateProject(projectId, (pp) => {
+    if (!pp.job || pp.job.finishedAt || running.has(projectId)) return;
+    closed = true;
+    pp.job.finishedAt = Date.now();
+    pp.job.error = INTERRUPTED;
+    for (const s of pp.job.stages) if (s.status === "run" || s.status === "wait") s.status = "error";
+    for (const a of Object.values(pp.assets)) {
+      if (a.status !== "generating" && a.status !== "pending") continue;
+      if (a.file) Object.assign(a, { status: "ready", error: undefined });
+      else Object.assign(a, { status: "error", error: INTERRUPTED });
+      a.updatedAt = Date.now();
+      touched.push(a);
+    }
+    if (pp.status === "generating") pp.status = pp.versions.length ? "ready" : "error";
+  });
+  if (!closed || !updated.job) return false;
+  emit(projectId, { type: "job", job: updated.job });
+  for (const a of touched) emit(projectId, { type: "asset", asset: a });
+  emit(projectId, { type: "status", status: updated.status });
+  console.warn(`[forge] closed orphaned ${updated.job.kind} job of ${projectId} (${touched.length} assets)`);
+  return true;
+}
+
 class JobCtl {
   usage: UsageReport;
   constructor(
