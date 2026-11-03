@@ -8,7 +8,7 @@ import { genreLabel } from "@/lib/genres";
 
 type Caps = { code: boolean; images: { openai: boolean; minimax: boolean }; defaultImageProvider: ImageProvider; audio: boolean; models3d: boolean };
 type ProjectSummary = { id: string; title: string; idea: string; dimension: Dimension; status: Project["status"]; updatedAt: number; thumb: string | null; thumbFit?: "cover" | "contain" };
-type GameMsg = { source: "forge-game"; projectId: string; version: number; type: string; screen?: string; message?: string; stack?: string; phase?: string; reason?: string };
+type GameMsg = { source: "forge-game"; projectId: string; version: number; type: string; screen?: string; message?: string; stack?: string; phase?: string; reason?: string; own?: boolean };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(s: string, root: ParentNode = document) => Array.from(root.querySelectorAll(s)) as T[];
@@ -141,7 +141,7 @@ function hideVpErr() {
   $("#vpErr").hidden = true;
 }
 
-let lastError: { message: string; stack: string; phase: string } | null = null;
+let lastError: { message: string; stack: string; phase: string; own: boolean } | null = null;
 async function onGameMessage(e: MessageEvent) {
   const m = e.data as GameMsg;
   if (!m || m.source !== "forge-game" || !S.p || m.projectId !== S.p.id) return;
@@ -159,7 +159,7 @@ async function onGameMessage(e: MessageEvent) {
   } else if (m.type === "lose") {
     chatHint(t("chat.hintLose"));
   } else if (m.type === "error") {
-    lastError = { message: m.message || "Error", stack: m.stack || "", phase: m.phase || "runtime" };
+    lastError = { message: m.message || "Error", stack: m.stack || "", phase: m.phase || "runtime", own: m.own === true };
     if (m.version !== S.p.currentVersion || jobRunning()) return;
     if (S.repairAsked === m.version) return;
     S.repairAsked = m.version;

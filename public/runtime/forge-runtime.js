@@ -103,7 +103,8 @@ function reportError(e, where) {
   try {
     host && host.pause();
   } catch {}
-  post({ type: "error", phase: where || phase, message, stack: String(stack).split("\n").slice(0, 12).join("\n") });
+  // `own`: every report that reaches here passed the allowlist or comes from Forge's own load/loop code.
+  post({ type: "error", phase: where || phase, message, stack: String(stack).split("\n").slice(0, 12).join("\n"), own: true });
   $("#fxLoad").hidden = true;
   showOverlay(
     "err",
@@ -122,14 +123,28 @@ function foreignError(...parts) {
     .join("\n");
   return FOREIGN_ERROR.test(text);
 }
+/**
+ * Allowlist: an uncaught error belongs to the game only when its script or one of its stack frames is a
+ * Forge file served by this site: the game module, this runtime, or the vendored engine (an engine error
+ * caused by game code still runs through it). Anything else (an extension, injected code, another site's
+ * script, an error with no trace at all) is logged and never sent to repair.
+ * Keep the paths in step with isOwnGameError in lib/agents/pipeline.ts.
+ */
+const OWN_PATHS = "(?:/api/files/[^\\s)]*?\\.js|/game\\.js|/runtime/(?:forge-runtime|host-phaser|host-three)\\.js|/vendor/(?:phaser|three|rapier)/)";
+const ORIGIN = location.origin && location.origin !== "null" ? location.origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
+const OWN_SCRIPT = new RegExp(ORIGIN + OWN_PATHS);
+function ownError(...parts) {
+  const text = parts
+    .map((p) => (p && typeof p === "object" ? String(p.stack || "") : String(p ?? "")))
+    .join("\n");
+  return OWN_SCRIPT.test(text) && !foreignError(...parts);
+}
 addEventListener("error", (e) => {
-  // "Script error." with no details comes from another origin's script: never from the game module.
-  if (!e.error && /^script error\.?$/i.test(String(e.message || "").trim())) return;
-  if (foreignError(e.filename, e.message, e.error)) return console.warn("[forge] ignored browser extension error:", e.message);
+  if (!ownError(e.filename, e.error)) return console.warn("[forge] ignored an error that is not from the game:", e.message);
   reportError(e.error || e.message);
 });
 addEventListener("unhandledrejection", (e) => {
-  if (foreignError(e.reason)) return console.warn("[forge] ignored browser extension rejection:", e.reason?.message || e.reason);
+  if (!ownError(e.reason)) return console.warn("[forge] ignored a rejection that is not from the game:", e.reason?.message || e.reason);
   reportError(e.reason);
 });
 

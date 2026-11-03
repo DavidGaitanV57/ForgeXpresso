@@ -691,6 +691,18 @@ export function isForeignError(message: string, stack = "") {
   ) || /^script error\.?$/i.test(message.trim());
 }
 
+/** Forge files a game error's stack runs through. Same paths as OWN_PATHS in public/runtime/forge-runtime.js. */
+const OWN_STACK = /\/api\/files\/[^\s)]*?\.js|\/game\.js|\/runtime\/(?:forge-runtime|host-phaser|host-three)\.js|\/vendor\/(?:phaser|three|rapier)\//;
+
+/**
+ * Only the game's own errors are repaired. A current runtime marks them `own` (they passed its allowlist or come
+ * from its load/loop code); a runtime cached before that sends no mark, so its stack must name a Forge file.
+ */
+export function isOwnGameError(o: { message: string; stack?: string; own?: boolean }) {
+  if (isForeignError(o.message, o.stack)) return false;
+  return o.own === true || OWN_STACK.test(o.stack || "");
+}
+
 export function startRepair(projectId: string, error: string) {
   background(projectId, () => repairFlow(projectId, error));
 }

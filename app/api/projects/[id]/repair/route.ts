@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError, loadProject, type Ctx } from "@/lib/http";
-import { isBusy, isForeignError, MAX_REPAIRS, startRepair } from "@/lib/agents/pipeline";
+import { isBusy, isOwnGameError, MAX_REPAIRS, startRepair } from "@/lib/agents/pipeline";
 
 export const dynamic = "force-dynamic";
 
@@ -8,11 +8,13 @@ export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   const p = await loadProject(id);
   if (!p?.design) return jsonError("Proyecto no encontrado", 404);
-  const body = (await req.json().catch(() => ({}))) as { message?: string; stack?: string; phase?: string; version?: number; manual?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { message?: string; stack?: string; phase?: string; version?: number; manual?: boolean; own?: boolean };
   if (body.version && body.version !== p.currentVersion) return NextResponse.json({ started: false, reason: "stale" });
   if (isBusy(id)) return NextResponse.json({ started: false, reason: "busy" });
-  // A runtime cached before the extension filter can still report a wallet or ad-blocker error: do not repair it.
-  if (isForeignError(String(body.message || ""), String(body.stack || ""))) return NextResponse.json({ started: false, reason: "foreign" });
+  // Only errors raised by the game or by Forge itself are repaired: an extension or another site's script never is.
+  if (!isOwnGameError({ message: String(body.message || ""), stack: String(body.stack || ""), own: body.own })) {
+    return NextResponse.json({ started: false, reason: "foreign" });
+  }
   if (!body.manual && (p.repairs || 0) >= MAX_REPAIRS) return NextResponse.json({ started: false, reason: "limit" });
   const error = `${String(body.message || "Unknown error").slice(0, 2000)}\nPhase: ${body.phase || "runtime"}\nStack:\n${String(body.stack || "").slice(0, 3000)}`;
   startRepair(id, error);
