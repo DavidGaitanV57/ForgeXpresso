@@ -19,13 +19,33 @@ export interface SheetAnimLayout extends SheetAnimSpec {
 
 export interface SheetLayout {
   cell: number;
+  /** Standing height of the character as a fraction of the cell, when every clip shares one body scale. */
+  fill?: number;
   cols: number;
   rows: number;
   frames: number;
   anims: SheetAnimLayout[];
 }
 
+/** Cell of the legacy combined sheets and of clips drawn before shared-scale normalization. */
 export const SHEET_CELL = 256;
+/**
+ * Cell of clips normalized against their still image. At STAND_FILL the standing character is ~370 px,
+ * about what a game shows at 720p, so a fullscreen 1080p view upscales it ~1.5x instead of ~2.5x.
+ * The image model draws each cell at 512-768 px, so this keeps detail that a smaller cell would throw away.
+ */
+export const CLIP_CELL = 512;
+/**
+ * Standing height of the still image inside a clip cell. Every clip of a character uses this one body scale,
+ * so a crouch is shorter and a lunge is wider instead of being blown up to fill its own cell.
+ */
+export const STAND_FILL = 0.72;
+/** Transparent gutter on every side of a cell, so texture filtering never pulls a neighbour frame's pixels in. */
+export const CELL_GUTTER = 0.035;
+/** Bump when clip packing changes: clips packed by an older version are repacked from their original drawing. */
+export const NORM_VERSION = 2;
+/** Gutter in pixels for a cell size; the runtime puts the feet of the physics body on `cell - cellPad(cell)`. */
+export const cellPad = (cell: number) => Math.max(4, Math.round(cell * CELL_GUTTER));
 export const SHEET_COLS = 4;
 export const SHEET_MAX_FRAMES = 16;
 const SHEET_MAX_ROWS = 4;
@@ -91,16 +111,17 @@ export const ANIM_DEFAULTS: Record<SheetAnimName, { frames: number; fps: number;
   slide: {
     frames: 2,
     fps: 10,
-    loop: true,
+    loop: false,
     poses: [
       "slide start: dropping into a crouch, knees folding, one hand reaching down, body getting low",
       "full slide: body flat and low, chest close to the ground, legs trailing straight behind — ducking under an overhead bar, not a forward dive",
     ],
   },
+  // A burst plays once and holds the lunge while the button stays down; looping it reads as a stutter.
   dash: {
     frames: 2,
     fps: 14,
-    loop: true,
+    loop: false,
     poses: ["dash start: body low and leaning hard forward, back leg pushing off", "dash: full horizontal lunge, body stretched forward at maximum reach, trailing leg extended behind"],
   },
   attack: {
@@ -184,6 +205,32 @@ function packNamed(namesIn: string[]): SheetAnimSpec[] {
     spare -= add;
   }
   return specs;
+}
+
+const CLIP_CAP = 6;
+
+/**
+ * The clip list written on one sprite, unchanged.
+ * Each name becomes its own image, so a walk is not dropped to make room for a run,
+ * and a jump that belongs to another character is not added here.
+ * Idle is inserted when missing: the runtime rests on that clip.
+ */
+export function ownClipList(input: (string | Partial<SheetAnimSpec>)[] | undefined): SheetAnimSpec[] {
+  const seen = new Set<string>();
+  const out: SheetAnimSpec[] = [];
+  for (const it of input || []) {
+    const name = String(typeof it === "string" ? it : it?.name || "").toLowerCase().trim() as SheetAnimName;
+    if (!(name in ANIM_DEFAULTS) || seen.has(name)) continue;
+    const explicit = typeof it === "object" && it && typeof it.frames === "number" ? Math.round(it.frames) : 0;
+    const frames = explicit > 0 ? Math.max(1, Math.min(8, explicit)) : ANIM_DEFAULTS[name].frames;
+    seen.add(name);
+    out.push({ name, frames });
+  }
+  if (out.length && !seen.has("idle")) out.unshift({ name: "idle", frames: ANIM_DEFAULTS.idle.frames });
+  if (out.length <= CLIP_CAP) return out;
+  const idle = out.find((a) => a.name === "idle");
+  const rest = out.filter((a) => a.name !== "idle");
+  return idle ? [idle, ...rest.slice(0, CLIP_CAP - 1)] : out.slice(0, CLIP_CAP);
 }
 
 /** Clamp an anim list to known names, fixed frame counts and the sheet's frame budget. */
@@ -318,10 +365,18 @@ export function sheetAnimsFor(sheet: NonNullable<ImageAssetSpec["sheet"]>, file?
   return (rev && sheet.revs?.[rev]) || sheet.anims;
 }
 
+/** Cell size and standing fill of the revision a file belongs to. Older revisions have no entry: 256 px cells, filled per clip. */
+export function sheetNormFor(sheet: NonNullable<ImageAssetSpec["sheet"]>, file?: string): { cell: number; fill?: number } {
+  const rev = file ? /\.r(\d+)\.[^.]+$/.exec(file)?.[1] : undefined;
+  const n = rev ? sheet.norm?.[rev] : undefined;
+  return n ? { cell: n.cell, fill: n.fill } : { cell: SHEET_CELL };
+}
+
 export const sheetIdFor = (baseId: string) => `${baseId}_sheet`;
 /** One animation, one image. Redrawing slide cannot repaint run. */
 export const clipSheetId = (baseId: string, name: string) => `${baseId}_sheet_${name}`;
-export const SHEET_ROLES = new Set(["hero", "enemy", "npc"]);
+/** Still images that may own clip sheets. Props are included when the director lists a cycle. */
+export const SHEET_ROLES = new Set(["hero", "enemy", "npc", "prop", "hazard", "collectible", "goal", "platform"]);
 
 export function clipSpecFor(base: ImageAssetSpec, anim: SheetAnimSpec): ImageAssetSpec {
   const layout = sheetLayout([anim]);

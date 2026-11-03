@@ -1,5 +1,5 @@
 import sharp, { type OverlayOptions } from "sharp";
-import { sheetLayout, sheetRows, type SheetAnimSpec, type SheetLayout } from "./sheets";
+import { cellPad, CLIP_CELL, sheetLayout, sheetRows, STAND_FILL, type SheetAnimSpec, type SheetLayout } from "./sheets";
 
 export type Chroma = "magenta" | "green";
 export const CHROMA: Record<Chroma, { hex: string; rgb: [number, number, number]; label: string }> = {
@@ -222,27 +222,144 @@ function hollowRatio(px: Buffer, w: number, h: number) {
   return n ? hol / n : 0;
 }
 
+/** Silhouette of the approved still image. Every clip of that character is scaled to the same body size. */
+export interface SheetRef {
+  height: number;
+  area: number;
+}
+
+export async function measureStill(buf: Buffer): Promise<SheetRef | null> {
+  const { data, w, h } = await toRaw(buf);
+  const b = alphaBox(data, w, 0, 0, w, h);
+  return b ? { height: b.y1 - b.y0 + 1, area: b.area } : null;
+}
+
+/**
+ * Erase straight separator lines the model drew between cells despite the prompt.
+ * A column is a separator when an opaque run covers almost the whole height, the run is a few pixels wide,
+ * and the columns beside it are mostly empty — a pole held by a character never has empty sides.
+ */
+function stripGridLines(px: Buffer, w: number, h: number) {
+  const longRun = (n: number, at: (k: number) => number) => {
+    let best = 0, cur = 0;
+    for (let k = 0; k < n; k++) {
+      if (px[at(k) + 3] > 40) best = Math.max(best, ++cur);
+      else cur = 0;
+    }
+    return best;
+  };
+  const strip = (len: number, span: number, at: (line: number, k: number) => number) => {
+    const count: number[] = new Array(len).fill(0);
+    const hit: boolean[] = new Array(len).fill(false);
+    for (let l = 0; l < len; l++) {
+      for (let k = 0; k < span; k++) if (px[at(l, k) + 3] > 40) count[l]++;
+      hit[l] = count[l] >= span * 0.9 && longRun(span, (k) => at(l, k)) >= span * 0.85;
+    }
+    const maxWidth = Math.max(6, Math.round(len * 0.006));
+    for (let l = 0; l < len; l++) {
+      if (!hit[l]) continue;
+      let e = l;
+      while (e + 1 < len && hit[e + 1]) e++;
+      const before = l - 3 >= 0 ? count[l - 3] : 0;
+      const after = e + 3 < len ? count[e + 3] : 0;
+      if (e - l + 1 <= maxWidth && before < span * 0.35 && after < span * 0.35) {
+        for (let x = Math.max(0, l - 1); x <= Math.min(len - 1, e + 1); x++) for (let k = 0; k < span; k++) px[at(x, k) + 3] = 0;
+      }
+      l = e;
+    }
+  };
+  strip(w, h, (x, y) => (y * w + x) * 4);
+  strip(h, w, (y, x) => (y * w + x) * 4);
+}
+
+/**
+ * Keep the character and what belongs to it inside one cell; drop specks, stray strokes and thin
+ * line fragments (cut-off grid lines, a sliver of the neighbouring frame) that would show as lines in game.
+ */
+function cleanRect(px: Buffer, w: number, r: { x0: number; y0: number; x1: number; y1: number }) {
+  const rw = r.x1 - r.x0;
+  const rh = r.y1 - r.y0;
+  if (rw <= 0 || rh <= 0) return;
+  const label = new Int32Array(rw * rh);
+  const comps: { area: number; x0: number; y0: number; x1: number; y1: number }[] = [];
+  const stack: number[] = [];
+  for (let start = 0; start < label.length; start++) {
+    if (label[start]) continue;
+    const sx = start % rw, sy = (start / rw) | 0;
+    if (px[((r.y0 + sy) * w + r.x0 + sx) * 4 + 3] < 24) continue;
+    const id = comps.length + 1;
+    const c = { area: 0, x0: sx, y0: sy, x1: sx, y1: sy };
+    label[start] = id;
+    stack.push(start);
+    while (stack.length) {
+      const k = stack.pop()!;
+      const x = k % rw, y = (k / rw) | 0;
+      c.area++;
+      if (x < c.x0) c.x0 = x;
+      if (x > c.x1) c.x1 = x;
+      if (y < c.y0) c.y0 = y;
+      if (y > c.y1) c.y1 = y;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+        const nk = ny * rw + nx;
+        if (label[nk] || px[((r.y0 + ny) * w + r.x0 + nx) * 4 + 3] < 24) continue;
+        label[nk] = id;
+        stack.push(nk);
+      }
+    }
+    comps.push(c);
+  }
+  if (comps.length < 2) return;
+  const main = Math.max(...comps.map((c) => c.area));
+  // Detached details the pose wants (dizzy stars, sweat drops, sparks) stay; dust specks, thin strokes and
+  // slivers of the neighbouring frame cut by the cell edge go.
+  const keep = comps.map((c) => {
+    if (c.area === main) return true;
+    const cw = c.x1 - c.x0 + 1, ch = c.y1 - c.y0 + 1;
+    const thin = Math.min(cw, ch) <= Math.max(3, Math.round(Math.min(rw, rh) * 0.008)) && Math.max(cw, ch) >= Math.min(cw, ch) * 8;
+    const edge = c.x0 === 0 || c.y0 === 0 || c.x1 === rw - 1 || c.y1 === rh - 1;
+    if (thin || c.area < Math.max(24, main * 0.003)) return false;
+    return !(edge && c.area < main * 0.1);
+  });
+  for (let k = 0; k < label.length; k++) {
+    const id = label[k];
+    if (id && !keep[id - 1]) px[((r.y0 + ((k / rw) | 0)) * w + r.x0 + (k % rw)) * 4 + 3] = 0;
+  }
+}
+
 /**
  * Turn a generated sheet (chroma background, roughly gridded) into a strict grid:
- * fixed square cells, one global scale for every frame, feet on a shared baseline, body centred.
+ * fixed square cells, feet on a shared baseline, body centred, a transparent gutter on every side.
+ * With `ref` (the still image), every clip of that character gets the same body scale: the median
+ * silhouette area of the clip matches the still's area at STAND_FILL of the cell. Without it, the
+ * tallest frame fills the cell (legacy behaviour, one scale per clip).
  */
-export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { chroma: Chroma; keyed?: boolean }): Promise<ProcessedSheet> {
-  const layout = sheetLayout(anims);
+export async function processSheet(
+  input: Buffer,
+  anims: SheetAnimSpec[],
+  /** `exact`: the input is already a strict grid (a stored clip being repacked), so cells are split evenly. */
+  o: { chroma: Chroma; keyed?: boolean; ref?: SheetRef | null; cell?: number; exact?: boolean },
+): Promise<ProcessedSheet> {
+  const layout = sheetLayout(anims, o.cell || (o.ref ? CLIP_CELL : undefined));
   const grid = sheetRows(layout);
   const cells = grid.flat();
   let img = await toRaw(input);
   if (!o.keyed) img = keySheet(img, o.chroma);
   const { data: px, w, h } = img;
+  stripGridLines(px, w, h);
 
   const rowProfile: number[] = new Array(h).fill(0);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 40) rowProfile[y]++;
   let irregular = 0;
-  let rows = fitSegments(
-    segments(rowProfile, Math.max(2, w * 0.002), Math.round(h * 0.02)).filter((s) => s.e - s.s > h * 0.03),
-    layout.rows,
-  );
+  let rows = o.exact
+    ? null
+    : fitSegments(
+        segments(rowProfile, Math.max(2, w * 0.002), Math.round(h * 0.02)).filter((s) => s.e - s.s > h * 0.03),
+        layout.rows,
+      );
   if (!rows) {
-    irregular++;
+    if (!o.exact) irregular++;
     rows = Array.from({ length: layout.rows }, (_, r) => ({ s: Math.round((r * h) / layout.rows), e: Math.round(((r + 1) * h) / layout.rows) - 1, mass: 0 }));
   }
 
@@ -253,24 +370,44 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
     const y1 = rows[r].e + 1;
     const colProfile: number[] = new Array(w).fill(0);
     for (let y = y0; y < y1; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 40) colProfile[x]++;
-    let cols = fitSegments(
-      segments(colProfile, 1, Math.round(w * 0.008)).filter((s) => s.mass > (y1 - y0) * 2),
-      want,
-    );
+    let cols = o.exact
+      ? null
+      : fitSegments(
+          segments(colProfile, 1, Math.round(w * 0.008)).filter((s) => s.mass > (y1 - y0) * 2),
+          want,
+        );
     if (!cols) {
-      irregular++;
+      if (!o.exact) irregular++;
       const cw = w / layout.cols;
       cols = Array.from({ length: want }, (_, c) => ({ s: Math.round(c * cw), e: Math.round((c + 1) * cw) - 1, mass: 0 }));
     }
     for (const c of cols) rects.push({ x0: c.s, y0, x1: c.e + 1, y1 });
   }
 
+  for (const r of rects) cleanRect(px, w, r);
   const boxes = rects.map((r) => alphaBox(px, w, r.x0, r.y0, r.x1, r.y1));
-  const maxH = Math.max(1, ...boxes.map((b) => (b ? b.y1 - b.y0 + 1 : 0)));
   const cell = layout.cell;
-  const pad = Math.round(cell * 0.03);
-  // Height drives the shared scale; a frame too wide for the cell (katana slash, dash) is shrunk on its own.
-  const scale = Math.min(2, (cell - pad * 2) / maxH);
+  const pad = cellPad(cell);
+  const room = cell - pad * 2;
+  const live = boxes.filter((b): b is NonNullable<typeof b> => !!b);
+  const maxH = Math.max(1, ...live.map((b) => b.y1 - b.y0 + 1));
+  const maxW = Math.max(1, ...live.map((b) => b.x1 - b.x0 + 1));
+  // One scale for the whole clip, never one per frame: a frame that changes size reads as the sprite popping.
+  const fits = Math.min(room / maxH, room / maxW);
+  let scale = Math.min(2, room / maxH, fits);
+  const reasons: string[] = [];
+  let fill: number | undefined;
+  let refArea = 0;
+  if (o.ref && live.length) {
+    const areas = live.map((b) => b.area).sort((a, b) => a - b);
+    const median = areas[Math.floor(areas.length / 2)] || 1;
+    const stand = cell * STAND_FILL;
+    refArea = o.ref.area * (stand / Math.max(1, o.ref.height)) ** 2;
+    const want = Math.sqrt(refArea / median);
+    scale = Math.min(3, want, fits);
+    fill = STAND_FILL;
+    if (scale < want * 0.85) reasons.push("la pose no cabe en la celda al tamaño del personaje: dibújala más compacta, con el cuerpo a la misma escala que el sprite base");
+  }
 
   const src = sharp(px, { raw: { width: w, height: h, channels: 4 } });
   const comps: OverlayOptions[] = [];
@@ -284,12 +421,16 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
     }
     const bw = b.x1 - b.x0 + 1;
     const bh = b.y1 - b.y0 + 1;
-    const s = Math.min(scale, cell / bw);
-    const nw = Math.max(1, Math.min(cell, Math.round(bw * s)));
-    const nh = Math.max(1, Math.round(bh * s));
+    // With a reference, each frame is brought to the still's body area too: the model (or an older pipeline)
+    // often draws one frame of a clip larger or smaller than its neighbours. The clamp keeps a pose that
+    // really covers more or less of the body (arms tucked, effects) close to the clip scale.
+    const own = refArea ? Math.sqrt(refArea / Math.max(1, b.area)) : scale;
+    const s = refArea ? Math.min(Math.max(own, scale * 0.7), scale * 1.45, room / bw, room / bh) : scale;
+    const nw = Math.max(1, Math.min(room, Math.round(bw * s)));
+    const nh = Math.max(1, Math.min(room, Math.round(bh * s)));
     const cx = (bodyCenterX(px, w, b) - b.x0) * s;
-    const left = Math.max(0, Math.min(cell - nw, Math.round(cell / 2 - cx)));
-    const top = Math.max(0, cell - pad - nh);
+    const left = Math.max(pad, Math.min(cell - pad - nw, Math.round(cell / 2 - cx)));
+    const top = Math.max(pad, cell - pad - nh);
     const piece = await src.clone().extract({ left: b.x0, top: b.y0, width: bw, height: bh }).resize(nw, nh, { kernel: "lanczos3" }).raw().toBuffer();
     comps.push({
       input: piece,
@@ -307,7 +448,6 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-  const reasons: string[] = [];
   const areas = frames.map((f) => f.area).sort((a, b) => a - b);
   const median = areas[Math.floor(areas.length / 2)] || 0;
   for (const f of frames) if (f.area < median * 0.25) reasons.push(`frame ${f.anim}#${f.i + 1} vacío o incompleto`);
@@ -315,6 +455,11 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
   if ((hollows[Math.floor(hollows.length / 2)] ?? 0) > 0.42) reasons.push("siluetas vaciadas por el recorte");
   const grounded = frames.filter((f) => (f.anim === "idle" || f.anim === "walk" || f.anim === "run") && f.h > 0).map((f) => f.h);
   if (grounded.length > 1 && Math.max(...grounded) / Math.min(...grounded) > 1.45) reasons.push("escala inconsistente entre frames");
+  // Same area but a different height means the model redrew the proportions (chibi, stretched): not the same character.
+  if (fill && grounded.length) {
+    const tall = Math.max(...grounded) / (cell * fill);
+    if (tall < 0.78 || tall > 1.22) reasons.push("el personaje no mantiene las proporciones del sprite base (cabeza, piernas y torso al mismo tamaño)");
+  }
   if (irregular > Math.max(1, layout.rows / 2)) reasons.push("la grilla no respeta las filas/columnas pedidas");
   // A walk/run that never closes the legs (no passing pose) reads as a two-frame wobble in game.
   for (const a of layout.anims) {
@@ -325,7 +470,7 @@ export async function processSheet(input: Buffer, anims: SheetAnimSpec[], o: { c
     }
   }
 
-  return { data, layout, frames, irregular, reasons };
+  return { data, layout: { ...layout, fill }, frames, irregular, reasons };
 }
 
 /** Copy one animation's cells out of a normalized combined sheet into that clip's own grid. */

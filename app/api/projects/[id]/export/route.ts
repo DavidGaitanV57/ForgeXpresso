@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
+import { harmonizeClips } from "@/lib/agents/assets";
 import { jsonError, loadProject, type Ctx } from "@/lib/http";
 import { buildPlayHtml } from "@/lib/play";
 import { readCurrentCode, readProjectFile } from "@/lib/store";
@@ -31,6 +32,7 @@ function slugify(s: string) {
 
 export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
+  if (await loadProject(id)) await harmonizeClips(id);
   const p = await loadProject(id);
   if (!p?.design || !p.versions.length) return jsonError("El juego todavía no está listo", 409);
   const code = await readCurrentCode(p);

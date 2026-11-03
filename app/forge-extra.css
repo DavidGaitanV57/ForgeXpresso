@@ -129,7 +129,10 @@ body.is-playing #studioLang{visibility:visible;pointer-events:auto;position:fixe
 .btn.log-open.has-new{box-shadow:inset 0 0 0 1px rgba(255,122,26,.7)}
 .log-corner{display:none;position:fixed;z-index:54;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));background:rgba(18,20,28,.92);border-color:rgba(255,255,255,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
 body[data-screen="intro"] .log-corner{display:inline-flex}
-.st-assets.collapsed .assets{display:none}
+.st-assets.collapsed .assets,.st-assets.collapsed .asset-group-h{display:none}
+.asset-groups{display:flex;flex-direction:column;gap:14px}
+.asset-group-h{display:flex;align-items:baseline;gap:8px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--violet)}
+.asset-group-h em{font-style:normal;color:var(--dim);letter-spacing:0;font-weight:700}
 .st-assets .st-sec{cursor:pointer;user-select:none}
 .st-assets .st-sec .chev-col{margin-left:auto;width:16px;height:16px;opacity:.7;transition:transform .2s}
 .st-assets:not(.collapsed) .st-sec .chev-col{transform:rotate(180deg)}
@@ -201,3 +204,12 @@ body.is-playing .st-preview::after{display:none}
 .msg .mb.thinking{color:var(--muted)}
 .msg .mb.thinking::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;vertical-align:-2px;border-radius:50%;border:2px solid var(--forge);border-top-color:transparent;animation:spin .8s linear infinite}
 .msg .mb .tagrow{margin-top:5px}
+/* The toolbar stays on one line: pills shrink with an ellipsis, the cinematic/restart/volume tools never wrap. */
+.st-tools{flex-wrap:nowrap;min-width:0}
+.st-tools .pill{min-width:0;flex:0 1 auto;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-tools .tools{flex:none}
+/* Header shortcuts reduced to icons: API usage is a dollar sign, export is the download arrow. */
+.iconbtn.usage-ic{font-weight:800;font-size:16px;color:#34d399;border-color:rgba(16,185,129,.4)}
+.iconbtn.usage-ic:hover{background:rgba(16,185,129,.14)}
+.btn.export.icon-only{width:38px;height:38px;padding:0;justify-content:center;border-radius:50%}
+.btn.export.icon-only svg{width:18px;height:18px}

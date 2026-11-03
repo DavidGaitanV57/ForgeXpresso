@@ -1,7 +1,25 @@
 {
-  "sha": "a26d3fcf73bb844a04010792e69d15add997a32e",
-  "builtAt": "2026-11-02T21:39:48.142Z",
+  "sha": "8eb22551dac38bd47c74c6f46f162935a9435704",
+  "builtAt": "2026-11-03T17:31:09.488Z",
   "entries": [
+    {
+      "sha": "40c92f036787cfc6521bacecc5c31b3ec1cc5f59",
+      "date": "2026-11-02T17:10:36-05:00",
+      "title": "Draw 2D sprites for side, front, rear, top-down, or isometric",
+      "body": ""
+    },
+    {
+      "sha": "ae0c3d823fb5ec692a5624f7807d39c58ed99fd1",
+      "date": "2026-11-02T16:45:02-05:00",
+      "title": "Delete novedades-solo-en-inicio.patch",
+      "body": ""
+    },
+    {
+      "sha": "0255d92e543f815a9a6f1c45a9212f81174273a9",
+      "date": "2026-11-02T16:40:22-05:00",
+      "title": "Novedades solo en el inicio",
+      "body": ""
+    },
     {
       "sha": "a26d3fcf73bb844a04010792e69d15add997a32e",
       "date": "2026-11-02T14:18:47-05:00",

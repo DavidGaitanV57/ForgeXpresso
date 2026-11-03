@@ -1,8 +1,8 @@
 import { config } from "../config";
 import { generateJson } from "../providers/anthropic";
-import { clipSpecFor, normalizeSheetAnims, SHEET_ANIMS, SHEET_ROLES } from "../sheets";
+import { clipSpecFor, SHEET_ANIMS } from "../sheets";
 import type { Aspect, Dimension, GameDesign, GameUiSpec, ImageAssetSpec, ImageRole, UiHudItem, UiMenuItem, UiSetting } from "../types";
-import { mergeAnims, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
+import { animationClips, missingSfx, perspectiveGround, SCENERY, sceneryCovered } from "./delivery";
 import { sanitizeVoicePrompt, voicePromptFromLines } from "./voice-prompt";
 
 const str = { type: "string" };
@@ -115,7 +115,7 @@ Rules:
 - images: ${
     dimension === "3d" || meshChars
       ? "2D décor ONLY (no hero/enemy/npc/collectible/hazard/prop/goal sprites). Typically 2-4 seamless textures (role texture, 1:1) + 1 background (16:9, seamless=false) + optional ui. Mesh entities live under models[], not images."
-      : `8-14 assets. ids snake_case, unique, <=24 chars. Exactly one "hero". Include hero, main enemies/obstacles, collectibles, goal (if any), ${
+      : `one still image for every distinct subject the idea names (usually 8-24; never drop a requested character, enemy or object). ids snake_case, unique, <=24 chars. Exactly one role "hero": the lead drawn on the poster. Every other playable character is its own role "npc" sprite. Every enemy is its own role "enemy" sprite. Include collectibles, goal (if any), ${
           dimension === "2d"
             ? "scenery the idea names, as images and not left for the programmer to draw: ONE seamless=true abstract sky layer (clouds/stars ONLY, no buildings, aspect 16:9); 3-6 transparent prop cutouts (role prop) for the recurring side scenery (buildings, trees, fences, signs, vehicles), one subject each; and the ground. Flat side/top view: one seamless ground tile. Rear view down a road or track (lanes converging to a horizon, objects growing as they approach): the ground image is ONLY a seamless abstract surface (asphalt grain, gravel or grass) with NO rails, sleepers, lane lines or markings, role texture — code draws those in perspective"
             : "2-4 seamless textures (role texture, 1:1) and 1 background (16:9, seamless=false)"
@@ -129,7 +129,7 @@ Rules:
   The camera field and every character prompt (hero, enemies, keyart) name ONE view, in these words: side → "side view facing right"; front → "strict front view, facing the camera, both eyes visible"; rear → "strict straight-on back view, camera directly behind, both shoulders equal, face not visible"; top-down → "strict top-down view, camera straight above"; isometric → "strict isometric view, elevated three-quarter, top of the head and the front of the body visible". Do not mix two views in one prompt. A rear camera must not say three-quarter or side view.
   animations: ${
     dimension === "2d"
-      ? 'for the hero and up to 2 enemies/npcs that visibly move, list EVERY frame animation the mechanics need from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt] (e.g. a runner that jumps, slides and dashes: ["run","jump","slide","dash","hurt","idle"]). "slide" is the crouch/duck-under; "dash" is a forward speed burst. Keep the list to at most 6 names. The pipeline draws each name as its OWN spritesheet (run and walk with 6 frames, every other animation with 2) and adds any of these the mechanics mention and you omitted. [] for static enemies, items and scenery.'
+      ? 'on EVERY image, "animations" is the COMPLETE clip list for THAT sprite only, chosen from [idle, walk, run, jump, fall, land, slide, dash, attack, hurt], at most 6 names. "slide" is the crouch/duck-under; "dash" is a forward speed burst; walk or run is the locomotion cycle (a flying enemy uses walk as the flap). The pipeline draws exactly those names, each as its OWN spritesheet. It does NOT copy a clip onto a sprite because some other character uses it. If only the rival jumps, jump is on the rival and not on the hero. If only one boxer steps in place, walk is only on that boxer. Fill the list for the hero, for every other playable character, and for every enemy. A prop, hazard, collectible, goal or platform that moves on its own (spins, opens, flaps, flows, pulses, crawls) gets the clips that motion needs — ["idle"] is enough for a loop. [] ONLY for things that never change pose: ground, sky, still scenery, UI, the poster. Do not stop after one hero or two enemies.'
       : "always []."
   }
 - audio: exactly 1 music (kind music, loop true, durationSec 60-90), 4-8 sfx (durationSec 0.5-3, loop false) for the core events (jump, pickup, hit, win, lose, attack… whatever fits),
@@ -152,11 +152,11 @@ ${
   - pauseMenu: at least Resume / Settings / Quit equivalents IN THE IDEA'S LANGUAGE (FR: Continuer/Réglages/Quitter; ES: Continuar/Ajustes/Salir; EN: Resume/Settings/Quit).
   - settings: MUST include masterVolume (slider 0-1), musicVolume (slider 0-1), sfxVolume (slider 0-1), plus any game-specific options. Labels in the idea's language. For sliders put min/max/step/defaultValue as strings of numbers; for toggles defaultValue "true"/"false"; for select fill options[].
   - startActions and gameOverActions: short button labels in the idea's language.
-- controls: list of {input, action} with action text in the idea's language.
+- controls: list of {input, action}. "input" holds ONLY keyboard key names separated by " / " (e.g. "← / → / A / D", "↑ / W / Space", "P / Esc"): no prose, no "or", no touch or swipe hints (the runtime shows its own touch buttons). "action" is 1-4 words in the idea's language.
 - cinematic: style and exactly 3 short lines (<= 70 chars) that set up the story (idea's language).
 - levelOutline: a concrete description of the level(s) layout, pacing and difficulty curve the programmer will implement.
 - mechanics: 3-7 concrete mechanics.
-- LENGTH: the whole JSON must stay compact. Image/model/music/sfx prompts <= 60 words each, artStyle <= 90 words, levelOutline <= 150 words, usage notes <= 25 words. If the idea lists many features, merge them into fewer, denser mechanics instead of adding more assets.`;
+- LENGTH: the whole JSON must stay compact. Image/model/music/sfx prompts <= 45 words each, artStyle <= 90 words, levelOutline <= 150 words, usage notes <= 25 words. Keep every named character, enemy and animated object; merge only duplicate scenery.`;
 
   const { data: raw, usage } = await generateJson<Raw>({ model: config.anthropic.fastModel(), system, prompt, schema, maxTokens: 16000 });
   return { design: normalize(raw, dimension, opts.models3d, idea), usage };
@@ -261,7 +261,8 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
   const used = new Set<string>();
   const cutoutRoles = new Set(["hero", "enemy", "npc", "collectible", "hazard", "prop", "goal", "platform", "ui"]);
   const brief = [idea, r.camera, r.levelOutline, ...(r.mechanics || []), r.objective, r.loseCondition].filter(Boolean).join("\n");
-  const images = (r.images || []).slice(0, 12).map((a): ImageAssetSpec => {
+  const listedAnims = new Map<string, string[]>();
+  const images = (r.images || []).slice(0, 28).map((a): ImageAssetSpec => {
     const role = a.role;
     const forceCutout = ["prop", "collectible", "hazard", "goal", "platform"].includes(role);
     const transparent = ["background", "texture", "portrait", "keyart"].includes(role)
@@ -282,10 +283,12 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       prompt = `Isolated cutout, transparent or flat magenta background, no scenery plate, no white rectangle, no ground shadow: ${prompt}`;
     }
     prompt = perspectiveGround(role, prompt, brief);
-    const { animations: _animations, ...rest } = a as ImageAssetSpec & { animations?: string[] };
+    const { animations: listed, ...rest } = a as ImageAssetSpec & { animations?: string[] };
+    const id = slug(a.id || a.name, used);
+    listedAnims.set(id, Array.isArray(listed) ? listed.map(String) : []);
     return {
       ...rest,
-      id: slug(a.id || a.name, used),
+      id,
       prompt,
       transparent,
       seamless,
@@ -309,7 +312,7 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
   }
   if (dimension === "2d") {
     for (const s of SCENERY) {
-      if (!s.test.test(brief) || sceneryCovered(images, s) || images.length >= 16) continue;
+      if (!s.test.test(brief) || sceneryCovered(images, s) || images.length >= 32) continue;
       const id = slug(s.id, used);
       images.push({
         id,
@@ -322,15 +325,12 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
         seamless: false,
       });
     }
-    const wants = images
-      .map((img, k) => ({ img, anims: ((r.images || [])[k] as { animations?: string[] } | undefined)?.animations || [] }))
-      .filter((x) => SHEET_ROLES.has(x.img.role) && (x.anims.length || x.img.role === "hero"))
-      .sort((a, b) => Number(b.img.role === "hero") - Number(a.img.role === "hero"))
-      .slice(0, 3);
-    for (const { img, anims } of wants) {
-      const list = img.role === "hero" ? mergeAnims(brief, anims) : normalizeSheetAnims(anims);
+    for (const img of [...images]) {
+      if (img.sheet) continue;
+      const list = animationClips(img.role, listedAnims.get(img.id));
       for (const anim of list) {
         const spec = clipSpecFor(img, anim);
+        if (used.has(spec.id)) continue;
         used.add(spec.id);
         images.push(spec);
       }

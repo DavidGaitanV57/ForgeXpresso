@@ -1,4 +1,5 @@
-import { sheetAnimsFor, sheetLayout, type SheetLayout } from "./sheets";
+import { cellPad, sheetAnimsFor, sheetLayout, sheetNormFor, type SheetLayout } from "./sheets";
+import { genreLabel } from "./genres";
 import type { AssetRecord, AudioAssetSpec, ImageAssetSpec, Project } from "./types";
 
 export interface PlayManifest {
@@ -10,7 +11,8 @@ export interface PlayManifest {
     transparent: boolean;
     seamless: boolean;
     url: string | null;
-    sheet?: SheetLayout & { of: string };
+    /** `fill`/`pad` only on clips packed at their still image's body size: standing height fraction and feet gutter in px. */
+    sheet?: SheetLayout & { of: string; pad?: number };
   }[];
   audio: { id: string; name: string; kind: string; loop: boolean; url: string | null }[];
   models: { id: string; name: string; url: string | null }[];
@@ -24,7 +26,10 @@ export function buildManifest(p: Project, fileUrl: (rel: string, a?: AssetRecord
       .filter((a) => a.type === "image")
       .map((a) => {
         const s = a.spec as ImageAssetSpec;
-        const sheet = s.sheet ? { of: s.sheet.of, ...sheetLayout(sheetAnimsFor(s.sheet, a.file)) } : undefined;
+        const norm = s.sheet ? sheetNormFor(s.sheet, a.file) : undefined;
+        const sheet = s.sheet
+          ? { of: s.sheet.of, ...sheetLayout(sheetAnimsFor(s.sheet, a.file), norm!.cell), fill: norm!.fill, pad: norm!.fill ? cellPad(norm!.cell) : undefined }
+          : undefined;
         return { id: a.id, name: a.name, role: s.role, aspect: s.aspect, transparent: s.transparent, seamless: !!s.seamless, url: url(a), sheet };
       }),
     audio: all
@@ -129,7 +134,8 @@ export function buildPlayHtml(
     version: o.version,
     engine,
     gameUrl: o.gameUrl,
-    design,
+    // The start menu shows the catalog genre, read from the source design (a localized copy may have reworded it).
+    design: { ...design, genre: genreLabel(p.design?.genre || design.genre, locale) },
     manifest: buildManifest(p, o.fileUrl),
     cineAuto: !!p.cineAuto,
     locale,
@@ -156,8 +162,17 @@ ${head}
 </html>`;
 }
 
+/**
+ * Language of a design, by score. "é" alone proves nothing (Spanish "récord", French "été"), so letters
+ * that only one language uses weigh most, then its short function words.
+ */
 export function detectDesignLocale(text: string): "es" | "en" | "fr" {
-  if (/[àâäéèêëïîôùûüç]|forêt|jouer|vies|réglages|continuer/i.test(text)) return "fr";
-  if (/[áéíóúñ¿¡]|puntos|vidas|jugar|continuar|ajustes/i.test(text)) return "es";
-  return "en";
+  const s = ` ${text.toLowerCase()} `;
+  const count = (re: RegExp) => (s.match(re) || []).length;
+  const es = count(/[ñ¿¡áíóú]/g) * 3 + count(/\s(el|los|las|del|para|por|con|una|que|y|tu|tus|sin|más)\s/g);
+  const fr = count(/[èêëàâçùûîœ]/g) * 3 + count(/\s(le|les|des|du|pour|avec|une|et|ton|tes|sans|plus|au|aux)\s/g);
+  const en = count(/\s(the|and|with|your|to|of|for|without|you|a|an)\s/g);
+  if (es >= fr && es > en) return "es";
+  if (fr > es && fr > en) return "fr";
+  return en ? "en" : es || fr ? (es >= fr ? "es" : "fr") : "en";
 }

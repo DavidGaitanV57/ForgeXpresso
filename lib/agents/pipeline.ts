@@ -6,7 +6,7 @@ import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
-import { clipIdParts, ensureClipSheets, generateAsset, isSheetRecord, newRecord, queueClipRedraws, recordsFromDesign, sheetsForCharacter } from "./assets";
+import { clipIdParts, ensureClipSheets, generateAsset, harmonizeClips, isSheetRecord, newRecord, queueClipRedraws, recordsFromDesign, sheetsForCharacter } from "./assets";
 import { deliveryGaps } from "./delivery";
 import { clipSpecFor, fluidCycles, sheetIdFor, type SheetAnimName } from "../sheets";
 import { planChange } from "./chat";
@@ -296,13 +296,13 @@ async function createFlow(projectId: string) {
       return code;
     })();
 
-    const [code] = await Promise.all([codeJob, assetsJob]);
+    const [draft] = await Promise.all([codeJob, assetsJob]);
     await ctl.stage("qa", "run", "Validando");
+    const { code, gaps } = await reviewDelivery(projectId, draft, ctl, "qa");
     await saveVersion(projectId, code, "Versión inicial");
     const delivered = await getProject(projectId);
     const deliveredAssets = Object.values(delivered?.assets || {});
     const failed = deliveredAssets.filter((a) => a.status === "error" || a.status === "skipped");
-    const gaps = deliveryGaps(code, deliveredAssets);
     if (failed.length || gaps) {
       const detail = [failed.length ? `Sin generar: ${failed.map((a) => a.name).slice(0, 6).join(", ")}` : "", gaps || ""].filter(Boolean).join(" · ").slice(0, 240);
       await ctl.stage("qa", "error", detail);
@@ -338,8 +338,42 @@ export function startChat(projectId: string, message: string, playing: boolean) 
   background(projectId, () => chatFlow(projectId, message, playing));
 }
 
+/**
+ * QA gate before a version is saved: the delivery contract is checked and every gap goes back to the
+ * programmer as a repair, up to twice. What still fails is returned so the studio can show it.
+ */
+async function reviewDelivery(projectId: string, draft: string, ctl: JobCtl, stageId: string): Promise<{ code: string; gaps: string | null }> {
+  let code = draft;
+  for (let pass = 0; pass < 2; pass++) {
+    const p = await getProject(projectId);
+    if (!p?.design) return { code, gaps: null };
+    const assets = Object.values(p.assets);
+    const gaps = deliveryGaps(code, assets);
+    if (!gaps) return { code, gaps: null };
+    await ctl.stage(stageId, "run", `QA · corrigiendo: ${gaps}`.slice(0, 160));
+    try {
+      code = await codeAgent({
+        design: p.design,
+        assets,
+        mode: "repair",
+        previousCode: code,
+        error: `Delivery QA rejected this module. Fix every point without removing working features: ${gaps}`,
+        onProgress: (d) => void ctl.stage(stageId, "run", d),
+        onUsage: (u, label) => void ctl.trackAnthropic(u, label),
+      });
+    } catch (e) {
+      console.warn("[forge] delivery repair failed", e);
+      break;
+    }
+  }
+  const p = await getProject(projectId);
+  return { code, gaps: deliveryGaps(code, Object.values(p?.assets || {})) };
+}
+
 async function chatFlow(projectId: string, message: string, playing: boolean) {
   await addChat(projectId, { who: "you", text: message });
+  // Clips drawn before shared-scale packing are repacked locally, so a new clip never resizes the character.
+  await harmonizeClips(projectId);
   const p = await getProject(projectId);
   if (!p?.design) return;
   const ctl = await startJob(projectId, "chat", [
@@ -488,17 +522,6 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
           }
         }
       }
-      if (p.dimension === "2d") {
-        for (const an of plan.animate || []) {
-          const recs = ensureClipSheets(d, pp.assets, an.id, an.animations);
-          if (!recs.length) continue;
-          animated.push(an.id);
-          for (const rec of recs) {
-            rec.liked = 0;
-            if (!toGenerate.includes(rec)) toGenerate.push(rec);
-          }
-        }
-      }
       for (const s of plan.newImages) {
         if (pp.assets[s.id]) continue;
         // Mesh games: divert entity "images" into text→3D models (never generate 2D for those roles).
@@ -520,6 +543,17 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
         d.assets.audio.push(s);
         pp.assets[s.id] = newRecord("audio", s);
         toGenerate.push(pp.assets[s.id]);
+      }
+      if (p.dimension === "2d") {
+        for (const an of plan.animate || []) {
+          const recs = ensureClipSheets(d, pp.assets, an.id, an.animations);
+          if (!recs.length) continue;
+          animated.push(an.id);
+          for (const rec of recs) {
+            rec.liked = 0;
+            if (!toGenerate.includes(rec)) toGenerate.push(rec);
+          }
+        }
       }
       design = d;
     });
@@ -565,7 +599,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
           await ctl.stage("code", "run", "Editando el código");
           const prev = await readCurrentCode(p);
           const fresh = await getProject(projectId);
-          const code = await codeAgent({
+          const draft = await codeAgent({
             design,
             assets: Object.values(fresh!.assets),
             mode: "edit",
@@ -574,6 +608,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
             onProgress: (d) => void ctl.stage("code", "run", d),
             onUsage: (u, label) => void ctl.trackAnthropic(u, label),
           });
+          const { code } = await reviewDelivery(projectId, draft, ctl, "code");
           await saveVersion(projectId, code, message.slice(0, 80));
           await updateProject(projectId, (pp) => {
             pp.repairs = 0;

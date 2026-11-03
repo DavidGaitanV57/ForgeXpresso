@@ -73,10 +73,10 @@ export const MARKUP = `
       <button type="button" data-locale="fr" title="Français">FR</button>
     </div>
     <button class="iconbtn help" id="helpBtn" type="button" data-i18n-title="studio.help" data-i18n-aria="studio.help" title="Ver recorrido" aria-label="Ver recorrido de ayuda">?</button>
-    <button class="btn ghost" id="usageBtn" type="button" data-i18n="guide.usage" hidden>Consumo de APIs</button>
+    <button class="iconbtn usage-ic" id="usageBtn" type="button" data-i18n-title="guide.usage" data-i18n-aria="guide.usage" title="Consumo de APIs" aria-label="Consumo de APIs" hidden>$</button>
     <button class="btn ghost" id="proBtn" type="button" data-i18n="studio.pro">Abrir en Forge Pro</button>
     <span class="vsep" aria-hidden="true"></span>
-    <button class="btn export" id="exportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span data-i18n="studio.export">Exportar</span></button>
+    <button class="btn export icon-only" id="exportBtn" type="button" data-i18n-title="studio.export" data-i18n-aria="studio.export" title="Exportar" aria-label="Exportar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></button>
   </header>
 
   <section class="st-head asm from-top" aria-live="polite" style="--asd:.7s">
@@ -86,7 +86,6 @@ export const MARKUP = `
       <h1 class="st-title"><span class="hl" id="stHero"></span></h1>
       <p class="st-idea" id="stIdea"></p>
     </div>
-    <button class="btn play-cta" id="playBtn" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span data-i18n="studio.play">Jugar</span></button>
   </section>
 
   <div class="st-grid">
@@ -123,7 +122,7 @@ export const MARKUP = `
           <span class="muted-s" data-i18n="studio.assetsSub">Marca lo que te gusta, regenéralo o sube el tuyo</span>
           <svg class="chev-col" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div class="assets" id="assets"></div>
+        <div class="asset-groups" id="assets"></div>
       </section>
     </div>
     <aside class="flow asm from-left" id="flow" data-i18n-aria="studio.flow" aria-label="Panel de creación" style="--asd:.45s"></aside>
@@ -223,7 +222,6 @@ export const MARKUP = `
     <span class="sp"></span>
     <div class="play-tools">
       <div class="vol" data-i18n-title="studio.volume" title="Volumen">${ICSND("sndBtn2", 'class="sndWave2"')}<input type="range" id="volSlider2" min="0" max="1" step="0.05" value="0.9" data-i18n-aria="studio.volumeAria" aria-label="Volumen general"></div>
-      <button class="iconbtn" id="dbgBtn" type="button" data-i18n-title="play.debug" data-i18n-aria="play.debug" title="Modo depuración (colisiones)" aria-label="Modo depuración"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 12h16M12 4v16"/></svg></button>
       <button class="iconbtn" id="rstBtn" type="button" data-i18n-title="play.restart" data-i18n-aria="play.restart" title="Reiniciar nivel" aria-label="Reiniciar nivel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
     </div>
     <button class="btn small ghost" id="playExit" type="button" data-i18n="play.exit">Salir</button>

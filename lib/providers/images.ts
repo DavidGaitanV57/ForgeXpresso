@@ -14,6 +14,11 @@ export interface RawImage {
   ms: number;
 }
 
+/** Canvas the OpenAI image endpoints return for an aspect. Sheet prompts quote it so the cell size is explicit. */
+export function openaiSize(aspect: Aspect): "1024x1024" | "1024x1536" | "1536x1024" {
+  return aspect === "1:1" ? "1024x1024" : aspect === "9:16" || aspect === "2:3" ? "1024x1536" : "1536x1024";
+}
+
 export function availableImageProvider(preferred: ImageProvider): ImageProvider | null {
   const has = { openai: !!config.openai.key(), minimax: !!config.minimax.key() };
   // Always prefer OpenAI when both keys are present (end users don't pick a provider).
@@ -29,7 +34,7 @@ export async function generateImage(o: { prompt: string; aspect: Aspect; transpa
 }
 
 async function openai(o: { prompt: string; aspect: Aspect; transparent: boolean; hq?: boolean }): Promise<RawImage> {
-  const size = o.aspect === "1:1" ? "1024x1024" : o.aspect === "9:16" || o.aspect === "2:3" ? "1024x1536" : "1536x1024";
+  const size = openaiSize(o.aspect);
   const quality = o.hq ? "high" : "medium";
   const body = {
     model: config.openai.imageModel(),
@@ -64,7 +69,7 @@ async function openai(o: { prompt: string; aspect: Aspect; transparent: boolean;
  * Optional params are dropped on a 400 because not every image model accepts them.
  */
 export async function editImageOpenAI(o: { prompt: string; image: Buffer; aspect: Aspect; hq?: boolean }): Promise<RawImage> {
-  const size = o.aspect === "1:1" ? "1024x1024" : o.aspect === "9:16" || o.aspect === "2:3" ? "1024x1536" : "1536x1024";
+  const size = openaiSize(o.aspect);
   const quality = o.hq ? "high" : "medium";
   const send = async (extras: boolean) => {
     const form = new FormData();
