@@ -54,6 +54,8 @@ export default function createGame(forge, Phaser) {
   };
 }
 \`\`\`
+- Throw and reject only with \`new Error("…")\`, never a string or plain object: the runtime repairs only errors whose stack shows
+  they came from the game, and a bare string has no stack.
 - Logical resolution is 1280×720 (scaled to fit). The runtime draws it at the screen's real resolution, so position everything in
   1280×720 coordinates (constants, \`this.scale.width/height\`, \`pointer.worldX/worldY\`) and never read the canvas or GL buffer size
   (\`game.canvas.width\`, \`renderer.width\`, \`drawingBuffer*\`, \`getContext\`) or read pixels back (\`snapshot\`, \`readPixels\`): such a game drops to a blurry 1280×720 canvas. \`physics\`: "arcade" (default, recommended) or "matter". \`gravity\` is the world default (px/s²); for platformers set per‑body gravity from \`forge.tune\` instead.
