@@ -110,8 +110,28 @@ function reportError(e, where) {
     `<em>${esc(rt("errEyebrow"))}</em><h1>${esc(rt("errTitle"))}</h1><p>${esc(embedded ? rt("errRepairing") : rt("errCheck"))}</p><pre>${esc(message)}\n${esc(String(stack).split("\n").slice(0, 6).join("\n"))}</pre>`,
   );
 }
-addEventListener("error", (e) => reportError(e.error || e.message));
-addEventListener("unhandledrejection", (e) => reportError(e.reason));
+/**
+ * Errors thrown by browser extensions (wallets such as MetaMask, ad blockers, translators) reach this page
+ * too. They are not the game's: reporting them would pause the game and send working code to repair.
+ * Keep this test in step with isForeignError in lib/agents/pipeline.ts.
+ */
+const FOREIGN_ERROR = /(chrome|moz|safari(-web)?|ms-browser|edge)-extension:\/\/|webkit-masked-url:|\binpage\.js\b|metamask|ethereum|web3|solana|phantom|__gCrWeb|ResizeObserver loop/i;
+function foreignError(...parts) {
+  const text = parts
+    .map((p) => (p && typeof p === "object" ? `${p.message || ""}\n${p.stack || ""}` : String(p ?? "")))
+    .join("\n");
+  return FOREIGN_ERROR.test(text);
+}
+addEventListener("error", (e) => {
+  // "Script error." with no details comes from another origin's script: never from the game module.
+  if (!e.error && /^script error\.?$/i.test(String(e.message || "").trim())) return;
+  if (foreignError(e.filename, e.message, e.error)) return console.warn("[forge] ignored browser extension error:", e.message);
+  reportError(e.error || e.message);
+});
+addEventListener("unhandledrejection", (e) => {
+  if (foreignError(e.reason)) return console.warn("[forge] ignored browser extension rejection:", e.reason?.message || e.reason);
+  reportError(e.reason);
+});
 
 /* ---------------- Seeded random ---------------- */
 function hashStr(s) {
