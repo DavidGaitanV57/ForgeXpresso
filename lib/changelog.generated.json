@@ -1,7 +1,13 @@
 {
-  "sha": "8eb22551dac38bd47c74c6f46f162935a9435704",
-  "builtAt": "2026-11-03T17:31:09.488Z",
+  "sha": "f4837267239d9890095a8c18d96398157d8e8ed9",
+  "builtAt": "2026-11-03T18:10:55.522Z",
   "entries": [
+    {
+      "sha": "f4837267239d9890095a8c18d96398157d8e8ed9",
+      "date": "2026-11-03T12:55:25-05:00",
+      "title": "Keep sprite clips at one body scale and tidy studio and start-menu UI",
+      "body": "Animation clips are packed against their still image, so switching clips (idle to dash) no longer resizes the character. Each frame is matched to the still's body area, cells get a transparent gutter, and stray grid lines and slivers are removed. Clips use 512 px cells. Existing projects are repacked locally, from their original drawing, when a game is opened, exported or edited. dash and slide play once and hold their last pose. fit() and body() size the standing character. HUD icons render ima"
+    },
     {
       "sha": "40c92f036787cfc6521bacecc5c31b3ec1cc5f59",
       "date": "2026-11-02T17:10:36-05:00",

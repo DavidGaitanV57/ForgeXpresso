@@ -141,6 +141,10 @@ export function deliveryGaps(code: string, assets: AssetRecord[]): string | null
   if (anims.has("jump") && !/jump/i.test(code)) missing.push("el salto (la animación jump no se usa)");
   if (anims.has("attack") && !/\battacking\b/.test(code)) missing.push("attacking:true durante el ataque");
   if (anims.size && !/forge\.phaser\.animate\(/.test(code)) missing.push("forge.phaser.animate(sprite) en cada sprite con spritesheet, antes de fit/body");
+  // Same test as READS_BUFFER in public/runtime/host-phaser.js: a 2D game that reads the canvas size is rendered at 1x.
+  if (/\bcanvas\.(width|height)\b|drawingBuffer|snapshot|readPixels|getContext\s*\(|renderer\.(width|height)\b|\bgl\.viewport/.test(code) && /Phaser/.test(code)) {
+    missing.push("no leer el tamaño del canvas/renderer ni capturar píxeles (usa coordenadas lógicas 1280×720)");
+  }
   // A HUD icon is drawn from an image id or is one emoji; any other word would print as text in the chip.
   const imageIds = new Set(assets.filter((a) => a.type === "image").map((a) => a.id));
   for (const m of code.matchAll(/\bicon\s*:\s*["'`]([^"'`]{1,40})["'`]/g)) {

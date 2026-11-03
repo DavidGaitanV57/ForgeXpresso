@@ -94,6 +94,13 @@ export async function createHost(createGame, ctx) {
         disableContextMenu: true,
         scene: [ForgeBoot, ...scenes],
       });
+      game.events.once(Phaser.Core.Events.READY, () => {
+        try {
+          crispCanvas(Phaser, game, String(createGame));
+        } catch (e) {
+          console.warn("[forge] crisp canvas", e);
+        }
+      });
       game.events.on(Phaser.Core.Events.PRE_STEP, (_time, delta) => {
         input._begin();
         if (forge.cinematic?.active && onCinematic) {
@@ -224,6 +231,98 @@ export async function createHost(createGame, ctx) {
       }
     },
   };
+}
+
+/**
+ * Game code that reads the real canvas or GL buffer size, or reads pixels back, keeps the 1x canvas:
+ * those are the only places where the larger drawing buffer would be visible to the game.
+ */
+const READS_BUFFER = /\bcanvas\.(width|height)\b|drawingBuffer|snapshot|readPixels|getContext\s*\(|renderer\.(width|height)\b|\bgl\.viewport/;
+const MAX_CRISP = 2;
+
+/**
+ * Draw at the screen's real resolution while the game keeps its 1280x720 world.
+ * The canvas buffer grows to W*k x H*k and the GL viewport and scissor on the screen framebuffer are
+ * multiplied by k, so the projection still maps 1280x720 onto the whole buffer. Cameras, scroll, input,
+ * physics and render targets stay in logical pixels: nothing the game reads changes.
+ * Falls back to 1x on the Canvas renderer, on touch devices, and when the frame rate stays low.
+ */
+function crispCanvas(Phaser, game, source) {
+  const r = game.renderer;
+  if (!r || r.type !== Phaser.WEBGL || !r.gl) return;
+  if (READS_BUFFER.test(source)) {
+    console.info("[forge] game reads the canvas size: rendering at 1280x720");
+    return;
+  }
+  const gl = r.gl;
+  const FB = gl.FRAMEBUFFER, DRAW_FB = gl.DRAW_FRAMEBUFFER;
+  let k = 1, cap = matchMedia("(pointer: coarse)").matches ? 1 : MAX_CRISP, onScreen = true;
+  const bind = gl.bindFramebuffer.bind(gl), viewport = gl.viewport.bind(gl), scissor = gl.scissor.bind(gl);
+  gl.bindFramebuffer = (target, fb) => {
+    if (target === FB || target === DRAW_FB) onScreen = !fb;
+    return bind(target, fb);
+  };
+  gl.viewport = (x, y, w, h) => (onScreen ? viewport(x * k, y * k, w * k, h * k) : viewport(x, y, w, h));
+  gl.scissor = (x, y, w, h) => (onScreen ? scissor(x * k, y * k, w * k, h * k) : scissor(x, y, w, h));
+  // Phaser flips scissor rectangles with the buffer height: it must see the logical one.
+  Object.defineProperty(gl, "drawingBufferWidth", { configurable: true, get: () => W });
+  Object.defineProperty(gl, "drawingBufferHeight", { configurable: true, get: () => H });
+
+  const sharpenText = (obj) => {
+    if (obj?.type === "Text" && obj.style && obj.style.resolution !== Math.ceil(k)) obj.setResolution(Math.ceil(k));
+  };
+  const apply = (next) => {
+    if (Math.abs(next - k) < 0.05) return;
+    k = next;
+    game.canvas.width = Math.round(W * k);
+    game.canvas.height = Math.round(H * k);
+    r.resize(W, H);
+    for (const sc of game.scene.scenes) sc.children?.list?.forEach(sharpenText);
+    // Resizing clears the buffer; while paused (start menu, pause) the loop would leave it black.
+    try {
+      r.preRender();
+      game.scene.render(r);
+      r.postRender();
+    } catch (e) {
+      console.warn("[forge] crisp redraw", e);
+    }
+  };
+  const want = () => {
+    const css = game.canvas.getBoundingClientRect().width || W;
+    const exact = (css * (window.devicePixelRatio || 1)) / W;
+    return clamp(Math.ceil(exact * 4) / 4, 1, cap);
+  };
+  let t = 0;
+  const schedule = () => {
+    clearTimeout(t);
+    t = setTimeout(() => game.canvas && apply(want()), 120);
+  };
+  for (const sc of game.scene.scenes) sc.sys.events.on("addedtoscene", sharpenText);
+  game.scale.on("resize", () => {
+    // setGameSize/resize rewrite the canvas to 1x: force the next apply.
+    if (game.canvas.width === W) k = 1;
+    schedule();
+  });
+  addEventListener("resize", schedule);
+  document.addEventListener("fullscreenchange", schedule);
+  // A machine that cannot keep up at k > 1 drops to 1x for the rest of the session.
+  let slow = 0;
+  const watch = setInterval(() => {
+    if (k <= 1 || document.hidden) return (slow = 0);
+    slow = game.loop.actualFps < 42 ? slow + 1 : 0;
+    if (slow >= 3) {
+      cap = 1;
+      apply(1);
+      console.info("[forge] low frame rate: rendering at 1280x720");
+    }
+  }, 1000);
+  game.events.once(Phaser.Core.Events.DESTROY, () => {
+    clearTimeout(t);
+    clearInterval(watch);
+    removeEventListener("resize", schedule);
+    document.removeEventListener("fullscreenchange", schedule);
+  });
+  apply(want());
 }
 
 const manifestHasSheets = (forge) => forge.assets.list("image").some((i) => i.sheet && i.ready);

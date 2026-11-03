@@ -451,7 +451,9 @@ export async function processSheet(
   const areas = frames.map((f) => f.area).sort((a, b) => a - b);
   const median = areas[Math.floor(areas.length / 2)] || 0;
   for (const f of frames) if (f.area < median * 0.25) reasons.push(`frame ${f.anim}#${f.i + 1} vacío o incompleto`);
-  const hollows = frames.map((f) => f.hollow).sort((a, b) => a - b);
+  // Only upright poses: a lunge, punch or dizzy wobble leaves its bounding box legitimately empty inside.
+  const upright = frames.filter((f) => f.anim === "idle" || f.anim === "walk" || f.anim === "run");
+  const hollows = upright.map((f) => f.hollow).sort((a, b) => a - b);
   if ((hollows[Math.floor(hollows.length / 2)] ?? 0) > 0.42) reasons.push("siluetas vaciadas por el recorte");
   const grounded = frames.filter((f) => (f.anim === "idle" || f.anim === "walk" || f.anim === "run") && f.h > 0).map((f) => f.h);
   if (grounded.length > 1 && Math.max(...grounded) / Math.min(...grounded) > 1.45) reasons.push("escala inconsistente entre frames");
