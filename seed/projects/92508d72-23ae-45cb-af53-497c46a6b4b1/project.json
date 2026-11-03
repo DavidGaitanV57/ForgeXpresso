@@ -1,0 +1,3154 @@
+{
+  "id": "92508d72-23ae-45cb-af53-497c46a6b4b1",
+  "createdAt": 1793724139844,
+  "updatedAt": 1793727656763,
+  "idea": "Ring Relámpago. Juego 2D de una sola pantalla. Código mínimo: sin scroll, sin plataformas, sin salas y sin generación procedural. Cámara lateral plana en todos los personajes y en la portada: side view facing right. Prohibido 3D, vista trasera e isométrica. Un ring de boxeo visto de perfil. Lino está plantado a la izquierda. El rival está plantado a la derecha y el código lo voltea para que lo mire. No se desplazan por el escenario. Cuatro personajes. Cada uno es un sprite distinto con su propia lista de animaciones. No reutilices la hoja de uno en otro. Héroe, uno solo: Lino, boxeador joven, camiseta blanca, guantes rojos, side view facing right. Animaciones: idle, attack, dash, hurt. Enemigo: Púa, boxeador flaco, guantes verdes, side view facing right. Animaciones: idle, attack, hurt. Enemigo: Muro, boxeador grande, guantes azules, side view facing right. Animaciones: idle, walk, attack, hurt. Su walk es un paso en el sitio, no un recorrido. Enemigo: Chispa, boxeadora baja, guantes amarillos, side view facing right. Animaciones: idle, jump, attack, hurt. Su jump es un brinco en el sitio al pegar. Se pelea de uno en uno, en este orden: Púa, Muro, Chispa. J hace el attack de Lino y quita 1 vida al rival si el rival no está en hurt. Cada rival tiene 3 vidas. A 0 entra el siguiente. Lino tiene 3 vidas. A 0 se pierde. El rival lanza su attack solo, cada 2 segundos. K hace el dash de Lino. Si K está pulsado cuando el rival pega, Lino no pierde vida. Si no, Lino pierde 1 y muestra hurt. Chispa usa su jump al pegar. Muro usa su walk un instante antes de pegar. Púa solo usa attack. Escenario: lona del ring, quieta. Cuerdas del ring, un prop quieto, sin animación. Campana del ring, un prop que se balancea sola: su única animación es idle. Fondo del gimnasio, quieto. Controles: solo J y K. HUD con las vidas de Lino, las vidas del rival y el nombre del rival. Música de ring en bucle. Efectos cortos: golpe, esquiva, campana, victoria y derrota. Narración en español, tres frases, solo el texto que se dice.",
+  "dimension": "2d",
+  "imageProvider": "openai",
+  "status": "ready",
+  "assets": {
+    "keyart": {
+      "id": "keyart",
+      "type": "image",
+      "name": "Portada",
+      "spec": {
+        "id": "keyart",
+        "name": "Portada",
+        "role": "keyart",
+        "prompt": "Square promotional poster: young boxer Lino, white t-shirt, red gloves, side view facing right, large in foreground, fists raised. Boxing ring in a gym behind him, spotlights. Bold stylized lettering title 'RING RELÁMPAGO'.",
+        "transparent": false,
+        "aspect": "1:1",
+        "usage": "Portada de la biblioteca. Nunca se usa en el juego.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724216816,
+      "file": "assets/keyart.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "lino": {
+      "id": "lino",
+      "type": "image",
+      "name": "Lino",
+      "spec": {
+        "id": "lino",
+        "name": "Lino",
+        "role": "hero",
+        "prompt": "Young boxer Lino, white t-shirt, dark shorts, red boxing gloves, athletic stance, side view facing right, full body, isolated character.",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Héroe plantado a la izquierda del ring.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724247992,
+      "file": "assets/lino.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "pua": {
+      "id": "pua",
+      "type": "image",
+      "name": "Púa",
+      "spec": {
+        "id": "pua",
+        "name": "Púa",
+        "role": "enemy",
+        "prompt": "Skinny lanky boxer, green boxing gloves, spiky hair, dark shorts, guard stance, side view facing right, full body, isolated character.",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Primer rival. Solo usa idle, attack y hurt.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724270965,
+      "file": "assets/pua.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: silueta vaciada (44% hueco interior — ¿cuerpo oscuro eliminado?)"
+    },
+    "muro": {
+      "id": "muro",
+      "type": "image",
+      "name": "Muro",
+      "spec": {
+        "id": "muro",
+        "name": "Muro",
+        "role": "enemy",
+        "prompt": "Huge broad heavy boxer, blue boxing gloves, bald, big belly and shoulders, dark shorts, side view facing right, full body, isolated character.",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Segundo rival. Usa walk en el sitio antes de pegar.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724276412,
+      "file": "assets/muro.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (16% del margen)"
+    },
+    "chispa": {
+      "id": "chispa",
+      "type": "image",
+      "name": "Chispa",
+      "spec": {
+        "id": "chispa",
+        "name": "Chispa",
+        "role": "enemy",
+        "prompt": "Short energetic female boxer, yellow boxing gloves, ponytail, athletic shorts, bouncy stance, side view facing right, full body, isolated character.",
+        "transparent": true,
+        "aspect": "2:3",
+        "usage": "Tercer rival. Brinca en el sitio al pegar.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724278327,
+      "file": "assets/chispa.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "ring_canvas": {
+      "id": "ring_canvas",
+      "type": "image",
+      "name": "Lona del ring",
+      "spec": {
+        "id": "ring_canvas",
+        "name": "Lona del ring",
+        "role": "texture",
+        "prompt": "Seamless boxing ring canvas floor surface, worn off-white canvas with faint scuffs and subtle red stains, flat side-view strip, abstract repeating texture.",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Suelo del ring, quieto, en la parte baja de la pantalla.",
+        "seamless": true
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724289557,
+      "file": "assets/ring_canvas.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "ring_ropes": {
+      "id": "ring_ropes",
+      "type": "image",
+      "name": "Cuerdas del ring",
+      "spec": {
+        "id": "ring_ropes",
+        "name": "Cuerdas del ring",
+        "role": "prop",
+        "prompt": "Boxing ring corner posts with three red, white and blue ropes stretched horizontally, side view facing right, isolated cutout prop.",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Cuerdas quietas delante del fondo, sin animación.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724292437,
+      "file": "assets/ring_ropes.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "ring_bell": {
+      "id": "ring_bell",
+      "type": "image",
+      "name": "Campana del ring",
+      "spec": {
+        "id": "ring_bell",
+        "name": "Campana del ring",
+        "role": "prop",
+        "prompt": "Brass boxing ring bell with small wooden mallet, hanging on a bracket, side view facing right, isolated cutout prop.",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Campana que se balancea sola, bucle idle.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724308383,
+      "file": "assets/ring_bell.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (30% del margen); fondo de escena pegado al sprite (65% del borde)"
+    },
+    "gym_bg": {
+      "id": "gym_bg",
+      "type": "image",
+      "name": "Fondo del gimnasio",
+      "spec": {
+        "id": "gym_bg",
+        "name": "Fondo del gimnasio",
+        "role": "background",
+        "prompt": "Dim boxing gym interior at night, brick wall, hanging punching bags, banners, lockers, warm lamps, empty, flat side view backdrop, no characters.",
+        "transparent": false,
+        "aspect": "16:9",
+        "usage": "Fondo estático detrás del ring.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724321419,
+      "file": "assets/gym_bg.r1.jpg",
+      "mime": "image/jpeg",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "heart_icon": {
+      "id": "heart_icon",
+      "type": "image",
+      "name": "Corazón de vida",
+      "spec": {
+        "id": "heart_icon",
+        "name": "Corazón de vida",
+        "role": "ui",
+        "prompt": "Chunky red heart icon with dark outline and white highlight, flat front icon, isolated.",
+        "transparent": true,
+        "aspect": "1:1",
+        "usage": "Icono de vidas en el HUD de Lino y del rival.",
+        "seamless": false
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724319712,
+      "file": "assets/heart_icon.r1.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false,
+      "error": "QA débil: placa rectangular opaca (20% del margen)"
+    },
+    "lino_sheet_idle": {
+      "id": "lino_sheet_idle",
+      "type": "image",
+      "name": "Lino · idle",
+      "spec": {
+        "id": "lino_sheet_idle",
+        "name": "Lino · idle",
+        "role": "hero",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "lino",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882658,
+      "file": "assets/lino_sheet_idle.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "lino_sheet_attack": {
+      "id": "lino_sheet_attack",
+      "type": "image",
+      "name": "Lino · attack",
+      "spec": {
+        "id": "lino_sheet_attack",
+        "name": "Lino · attack",
+        "role": "hero",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"attack\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "lino",
+          "anims": [
+            {
+              "name": "attack",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882708,
+      "file": "assets/lino_sheet_attack.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "lino_sheet_dash": {
+      "id": "lino_sheet_dash",
+      "type": "image",
+      "name": "Lino · dash",
+      "spec": {
+        "id": "lino_sheet_dash",
+        "name": "Lino · dash",
+        "role": "hero",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"dash\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "lino",
+          "anims": [
+            {
+              "name": "dash",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "dash",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "dash",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "dash",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882758,
+      "file": "assets/lino_sheet_dash.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "lino_sheet_hurt": {
+      "id": "lino_sheet_hurt",
+      "type": "image",
+      "name": "Lino · hurt",
+      "spec": {
+        "id": "lino_sheet_hurt",
+        "name": "Lino · hurt",
+        "role": "hero",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"hurt\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "lino",
+          "anims": [
+            {
+              "name": "hurt",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882808,
+      "file": "assets/lino_sheet_hurt.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "pua_sheet_idle": {
+      "id": "pua_sheet_idle",
+      "type": "image",
+      "name": "Púa · idle",
+      "spec": {
+        "id": "pua_sheet_idle",
+        "name": "Púa · idle",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "pua",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882845,
+      "file": "assets/pua_sheet_idle.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "pua_sheet_attack": {
+      "id": "pua_sheet_attack",
+      "type": "image",
+      "name": "Púa · attack",
+      "spec": {
+        "id": "pua_sheet_attack",
+        "name": "Púa · attack",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"attack\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "pua",
+          "anims": [
+            {
+              "name": "attack",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882884,
+      "file": "assets/pua_sheet_attack.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "pua_sheet_hurt": {
+      "id": "pua_sheet_hurt",
+      "type": "image",
+      "name": "Púa · hurt",
+      "spec": {
+        "id": "pua_sheet_hurt",
+        "name": "Púa · hurt",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"hurt\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "pua",
+          "anims": [
+            {
+              "name": "hurt",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882918,
+      "file": "assets/pua_sheet_hurt.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "muro_sheet_idle": {
+      "id": "muro_sheet_idle",
+      "type": "image",
+      "name": "Muro · idle",
+      "spec": {
+        "id": "muro_sheet_idle",
+        "name": "Muro · idle",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "muro",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726882970,
+      "file": "assets/muro_sheet_idle.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "muro_sheet_walk": {
+      "id": "muro_sheet_walk",
+      "type": "image",
+      "name": "Muro · walk",
+      "spec": {
+        "id": "muro_sheet_walk",
+        "name": "Muro · walk",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "3:2",
+        "usage": "Animation clip \"walk\" of muro, 6 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "muro",
+          "anims": [
+            {
+              "name": "walk",
+              "frames": 6
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "walk",
+                "frames": 6
+              }
+            ],
+            "2": [
+              {
+                "name": "walk",
+                "frames": 6
+              }
+            ],
+            "3": [
+              {
+                "name": "walk",
+                "frames": 6
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883068,
+      "file": "assets/muro_sheet_walk.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "muro_sheet_attack": {
+      "id": "muro_sheet_attack",
+      "type": "image",
+      "name": "Muro · attack",
+      "spec": {
+        "id": "muro_sheet_attack",
+        "name": "Muro · attack",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"attack\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "muro",
+          "anims": [
+            {
+              "name": "attack",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883121,
+      "file": "assets/muro_sheet_attack.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "muro_sheet_hurt": {
+      "id": "muro_sheet_hurt",
+      "type": "image",
+      "name": "Muro · hurt",
+      "spec": {
+        "id": "muro_sheet_hurt",
+        "name": "Muro · hurt",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"hurt\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "muro",
+          "anims": [
+            {
+              "name": "hurt",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883160,
+      "file": "assets/muro_sheet_hurt.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "chispa_sheet_idle": {
+      "id": "chispa_sheet_idle",
+      "type": "image",
+      "name": "Chispa · idle",
+      "spec": {
+        "id": "chispa_sheet_idle",
+        "name": "Chispa · idle",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "chispa",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883216,
+      "file": "assets/chispa_sheet_idle.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "chispa_sheet_jump": {
+      "id": "chispa_sheet_jump",
+      "type": "image",
+      "name": "Chispa · jump",
+      "spec": {
+        "id": "chispa_sheet_jump",
+        "name": "Chispa · jump",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"jump\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "chispa",
+          "anims": [
+            {
+              "name": "jump",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883251,
+      "file": "assets/chispa_sheet_jump.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "chispa_sheet_attack": {
+      "id": "chispa_sheet_attack",
+      "type": "image",
+      "name": "Chispa · attack",
+      "spec": {
+        "id": "chispa_sheet_attack",
+        "name": "Chispa · attack",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"attack\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "chispa",
+          "anims": [
+            {
+              "name": "attack",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883286,
+      "file": "assets/chispa_sheet_attack.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "chispa_sheet_hurt": {
+      "id": "chispa_sheet_hurt",
+      "type": "image",
+      "name": "Chispa · hurt",
+      "spec": {
+        "id": "chispa_sheet_hurt",
+        "name": "Chispa · hurt",
+        "role": "enemy",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"hurt\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "chispa",
+          "anims": [
+            {
+              "name": "hurt",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883327,
+      "file": "assets/chispa_sheet_hurt.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "ring_bell_sheet_idle": {
+      "id": "ring_bell_sheet_idle",
+      "type": "image",
+      "name": "Campana del ring · idle",
+      "spec": {
+        "id": "ring_bell_sheet_idle",
+        "name": "Campana del ring · idle",
+        "role": "prop",
+        "prompt": "",
+        "transparent": true,
+        "aspect": "16:9",
+        "usage": "Animation clip \"idle\" of ring_bell, 2 frames on its own sheet. forge.phaser.animate() plays it from the ring_bell sprite. Never draw this image as a picture.",
+        "seamless": false,
+        "sheet": {
+          "of": "ring_bell",
+          "anims": [
+            {
+              "name": "idle",
+              "frames": 2
+            }
+          ],
+          "revs": {
+            "1": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "2": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ],
+            "3": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          },
+          "norm": {
+            "2": {
+              "cell": 320,
+              "fill": 0.72
+            },
+            "3": {
+              "cell": 320,
+              "fill": 0.72,
+              "v": 2,
+              "from": 1
+            }
+          }
+        }
+      },
+      "status": "ready",
+      "rev": 3,
+      "liked": 0,
+      "updatedAt": 1793726883395,
+      "file": "assets/ring_bell_sheet_idle.r3.png",
+      "mime": "image/png",
+      "provider": "OpenAI",
+      "custom": false
+    },
+    "music_ring": {
+      "id": "music_ring",
+      "type": "audio",
+      "name": "Música de ring",
+      "spec": {
+        "id": "music_ring",
+        "name": "Música de ring",
+        "kind": "music",
+        "prompt": "Energetic retro arcade boxing gym music, driving drums, funky bass, brass stabs, upbeat and tense, seamless loop.",
+        "durationSec": 75,
+        "loop": true,
+        "usage": "Música de fondo durante todos los combates."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724187996,
+      "file": "assets/music_ring.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_hit": {
+      "id": "sfx_hit",
+      "type": "audio",
+      "name": "Golpe",
+      "spec": {
+        "id": "sfx_hit",
+        "name": "Golpe",
+        "kind": "sfx",
+        "prompt": "Short punchy boxing glove impact thud, cartoon style.",
+        "durationSec": 0.6,
+        "loop": false,
+        "usage": "Cuando un golpe conecta (a Lino o al rival)."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724192975,
+      "file": "assets/sfx_hit.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_dodge": {
+      "id": "sfx_dodge",
+      "type": "audio",
+      "name": "Esquiva",
+      "spec": {
+        "id": "sfx_dodge",
+        "name": "Esquiva",
+        "kind": "sfx",
+        "prompt": "Quick whoosh of a fast dodge with a light swish.",
+        "durationSec": 0.5,
+        "loop": false,
+        "usage": "Cuando Lino esquiva con K y el golpe se anula."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724197815,
+      "file": "assets/sfx_dodge.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_bell": {
+      "id": "sfx_bell",
+      "type": "audio",
+      "name": "Campana",
+      "spec": {
+        "id": "sfx_bell",
+        "name": "Campana",
+        "kind": "sfx",
+        "prompt": "Boxing ring bell ding-ding, bright brass ring.",
+        "durationSec": 2,
+        "loop": false,
+        "usage": "Al empezar cada combate."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724201974,
+      "file": "assets/sfx_bell.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_win": {
+      "id": "sfx_win",
+      "type": "audio",
+      "name": "Victoria",
+      "spec": {
+        "id": "sfx_win",
+        "name": "Victoria",
+        "kind": "sfx",
+        "prompt": "Short triumphant arcade victory fanfare with crowd cheer.",
+        "durationSec": 2.5,
+        "loop": false,
+        "usage": "Al vencer a un rival o ganar el juego."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724207230,
+      "file": "assets/sfx_win.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_lose": {
+      "id": "sfx_lose",
+      "type": "audio",
+      "name": "Derrota",
+      "spec": {
+        "id": "sfx_lose",
+        "name": "Derrota",
+        "kind": "sfx",
+        "prompt": "Short sad descending trombone defeat jingle with crowd groan.",
+        "durationSec": 2.5,
+        "loop": false,
+        "usage": "Cuando Lino pierde la última vida."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724212237,
+      "file": "assets/sfx_lose.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "narration": {
+      "id": "narration",
+      "type": "audio",
+      "name": "Narración",
+      "spec": {
+        "id": "narration",
+        "name": "Narración",
+        "kind": "voice",
+        "prompt": "Lino sueña con ser campeón del barrio.\n\nEsta noche suena la campana: tres rivales le esperan.\n\nUn golpe, una esquiva, y la gloria será suya.",
+        "durationSec": 12,
+        "loop": false,
+        "usage": "Narración de la cinemática inicial."
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724216749,
+      "file": "assets/narration.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_jump": {
+      "id": "sfx_jump",
+      "type": "audio",
+      "name": "Salto",
+      "spec": {
+        "id": "sfx_jump",
+        "name": "Salto",
+        "kind": "sfx",
+        "prompt": "Short cartoon jump whoosh, bright and light, no voice",
+        "durationSec": 1,
+        "loop": false,
+        "usage": "Salto"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724219907,
+      "file": "assets/sfx_jump.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    },
+    "sfx_dash": {
+      "id": "sfx_dash",
+      "type": "audio",
+      "name": "Acelerón",
+      "spec": {
+        "id": "sfx_dash",
+        "name": "Acelerón",
+        "kind": "sfx",
+        "prompt": "Short rising whoosh of a sudden speed burst, cartoon, no voice",
+        "durationSec": 1,
+        "loop": false,
+        "usage": "Acelerón"
+      },
+      "status": "ready",
+      "rev": 1,
+      "liked": 0,
+      "updatedAt": 1793724221497,
+      "file": "assets/sfx_dash.r1.mp3",
+      "mime": "audio/mpeg",
+      "provider": "ElevenLabs",
+      "custom": false
+    }
+  },
+  "versions": [
+    {
+      "n": 1,
+      "createdAt": 1793724567622,
+      "note": "Versión inicial",
+      "file": "versions/v1/game.js"
+    }
+  ],
+  "currentVersion": 1,
+  "chat": [
+    {
+      "who": "forge",
+      "text": "Ring Relámpago",
+      "tags": [
+        "sys:ready"
+      ],
+      "at": 1793724567644
+    }
+  ],
+  "repairs": 0,
+  "jobUsage": {
+    "startedAt": 1793724139848,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 3,
+        "inputTokens": 21587,
+        "outputTokens": 36897,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.7401500000000001,
+        "ms": 323042
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 9,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 95.1,
+        "models": 0,
+        "estimatedUsd": 0.08,
+        "ms": 133946
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 26,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 39,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 3.3081000000000005,
+        "ms": 1058849
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "director",
+        "calls": 1,
+        "inputTokens": 5265,
+        "outputTokens": 5075,
+        "estimatedUsd": 0.06128,
+        "ms": 33070,
+        "model": "claude-sonnet-5-5",
+        "at": 1793724174673
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:music_ring",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 13288,
+        "audioSec": 75,
+        "credits": 0,
+        "at": 1793724187998
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2959,
+        "outputTokens": 1694,
+        "estimatedUsd": 0.022858,
+        "ms": 14004,
+        "model": "claude-sonnet-5-5",
+        "at": 1793724188863
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_hit",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 18265,
+        "audioSec": 0.6,
+        "credits": 0,
+        "at": 1793724192977
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_dodge",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 23102,
+        "audioSec": 0.5,
+        "credits": 0,
+        "at": 1793724197816
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_bell",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 13963,
+        "audioSec": 2,
+        "credits": 0,
+        "at": 1793724201976
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_win",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14240,
+        "audioSec": 2.5,
+        "credits": 0,
+        "at": 1793724207231
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_lose",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14409,
+        "audioSec": 2.5,
+        "credits": 0,
+        "at": 1793724212238
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14763,
+        "audioSec": 10,
+        "credits": 0,
+        "at": 1793724216751
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 41938,
+        "images": 1,
+        "at": 1793724216818
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_jump",
+        "calls": 1,
+        "estimatedUsd": 0.04,
+        "ms": 12666,
+        "audioSec": 1,
+        "at": 1793724219908
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_dash",
+        "calls": 1,
+        "estimatedUsd": 0.04,
+        "ms": 9250,
+        "audioSec": 1,
+        "at": 1793724221500
+      },
+      {
+        "provider": "openai",
+        "label": "img:lino",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30922,
+        "images": 1,
+        "at": 1793724247993
+      },
+      {
+        "provider": "openai",
+        "label": "img:pua",
+        "calls": 1,
+        "estimatedUsd": 0.159,
+        "ms": 53896,
+        "images": 2,
+        "at": 1793724270967
+      },
+      {
+        "provider": "openai",
+        "label": "img:muro",
+        "calls": 1,
+        "estimatedUsd": 0.159,
+        "ms": 59295,
+        "images": 2,
+        "at": 1793724276414
+      },
+      {
+        "provider": "openai",
+        "label": "img:chispa",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 30229,
+        "images": 1,
+        "at": 1793724278329
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_canvas",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 18381,
+        "images": 1,
+        "at": 1793724289559
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_ropes",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 15889,
+        "images": 1,
+        "at": 1793724292439
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_bell",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 29869,
+        "images": 2,
+        "at": 1793724308385
+      },
+      {
+        "provider": "openai",
+        "label": "img:heart_icon",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 26975,
+        "images": 2,
+        "at": 1793724319714
+      },
+      {
+        "provider": "openai",
+        "label": "img:gym_bg",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 31686,
+        "images": 1,
+        "at": 1793724321420
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30062,
+        "images": 1,
+        "at": 1793724351753
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_dash",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 54712,
+        "images": 2,
+        "at": 1793724376636
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59019,
+        "images": 2,
+        "at": 1793724380834
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 61984,
+        "images": 2,
+        "at": 1793724414099
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 52087,
+        "images": 2,
+        "at": 1793724429135
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 54802,
+        "images": 2,
+        "at": 1793724436016
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 26694,
+        "images": 1,
+        "at": 1793724456071
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:create",
+        "calls": 1,
+        "inputTokens": 13363,
+        "outputTokens": 30128,
+        "estimatedUsd": 0.656012,
+        "ms": 275968,
+        "model": "claude-opus-5-5",
+        "at": 1793724464844
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_walk",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 31308,
+        "images": 1,
+        "at": 1793724467615
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59769,
+        "images": 2,
+        "at": 1793724474244
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28173,
+        "images": 1,
+        "at": 1793724484536
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28535,
+        "images": 1,
+        "at": 1793724496409
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 25958,
+        "images": 1,
+        "at": 1793724500438
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_jump",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 56549,
+        "images": 2,
+        "at": 1793724541512
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59240,
+        "images": 2,
+        "at": 1793724560120
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 65085,
+        "images": 2,
+        "at": 1793724561911
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:ring_bell_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 25792,
+        "images": 1,
+        "at": 1793724567573
+      }
+    ],
+    "totals": {
+      "calls": 38,
+      "inputTokens": 21587,
+      "outputTokens": 36897,
+      "images": 39,
+      "audioSec": 95.1,
+      "models": 0,
+      "estimatedUsd": 4.12825,
+      "ms": 1515837
+    },
+    "finishedAt": 1793724567629
+  },
+  "usage": {
+    "startedAt": 1793724139848,
+    "byProvider": {
+      "anthropic": {
+        "provider": "anthropic",
+        "calls": 3,
+        "inputTokens": 21587,
+        "outputTokens": 36897,
+        "images": 0,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 0.7401500000000001,
+        "ms": 323042
+      },
+      "elevenlabs": {
+        "provider": "elevenlabs",
+        "calls": 9,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 0,
+        "audioSec": 95.1,
+        "models": 0,
+        "estimatedUsd": 0.08,
+        "ms": 133946
+      },
+      "openai": {
+        "provider": "openai",
+        "calls": 26,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "images": 39,
+        "audioSec": 0,
+        "models": 0,
+        "estimatedUsd": 3.3081000000000005,
+        "ms": 1058849
+      }
+    },
+    "events": [
+      {
+        "provider": "anthropic",
+        "label": "director",
+        "calls": 1,
+        "inputTokens": 5265,
+        "outputTokens": 5075,
+        "estimatedUsd": 0.06128,
+        "ms": 33070,
+        "model": "claude-sonnet-5-5",
+        "at": 1793724174675
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:music_ring",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 13288,
+        "audioSec": 75,
+        "credits": 0,
+        "at": 1793724187998
+      },
+      {
+        "provider": "anthropic",
+        "label": "cinematic",
+        "calls": 1,
+        "inputTokens": 2959,
+        "outputTokens": 1694,
+        "estimatedUsd": 0.022858,
+        "ms": 14004,
+        "model": "claude-sonnet-5-5",
+        "at": 1793724188865
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_hit",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 18265,
+        "audioSec": 0.6,
+        "credits": 0,
+        "at": 1793724192978
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_dodge",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 23102,
+        "audioSec": 0.5,
+        "credits": 0,
+        "at": 1793724197817
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_bell",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 13963,
+        "audioSec": 2,
+        "credits": 0,
+        "at": 1793724201976
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_win",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14240,
+        "audioSec": 2.5,
+        "credits": 0,
+        "at": 1793724207232
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_lose",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14409,
+        "audioSec": 2.5,
+        "credits": 0,
+        "at": 1793724212239
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:narration",
+        "calls": 1,
+        "estimatedUsd": 0,
+        "ms": 14763,
+        "audioSec": 10,
+        "credits": 0,
+        "at": 1793724216752
+      },
+      {
+        "provider": "openai",
+        "label": "img:keyart",
+        "calls": 1,
+        "estimatedUsd": 0.053,
+        "ms": 41938,
+        "images": 1,
+        "at": 1793724216818
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_jump",
+        "calls": 1,
+        "estimatedUsd": 0.04,
+        "ms": 12666,
+        "audioSec": 1,
+        "at": 1793724219909
+      },
+      {
+        "provider": "elevenlabs",
+        "label": "audio:sfx_dash",
+        "calls": 1,
+        "estimatedUsd": 0.04,
+        "ms": 9250,
+        "audioSec": 1,
+        "at": 1793724221501
+      },
+      {
+        "provider": "openai",
+        "label": "img:lino",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30922,
+        "images": 1,
+        "at": 1793724247993
+      },
+      {
+        "provider": "openai",
+        "label": "img:pua",
+        "calls": 1,
+        "estimatedUsd": 0.159,
+        "ms": 53896,
+        "images": 2,
+        "at": 1793724270968
+      },
+      {
+        "provider": "openai",
+        "label": "img:muro",
+        "calls": 1,
+        "estimatedUsd": 0.159,
+        "ms": 59295,
+        "images": 2,
+        "at": 1793724276414
+      },
+      {
+        "provider": "openai",
+        "label": "img:chispa",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 30229,
+        "images": 1,
+        "at": 1793724278329
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_canvas",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 18381,
+        "images": 1,
+        "at": 1793724289560
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_ropes",
+        "calls": 1,
+        "estimatedUsd": 0.0195,
+        "ms": 15889,
+        "images": 1,
+        "at": 1793724292440
+      },
+      {
+        "provider": "openai",
+        "label": "img:ring_bell",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 29869,
+        "images": 2,
+        "at": 1793724308386
+      },
+      {
+        "provider": "openai",
+        "label": "img:heart_icon",
+        "calls": 1,
+        "estimatedUsd": 0.026,
+        "ms": 26975,
+        "images": 2,
+        "at": 1793724319715
+      },
+      {
+        "provider": "openai",
+        "label": "img:gym_bg",
+        "calls": 1,
+        "estimatedUsd": 0.0795,
+        "ms": 31686,
+        "images": 1,
+        "at": 1793724321421
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 30062,
+        "images": 1,
+        "at": 1793724351753
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_dash",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 54712,
+        "images": 2,
+        "at": 1793724376637
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59019,
+        "images": 2,
+        "at": 1793724380836
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:lino_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 61984,
+        "images": 2,
+        "at": 1793724414100
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 52087,
+        "images": 2,
+        "at": 1793724429136
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 54802,
+        "images": 2,
+        "at": 1793724436017
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 26694,
+        "images": 1,
+        "at": 1793724456072
+      },
+      {
+        "provider": "anthropic",
+        "label": "code:create",
+        "calls": 1,
+        "inputTokens": 13363,
+        "outputTokens": 30128,
+        "estimatedUsd": 0.656012,
+        "ms": 275968,
+        "model": "claude-opus-5-5",
+        "at": 1793724464868
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_walk",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 31308,
+        "images": 1,
+        "at": 1793724467616
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:pua_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59769,
+        "images": 2,
+        "at": 1793724474245
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28173,
+        "images": 1,
+        "at": 1793724484537
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:muro_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 28535,
+        "images": 1,
+        "at": 1793724496410
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 25958,
+        "images": 1,
+        "at": 1793724500439
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_jump",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 56549,
+        "images": 2,
+        "at": 1793724541513
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_hurt",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 59240,
+        "images": 2,
+        "at": 1793724560121
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:chispa_sheet_attack",
+        "calls": 1,
+        "estimatedUsd": 0.20670000000000002,
+        "ms": 65085,
+        "images": 2,
+        "at": 1793724561912
+      },
+      {
+        "provider": "openai",
+        "label": "sheet:ring_bell_sheet_idle",
+        "calls": 1,
+        "estimatedUsd": 0.10335000000000001,
+        "ms": 25792,
+        "images": 1,
+        "at": 1793724567574
+      }
+    ],
+    "totals": {
+      "calls": 38,
+      "inputTokens": 21587,
+      "outputTokens": 36897,
+      "images": 39,
+      "audioSec": 95.1,
+      "models": 0,
+      "estimatedUsd": 4.12825,
+      "ms": 1515837
+    },
+    "finishedAt": 1793724567629
+  },
+  "job": {
+    "kind": "create",
+    "startedAt": 1793724139848,
+    "stages": [
+      {
+        "id": "director",
+        "label": "Director de juego",
+        "status": "ok",
+        "detail": "Ring Relámpago"
+      },
+      {
+        "id": "art",
+        "label": "Artista de imágenes",
+        "status": "ok",
+        "detail": "10/10"
+      },
+      {
+        "id": "anim",
+        "label": "Animador 2D",
+        "status": "ok",
+        "detail": "16/16"
+      },
+      {
+        "id": "audio",
+        "label": "Músico y sonidista",
+        "status": "ok",
+        "detail": "9/9"
+      },
+      {
+        "id": "code",
+        "label": "Programador",
+        "status": "ok",
+        "detail": "622 líneas"
+      },
+      {
+        "id": "qa",
+        "label": "Control de calidad",
+        "status": "ok",
+        "detail": "Todo entregado"
+      }
+    ],
+    "finishedAt": 1793724567629
+  },
+  "design": {
+    "title": "Ring Relámpago",
+    "tagline": "Tres rivales, tres vidas y un solo golpe de suerte.",
+    "genre": "Boxeo arcade 2D de una sola pantalla",
+    "dimension": "2d",
+    "engine": "phaser",
+    "camera": "side view facing right",
+    "artStyle": "Bold 2D cartoon illustration with thick dark outlines, flat cel shading and one soft highlight band per shape. Saturated, slightly retro arcade colors, with warm spotlight glow over a gritty gym. Chunky readable silhouettes, simple expressive faces, subtle paper-grain texture. Energetic, humorous, punchy mood. Every sprite and prop is drawn in the same flat side profile.",
+    "palette": [
+      "#d62839",
+      "#f5f1e6",
+      "#2e8b3d",
+      "#2a5db0",
+      "#f7c820",
+      "#1b1b2f",
+      "#8a5a3b"
+    ],
+    "setting": "Un gimnasio de barrio de noche, visto de perfil. El ring ocupa toda la pantalla: lona quieta, cuerdas y una campana que se balancea sola. Lino está a la izquierda y el rival a la derecha, mirándose.",
+    "hero": {
+      "name": "Lino",
+      "description": "Boxeador joven con camiseta blanca, pantalón corto oscuro y guantes rojos. Side view facing right. Plantado a la izquierda del ring. Animaciones: idle, attack, dash, hurt."
+    },
+    "mechanics": [
+      "Pantalla única sin scroll: Lino fijo a la izquierda y el rival fijo a la derecha, volteado por código para mirar a Lino. Nadie se desplaza por el ring.",
+      "J lanza el attack de Lino y quita 1 vida al rival si este no está en hurt. Tras el golpe, el rival entra en hurt un instante.",
+      "El rival lanza su attack solo, cada 2 segundos. Si K está pulsado en el momento del golpe, Lino hace dash y no pierde vida (efecto de esquiva). Si no, pierde 1 vida y muestra hurt.",
+      "Cada rival tiene 3 vidas y Lino tiene 3 en total. Orden de combates: Púa, Muro, Chispa. Cuando uno llega a 0 entra el siguiente.",
+      "Cada rival avisa a su manera: Púa solo usa attack; Muro hace su walk (un paso en el sitio) un instante antes de pegar; Chispa hace un brinco en el sitio (jump) al pegar."
+    ],
+    "controls": [
+      {
+        "input": "J",
+        "action": "Golpear (attack)"
+      },
+      {
+        "input": "K (mantener)",
+        "action": "Esquivar con dash: anula el golpe del rival"
+      }
+    ],
+    "objective": "Derrotar a Púa, Muro y Chispa, uno por uno, sin quedarte sin vidas.",
+    "loseCondition": "Las 3 vidas de Lino llegan a 0.",
+    "levelOutline": "Un único ring con tres combates seguidos y una breve campana de inicio en cada uno. Combate 1, Púa (guantes verdes): ataca cada 2 s sin aviso, para aprender J y K. Combate 2, Muro (guantes azules): da un paso en el sitio (walk) unos 0.3 s antes de cada golpe, así que hay que anticipar el dash. Combate 3, Chispa (guantes amarillos): brinca en el sitio (jump) justo al pegar, así que hay que leer el salto. El rival tiene 3 vidas, y si está en hurt el golpe de J no cuenta. Tras vencer a un rival hay una pausa corta con efecto de victoria antes del siguiente. Al derrotar a Chispa, pantalla de victoria. La dificultad sube por el patrón de aviso, no por la velocidad.",
+    "tuning": [
+      {
+        "key": "enemyAttackInterval",
+        "label": "Intervalo de golpe rival (s)",
+        "min": 0.8,
+        "max": 5,
+        "value": 2
+      },
+      {
+        "key": "linoLives",
+        "label": "Vidas de Lino",
+        "min": 1,
+        "max": 9,
+        "value": 3
+      },
+      {
+        "key": "rivalLives",
+        "label": "Vidas del rival",
+        "min": 1,
+        "max": 9,
+        "value": 3
+      },
+      {
+        "key": "hurtDuration",
+        "label": "Duración de hurt (s)",
+        "min": 0.2,
+        "max": 1.2,
+        "value": 0.45
+      },
+      {
+        "key": "muroWalkLead",
+        "label": "Aviso de Muro antes de pegar (s)",
+        "min": 0.1,
+        "max": 0.8,
+        "value": 0.3
+      },
+      {
+        "key": "dashHoldWindow",
+        "label": "Ventana de esquiva (s)",
+        "min": 0.1,
+        "max": 0.6,
+        "value": 0.25
+      }
+    ],
+    "ui": {
+      "hud": [
+        {
+          "id": "lino_lives",
+          "label": "Lino",
+          "kind": "lives",
+          "shows": "Vidas restantes de Lino (3 corazones)"
+        },
+        {
+          "id": "rival_lives",
+          "label": "Vidas del rival",
+          "kind": "lives",
+          "shows": "Vidas restantes del rival actual (3)"
+        },
+        {
+          "id": "rival_name",
+          "label": "Rival",
+          "kind": "value",
+          "shows": "Nombre del rival actual: Púa, Muro o Chispa"
+        }
+      ],
+      "pauseMenu": [
+        {
+          "id": "resume",
+          "label": "Continuar",
+          "action": "resume"
+        },
+        {
+          "id": "settings",
+          "label": "Ajustes",
+          "action": "settings"
+        },
+        {
+          "id": "quit",
+          "label": "Salir",
+          "action": "quit"
+        }
+      ],
+      "settings": [
+        {
+          "key": "masterVolume",
+          "label": "Volumen general",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        },
+        {
+          "key": "musicVolume",
+          "label": "Volumen de música",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.6
+        },
+        {
+          "key": "sfxVolume",
+          "label": "Volumen de efectos",
+          "type": "slider",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "options": [],
+          "defaultValue": 0.8
+        }
+      ],
+      "gameOverActions": [
+        "Reintentar",
+        "Salir"
+      ],
+      "startActions": [
+        "Jugar",
+        "Ajustes"
+      ]
+    },
+    "cinematic": {
+      "style": "epica",
+      "lines": [
+        "Lino sueña con ser campeón del barrio.",
+        "Esta noche suena la campana: tres rivales le esperan.",
+        "Un golpe, una esquiva, y la gloria será suya."
+      ],
+      "direction": {
+        "approach": "tableau_cuts",
+        "rationale": "Ring Relámpago is a single-screen, flat side-view game with no scrolling, no 3D and no camera travel across a level. Tableau cuts fit that: each narration line gets one framed still of the same ring, built from the real gameplay assets with only small punch-in/push moves in a flat 2D plane. The 'epica' tone comes from spotlight glows, a bell hit and a hero silhouette reveal, not from orbiting or d",
+        "mood": "Epic but humorous arcade underdog: warm spotlight glow over a gritty night gym, a bell ringing, bold cartoon punch.",
+        "notes": "Use only the existing gameplay sprites and props (Lino, Púa, Muro, Chispa, ring canvas, ropes, bell, gym background), each with its own sheet; do not reuse one character's sheet for another. All characters face right in profile. Lino stays planted on the left and rivals on the right, with no walking across the stage. In shot 0 Lino plays idle alone. In shot 1 the bell uses its idle sway and the rivals appear as flat silhouettes or standing idle (Púa idle, Muro idle, Chispa idle), with no walk or",
+        "shots": [
+          {
+            "lineIndex": 0,
+            "durationSec": 4.5,
+            "staging": "Dark gym background with a single warm spotlight cone on the left of the ring. Lino stands in idle, in profile facing right, with white shirt and red gloves. Slow push-in from a wide ring shot to a medium shot of Lino, with the spotlight glow breathing softly. Dust motes drift in",
+            "camera": {
+              "from": [
+                480,
+                270,
+                0
+              ],
+              "to": [
+                300,
+                260,
+                0
+              ],
+              "lookAt": [
+                260,
+                250,
+                0
+              ],
+              "fov": 50,
+              "ease": "smooth"
+            },
+            "fx": [
+              "spotlight_cone_left",
+              "dust_motes_in_beam",
+              "vignette_dark",
+              "soft_glow_pulse"
+            ]
+          },
+          {
+            "lineIndex": 1,
+            "durationSec": 5,
+            "staging": "Cut to the bell prop at the top of the screen, swinging in its idle loop. Bell sfx plays and a ring flash goes off. Then pull back to the full ring, lights on: Lino idle on the left, Púa, Muro and Chispa lined up as idle sprites on the right, one after another popping in with a q",
+            "camera": {
+              "from": [
+                560,
+                120,
+                0
+              ],
+              "to": [
+                480,
+                270,
+                0
+              ],
+              "lookAt": [
+                480,
+                250,
+                0
+              ],
+              "fov": 50,
+              "ease": "easeOut"
+            },
+            "fx": [
+              "bell_sfx",
+              "bell_flash",
+              "stage_lights_on",
+              "rival_pop_in_green",
+              "rival_pop_in_blue",
+              "rival_pop_in_yellow"
+            ]
+          },
+          {
+            "lineIndex": 2,
+            "durationSec": 4.5,
+            "staging": "Tight two-shot of the ring center, flat profile. Lino plays attack toward the rival with a hit-spark and a quick hit-stop; the rival plays hurt. Then Lino dashes (dash pose with speed lines, in place) as a green glove swing passes, showing the dodge. End on a freeze-frame of Lino",
+            "camera": {
+              "from": [
+                430,
+                250,
+                0
+              ],
+              "to": [
+                480,
+                265,
+                0
+              ],
+              "lookAt": [
+                480,
+                250,
+                0
+              ],
+              "fov": 50,
+              "ease": "easeIn"
+            },
+            "fx": [
+              "hit_spark",
+              "hit_stop_80ms",
+              "dodge_speed_lines",
+              "dodge_sfx",
+              "gold_bloom_up",
+              "glove_raise_freeze"
+            ]
+          },
+          {
+            "lineIndex": -1,
+            "durationSec": 2.4,
+            "staging": "Bridge: quick zoom-out to the exact gameplay framing, full ring on a single screen, Lino left and Púa right, both idle. HUD slides in with Lino lives, rival lives and the name 'Púa'. Ring bell rings once and the title 'Ring Relámpago' flashes briefly before the fight starts.",
+            "camera": {
+              "from": [
+                480,
+                265,
+                0
+              ],
+              "to": [
+                480,
+                270,
+                0
+              ],
+              "lookAt": [
+                480,
+                270,
+                0
+              ],
+              "fov": 50,
+              "ease": "smooth"
+            },
+            "fx": [
+              "title_flash",
+              "hud_slide_in",
+              "bell_sfx",
+              "fade_to_gameplay"
+            ]
+          }
+        ]
+      }
+    },
+    "assets": {
+      "images": [
+        {
+          "id": "keyart",
+          "name": "Portada",
+          "role": "keyart",
+          "prompt": "Square promotional poster: young boxer Lino, white t-shirt, red gloves, side view facing right, large in foreground, fists raised. Boxing ring in a gym behind him, spotlights. Bold stylized lettering title 'RING RELÁMPAGO'.",
+          "transparent": false,
+          "aspect": "1:1",
+          "usage": "Portada de la biblioteca. Nunca se usa en el juego.",
+          "seamless": false
+        },
+        {
+          "id": "lino",
+          "name": "Lino",
+          "role": "hero",
+          "prompt": "Young boxer Lino, white t-shirt, dark shorts, red boxing gloves, athletic stance, side view facing right, full body, isolated character.",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Héroe plantado a la izquierda del ring.",
+          "seamless": false
+        },
+        {
+          "id": "pua",
+          "name": "Púa",
+          "role": "enemy",
+          "prompt": "Skinny lanky boxer, green boxing gloves, spiky hair, dark shorts, guard stance, side view facing right, full body, isolated character.",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Primer rival. Solo usa idle, attack y hurt.",
+          "seamless": false
+        },
+        {
+          "id": "muro",
+          "name": "Muro",
+          "role": "enemy",
+          "prompt": "Huge broad heavy boxer, blue boxing gloves, bald, big belly and shoulders, dark shorts, side view facing right, full body, isolated character.",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Segundo rival. Usa walk en el sitio antes de pegar.",
+          "seamless": false
+        },
+        {
+          "id": "chispa",
+          "name": "Chispa",
+          "role": "enemy",
+          "prompt": "Short energetic female boxer, yellow boxing gloves, ponytail, athletic shorts, bouncy stance, side view facing right, full body, isolated character.",
+          "transparent": true,
+          "aspect": "2:3",
+          "usage": "Tercer rival. Brinca en el sitio al pegar.",
+          "seamless": false
+        },
+        {
+          "id": "ring_canvas",
+          "name": "Lona del ring",
+          "role": "texture",
+          "prompt": "Seamless boxing ring canvas floor surface, worn off-white canvas with faint scuffs and subtle red stains, flat side-view strip, abstract repeating texture.",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Suelo del ring, quieto, en la parte baja de la pantalla.",
+          "seamless": true
+        },
+        {
+          "id": "ring_ropes",
+          "name": "Cuerdas del ring",
+          "role": "prop",
+          "prompt": "Boxing ring corner posts with three red, white and blue ropes stretched horizontally, side view facing right, isolated cutout prop.",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Cuerdas quietas delante del fondo, sin animación.",
+          "seamless": false
+        },
+        {
+          "id": "ring_bell",
+          "name": "Campana del ring",
+          "role": "prop",
+          "prompt": "Brass boxing ring bell with small wooden mallet, hanging on a bracket, side view facing right, isolated cutout prop.",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Campana que se balancea sola, bucle idle.",
+          "seamless": false
+        },
+        {
+          "id": "gym_bg",
+          "name": "Fondo del gimnasio",
+          "role": "background",
+          "prompt": "Dim boxing gym interior at night, brick wall, hanging punching bags, banners, lockers, warm lamps, empty, flat side view backdrop, no characters.",
+          "transparent": false,
+          "aspect": "16:9",
+          "usage": "Fondo estático detrás del ring.",
+          "seamless": false
+        },
+        {
+          "id": "heart_icon",
+          "name": "Corazón de vida",
+          "role": "ui",
+          "prompt": "Chunky red heart icon with dark outline and white highlight, flat front icon, isolated.",
+          "transparent": true,
+          "aspect": "1:1",
+          "usage": "Icono de vidas en el HUD de Lino y del rival.",
+          "seamless": false
+        },
+        {
+          "id": "lino_sheet_idle",
+          "name": "Lino · idle",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "lino",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "lino_sheet_attack",
+          "name": "Lino · attack",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"attack\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "lino",
+            "anims": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "lino_sheet_dash",
+          "name": "Lino · dash",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"dash\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "lino",
+            "anims": [
+              {
+                "name": "dash",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "lino_sheet_hurt",
+          "name": "Lino · hurt",
+          "role": "hero",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"hurt\" of lino, 2 frames on its own sheet. forge.phaser.animate() plays it from the lino sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "lino",
+            "anims": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pua_sheet_idle",
+          "name": "Púa · idle",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "pua",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pua_sheet_attack",
+          "name": "Púa · attack",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"attack\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "pua",
+            "anims": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pua_sheet_hurt",
+          "name": "Púa · hurt",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"hurt\" of pua, 2 frames on its own sheet. forge.phaser.animate() plays it from the pua sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "pua",
+            "anims": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "muro_sheet_idle",
+          "name": "Muro · idle",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "muro",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "muro_sheet_walk",
+          "name": "Muro · walk",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "3:2",
+          "usage": "Animation clip \"walk\" of muro, 6 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "muro",
+            "anims": [
+              {
+                "name": "walk",
+                "frames": 6
+              }
+            ]
+          }
+        },
+        {
+          "id": "muro_sheet_attack",
+          "name": "Muro · attack",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"attack\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "muro",
+            "anims": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "muro_sheet_hurt",
+          "name": "Muro · hurt",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"hurt\" of muro, 2 frames on its own sheet. forge.phaser.animate() plays it from the muro sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "muro",
+            "anims": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "chispa_sheet_idle",
+          "name": "Chispa · idle",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "chispa",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "chispa_sheet_jump",
+          "name": "Chispa · jump",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"jump\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "chispa",
+            "anims": [
+              {
+                "name": "jump",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "chispa_sheet_attack",
+          "name": "Chispa · attack",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"attack\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "chispa",
+            "anims": [
+              {
+                "name": "attack",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "chispa_sheet_hurt",
+          "name": "Chispa · hurt",
+          "role": "enemy",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"hurt\" of chispa, 2 frames on its own sheet. forge.phaser.animate() plays it from the chispa sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "chispa",
+            "anims": [
+              {
+                "name": "hurt",
+                "frames": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "ring_bell_sheet_idle",
+          "name": "Campana del ring · idle",
+          "role": "prop",
+          "prompt": "",
+          "transparent": true,
+          "aspect": "16:9",
+          "usage": "Animation clip \"idle\" of ring_bell, 2 frames on its own sheet. forge.phaser.animate() plays it from the ring_bell sprite. Never draw this image as a picture.",
+          "seamless": false,
+          "sheet": {
+            "of": "ring_bell",
+            "anims": [
+              {
+                "name": "idle",
+                "frames": 2
+              }
+            ]
+          }
+        }
+      ],
+      "audio": [
+        {
+          "id": "music_ring",
+          "name": "Música de ring",
+          "kind": "music",
+          "prompt": "Energetic retro arcade boxing gym music, driving drums, funky bass, brass stabs, upbeat and tense, seamless loop.",
+          "durationSec": 75,
+          "loop": true,
+          "usage": "Música de fondo durante todos los combates."
+        },
+        {
+          "id": "sfx_hit",
+          "name": "Golpe",
+          "kind": "sfx",
+          "prompt": "Short punchy boxing glove impact thud, cartoon style.",
+          "durationSec": 0.6,
+          "loop": false,
+          "usage": "Cuando un golpe conecta (a Lino o al rival)."
+        },
+        {
+          "id": "sfx_dodge",
+          "name": "Esquiva",
+          "kind": "sfx",
+          "prompt": "Quick whoosh of a fast dodge with a light swish.",
+          "durationSec": 0.5,
+          "loop": false,
+          "usage": "Cuando Lino esquiva con K y el golpe se anula."
+        },
+        {
+          "id": "sfx_bell",
+          "name": "Campana",
+          "kind": "sfx",
+          "prompt": "Boxing ring bell ding-ding, bright brass ring.",
+          "durationSec": 2,
+          "loop": false,
+          "usage": "Al empezar cada combate."
+        },
+        {
+          "id": "sfx_win",
+          "name": "Victoria",
+          "kind": "sfx",
+          "prompt": "Short triumphant arcade victory fanfare with crowd cheer.",
+          "durationSec": 2.5,
+          "loop": false,
+          "usage": "Al vencer a un rival o ganar el juego."
+        },
+        {
+          "id": "sfx_lose",
+          "name": "Derrota",
+          "kind": "sfx",
+          "prompt": "Short sad descending trombone defeat jingle with crowd groan.",
+          "durationSec": 2.5,
+          "loop": false,
+          "usage": "Cuando Lino pierde la última vida."
+        },
+        {
+          "id": "narration",
+          "name": "Narración",
+          "kind": "voice",
+          "prompt": "Lino sueña con ser campeón del barrio.\n\nEsta noche suena la campana: tres rivales le esperan.\n\nUn golpe, una esquiva, y la gloria será suya.",
+          "durationSec": 12,
+          "loop": false,
+          "usage": "Narración de la cinemática inicial."
+        },
+        {
+          "id": "sfx_jump",
+          "name": "Salto",
+          "kind": "sfx",
+          "prompt": "Short cartoon jump whoosh, bright and light, no voice",
+          "durationSec": 1,
+          "loop": false,
+          "usage": "Salto"
+        },
+        {
+          "id": "sfx_dash",
+          "name": "Acelerón",
+          "kind": "sfx",
+          "prompt": "Short rising whoosh of a sudden speed burst, cartoon, no voice",
+          "durationSec": 1,
+          "loop": false,
+          "usage": "Acelerón"
+        }
+      ],
+      "models": []
+    }
+  },
+  "playCopy": {
+    "es": {
+      "sourceKey": "Boxeo arcade 2D de una sola pantalla\nTres rivales, tres vidas y un solo golpe de suerte.\nDerrotar a Púa, Muro y Chispa, uno por uno, sin quedarte sin vidas.",
+      "genre": "Boxeo arcade 2D de una sola pantalla",
+      "tagline": "Tres rivales, tres vidas y un solo golpe de suerte.",
+      "objective": "Derrota a Púa, Muro y Chispa, uno por uno, sin quedarte sin vidas."
+    },
+    "en": {
+      "sourceKey": "Boxeo arcade 2D de una sola pantalla\nTres rivales, tres vidas y un solo golpe de suerte.\nDerrotar a Púa, Muro y Chispa, uno por uno, sin quedarte sin vidas.",
+      "genre": "Single-screen 2D arcade boxing",
+      "tagline": "Three rivals, three lives, and one lucky punch.",
+      "objective": "Defeat Púa, Muro, and Chispa one by one without running out of lives."
+    }
+  }
+}
