@@ -164,11 +164,16 @@ function repackSource(rec: AssetRecord): { file: string; rev: number } {
   if (!norm) return { file: rec.file!, rev: cur };
   const at = (n: number) => ({ file: rec.file!.replace(/\.r\d+\.([^.]+)$/, `.r${n}.$1`), rev: n });
   if (norm.from) return at(norm.from);
+  // A versioned entry without `from` was packed straight from the model's drawing: it is the original.
+  if (norm.v) return { file: rec.file!, rev: cur };
+  // First-version repacks recorded no source: the newest revision never repacked is the drawing.
   for (let n = cur - 1; n >= 1; n--) if (!sheet.norm?.[n]) return at(n);
   return { file: rec.file!, rev: cur };
 }
 
 const harmonizing = new Map<string, Promise<void>>();
+/** Cell for clips drawn before shared-scale packing (256 px cells): a larger cell would only add memory. */
+const LEGACY_REPACK_CELL = 320;
 
 /**
  * Repack every ready clip of a character that still has the old per-clip scale, at the still image's body size.
@@ -186,11 +191,23 @@ export function harmonizeClips(projectId: string, baseId?: string): Promise<void
 async function harmonizeNow(projectId: string, baseId?: string) {
   const project = await getProject(projectId);
   if (!project) return;
-  const stale = Object.values(project.assets).filter((a) => {
+  const clips = Object.values(project.assets).filter((a) => {
     const sheet = a.type === "image" ? (a.spec as ImageAssetSpec).sheet : undefined;
     if (!sheet || (baseId && sheet.of !== baseId) || a.status !== "ready" || !a.file || a.custom) return false;
-    if (a.id === sheetIdFor(sheet.of) || sheetAnimsFor(sheet, a.file).length !== 1) return false;
-    return sheet.norm?.[revOf(a.file)]?.v !== NORM_VERSION;
+    return a.id !== sheetIdFor(sheet.of) && sheetAnimsFor(sheet, a.file).length === 1;
+  });
+  // All clips of one character share the largest cell any of them has, so switching clips never rescales it.
+  // Old clips with no larger sibling stay at LEGACY_REPACK_CELL: their drawing has no more detail to keep.
+  const target = new Map<string, number>();
+  for (const a of clips) {
+    const sheet = (a.spec as ImageAssetSpec).sheet!;
+    const cell = sheet.norm?.[revOf(a.file!)]?.cell || LEGACY_REPACK_CELL;
+    target.set(sheet.of, Math.max(target.get(sheet.of) || LEGACY_REPACK_CELL, cell));
+  }
+  const stale = clips.filter((a) => {
+    const sheet = (a.spec as ImageAssetSpec).sheet!;
+    const norm = sheet.norm?.[revOf(a.file!)];
+    return norm?.v !== NORM_VERSION || norm.cell < target.get(sheet.of)!;
   });
   const refs = new Map<string, SheetRef | null>();
   for (const rec of stale) {
@@ -207,8 +224,8 @@ async function harmonizeNow(projectId: string, baseId?: string) {
         return readProjectFile(projectId, rec.file!);
       });
       const anims = sheetAnimsFor(sheet, src.file);
-      // The source grid is split from its own width; the output always uses the CLIP_CELL layout.
-      const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true });
+      // The source grid is split from its own width; the output uses the character's shared cell.
+      const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true, cell: target.get(sheet.of) });
       const done = await finish(projectId, rec, "png", fresh.data, "image/png", rec.provider || "Forge");
       if (done) {
         const spec = { ...(done.spec as ImageAssetSpec), sheet: { ...(done.spec as ImageAssetSpec).sheet!, anims } };

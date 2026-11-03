@@ -54,7 +54,9 @@ export default function createGame(forge, Phaser) {
   };
 }
 \`\`\`
-- Logical resolution is 1280×720 (scaled to fit). \`physics\`: "arcade" (default, recommended) or "matter". \`gravity\` is the world default (px/s²); for platformers set per‑body gravity from \`forge.tune\` instead.
+- Logical resolution is 1280×720 (scaled to fit). The runtime draws it at the screen's real resolution, so position everything in
+  1280×720 coordinates (constants, \`this.scale.width/height\`, \`pointer.worldX/worldY\`) and never read the canvas or GL buffer size
+  (\`game.canvas.width\`, \`renderer.width\`, \`drawingBuffer*\`, \`getContext\`) or read pixels back (\`snapshot\`, \`readPixels\`): such a game drops to a blurry 1280×720 canvas. \`physics\`: "arcade" (default, recommended) or "matter". \`gravity\` is the world default (px/s²); for platformers set per‑body gravity from \`forge.tune\` instead.
 - All images are preloaded as textures whose key is the asset id. Do NOT call this.load.* for assets. Do not use Phaser's sound system; use forge.audio.
 - Generated images are large single frames (~512–640 px, transparent PNG for sprites). ALWAYS size them with
   \`forge.phaser.fit(gameObject, targetHeightPx)\` (keeps aspect). For physics sprites call \`forge.phaser.body(sprite, {w:0.6, h:0.9})\` AFTER fit

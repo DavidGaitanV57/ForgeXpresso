@@ -30,11 +30,12 @@ export interface SheetLayout {
 /** Cell of the legacy combined sheets and of clips drawn before shared-scale normalization. */
 export const SHEET_CELL = 256;
 /**
- * Cell of clips normalized against their still image. At STAND_FILL the standing character is ~370 px,
- * about what a game shows at 720p, so a fullscreen 1080p view upscales it ~1.5x instead of ~2.5x.
- * The image model draws each cell at 512-768 px, so this keeps detail that a smaller cell would throw away.
+ * Cell of clips normalized against their still image. At STAND_FILL the standing character is ~550 px,
+ * close to the still image (640 px) and to what fullscreen 1080p shows (k = 1.5), so clips are not
+ * stretched. The image model draws a 2-frame clip at 768x1024 per cell and a 6-frame cycle at 512x512,
+ * so short clips keep all their detail and walk/run cycles are enlarged only ~1.2x.
  */
-export const CLIP_CELL = 512;
+export const CLIP_CELL = 768;
 /**
  * Standing height of the still image inside a clip cell. Every clip of a character uses this one body scale,
  * so a crouch is shorter and a lunge is wider instead of being blown up to fill its own cell.
