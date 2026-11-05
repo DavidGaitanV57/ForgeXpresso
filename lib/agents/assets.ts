@@ -4,7 +4,7 @@ import { availableImageProvider, editImageOpenAI, generateImage, openaiSize } fr
 import { isSafetyRejection } from "../providers/http";
 import * as eleven from "../providers/elevenlabs";
 import * as tripo from "../providers/tripo";
-import { CHROMA, measureStill, pickChroma, processSheet, repackClip, type Chroma, type SheetRef } from "../sheetproc";
+import { CHROMA, measureStill, pickChroma, processSheet, repackClip, type Chroma, type FacingMode, type SheetRef } from "../sheetproc";
 import { animsMentioned, clipSheetId, clipSpecFor, fluidCycles, isBackAnim, ownClipList, sheetAspect, sheetAnimsFor, sheetIdFor, NORM_VERSION, sheetLayout, sheetRows, SHEET_ANIMS, SHEET_ROLES, type SheetAnimName, type SheetAnimSpec, type SheetLayout } from "../sheets";
 import sharp from "sharp";
 import { getProject, patchAsset, readProjectFile, writeProjectFile } from "../store";
@@ -171,10 +171,14 @@ function repackSource(rec: AssetRecord): { file: string; rev: number } {
   return { file: rec.file!, rev: cur };
 }
 
-/** Clips whose every frame must face like the still: facing clips of a side or isometric character. */
-function mustFace(design: GameDesign, base: ImageAssetSpec, anims: SheetAnimSpec[]) {
+/**
+ * How a clip keeps one facing: side and isometric facing clips match the still; back clips of isometric and
+ * top-down characters (no back still to compare with) agree among their own frames.
+ */
+function mustFace(design: GameDesign, base: ImageAssetSpec, anims: SheetAnimSpec[]): FacingMode | false {
   const view = designView(design, base.prompt);
-  return (view === "side" || view === "isometric") && !anims.some((a) => isBackAnim(a.name));
+  if (anims.some((a) => isBackAnim(a.name))) return view === "isometric" || view === "top" ? "consensus" : false;
+  return view === "side" || view === "isometric" ? "still" : false;
 }
 
 const harmonizing = new Map<string, Promise<void>>();
@@ -231,7 +235,7 @@ async function harmonizeNow(projectId: string, baseId?: string) {
       });
       const anims = sheetAnimsFor(sheet, src.file);
       // The source grid is split from its own width; the output uses the character's shared cell.
-      const facing = !!project.design && mustFace(project.design, base.spec as ImageAssetSpec, anims);
+      const facing = project.design ? mustFace(project.design, base.spec as ImageAssetSpec, anims) : false;
       const fresh = await processSheet(png, anims, { chroma: "magenta", keyed: true, ref, exact: true, cell: target.get(sheet.of), facing });
       const done = await finish(projectId, rec, "png", fresh.data, "image/png", rec.provider || "Forge");
       if (done) {

@@ -344,7 +344,15 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
     if (far && /star|nebula|cloud|sky|space dust|abstract/i.test(far.prompt)) far.seamless = true;
   }
   const cineLines = (r.cinematic?.lines || []).map((l) => String(l || "").trim()).filter(Boolean).slice(0, 3);
-  const audio = (r.audio || []).slice(0, 8).map((a) => {
+  // Music and the narration are kept before the sound effects are trimmed: the director often lists the voice
+  // last, and a plain cap of 8 dropped it whenever it also wrote 8 effects.
+  const listed = r.audio || [];
+  const music = listed.find((a) => a.kind === "music");
+  const voice = listed.find((a) => a.kind === "voice");
+  const kept = [music, voice, ...listed.filter((a) => a.kind !== "music" && a.kind !== "voice")].filter(Boolean).slice(0, 10) as typeof listed;
+  // The cinematic is narrated: a design with story lines and no voice still gets one, spoken from those lines.
+  if (!voice && cineLines.length) kept.splice(music ? 1 : 0, 0, { id: "narration", name: "Narración", kind: "voice", prompt: "", durationSec: 20, loop: false, usage: "Cinematic narration" } as (typeof listed)[number]);
+  const audio = kept.map((a) => {
     const kind = a.kind;
     let prompt = String(a.prompt || "");
     if (kind === "voice") {
