@@ -11,10 +11,12 @@ body.debug-apis .keys-status{display:flex}
 .keys-status span.req:not(.ok){color:var(--rose);border-color:rgba(244,63,94,.4)}
 .keys-status span.req:not(.ok) i{background:var(--rose)}
 .projects{width:100%;min-width:0;display:flex;flex-direction:column;gap:8px;text-align:left}
-.proj-grid{display:flex;gap:8px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding:6px 2px 2px;scroll-behavior:auto}
-.proj-grid::-webkit-scrollbar{display:none}
+/* Rows of up to 4 games; past 3 rows the list scrolls inside its own box instead of stretching the page. */
+.proj-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;min-width:0;max-height:var(--proj-rows-h,474px);overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;padding:6px 4px 2px 2px}
+.proj-grid::-webkit-scrollbar{width:6px}.proj-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px}
+@media (max-width:640px){.proj-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .proj-grid.is-drag,.proj-grid.is-drag .pj{cursor:grabbing;user-select:none}
-.pj{position:relative;flex:0 0 168px;width:168px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer;transition:border-color .2s,transform .2s;animation:fadeUp .4s ease both;animation-delay:calc(var(--j,0) * 40ms)}
+.pj{position:relative;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer;transition:border-color .2s,transform .2s;animation:fadeUp .4s ease both;animation-delay:calc(var(--j,0) * 40ms)}
 .pj:hover{border-color:var(--line-2);transform:translateY(-2px)}
 .pj .th{aspect-ratio:16/9;border-radius:8px;background:var(--bg) center/cover no-repeat;display:grid;place-items:center;color:var(--dim);font-weight:800;font-size:11px;position:relative}
 .pj .zoom-ico{position:absolute;right:8px;bottom:8px;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(10,11,16,.72);color:#fff;display:grid;place-items:center;cursor:zoom-in;opacity:0;transition:opacity .15s}
