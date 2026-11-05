@@ -262,12 +262,43 @@ function sidesOf(px: Buffer, w: number, b: { x0: number; y0: number; x1: number;
 const sideDist = (a: number[], b: number[]) => a.reduce((s, x, i) => s + Math.abs(x - b[i]), 0);
 
 /** The frame's halves match the still's halves swapped: it was drawn facing the other way. */
-function facesAway(frame: Sides, still: Sides) {
-  const same = sideDist(frame.L, still.L) + sideDist(frame.R, still.R);
-  const flip = sideDist(frame.L, still.R) + sideDist(frame.R, still.L);
-  // Correct frames score from ~0.9 up (arms flung out, a dizzy wobble); a turned-around frame scores ~0.2-0.4.
-  return flip < same * 0.6;
+/** How much better `a` matches `b` mirrored than as drawn: below 1 leans mirrored. */
+function flipRatio(a: Sides, b: Sides) {
+  const same = sideDist(a.L, b.L) + sideDist(a.R, b.R);
+  const flip = sideDist(a.L, b.R) + sideDist(a.R, b.L);
+  return flip / Math.max(1e-9, same);
 }
+
+function facesAway(frame: Sides, still: Sides) {
+  // Correct frames score from ~0.9 up (arms flung out, a dizzy wobble); a turned-around frame scores ~0.2-0.4.
+  return flipRatio(frame, still) < 0.6;
+}
+
+/**
+ * Frames to mirror so the whole clip faces one way.
+ * "still": each frame against the approved still (facing clips). "consensus": back clips have no back still,
+ * so frames are split into the group that faces like the first frame and the group drawn the other way; the
+ * smaller group is mirrored, and a tie goes to the group that matches the still less.
+ */
+function framesToMirror(sides: (Sides | null)[], mode: FacingMode | undefined, still?: Sides): boolean[] {
+  const out = sides.map(() => false);
+  if (mode === "still" && still) return sides.map((s) => !!s && facesAway(s, still));
+  if (mode !== "consensus") return out;
+  const idx = sides.map((s, i) => (s ? i : -1)).filter((i) => i >= 0);
+  if (idx.length < 2) return out;
+  const first = sides[idx[0]]!;
+  const other = idx.filter((i) => i !== idx[0] && flipRatio(sides[i]!, first) < 0.6);
+  const same = idx.filter((i) => !other.includes(i));
+  let wrong = same.length > other.length ? other : other.length > same.length ? same : null;
+  if (!wrong && still) {
+    const lean = (g: number[]) => g.reduce((t, i) => t + flipRatio(sides[i]!, still), 0) / g.length;
+    wrong = lean(same) < lean(other) ? same : other;
+  }
+  for (const i of wrong || []) out[i] = true;
+  return out;
+}
+
+export type FacingMode = "still" | "consensus";
 
 export async function measureStill(buf: Buffer): Promise<SheetRef | null> {
   const { data, w, h } = await toRaw(buf);
@@ -381,7 +412,7 @@ export async function processSheet(
   anims: SheetAnimSpec[],
   /** `exact`: the input is already a strict grid (a stored clip being repacked), so cells are split evenly. */
   /** `facing`: every frame must face like the still (side and isometric facing clips); frames drawn the other way are mirrored. */
-  o: { chroma: Chroma; keyed?: boolean; ref?: SheetRef | null; cell?: number; exact?: boolean; facing?: boolean },
+  o: { chroma: Chroma; keyed?: boolean; ref?: SheetRef | null; cell?: number; exact?: boolean; facing?: FacingMode | false },
 ): Promise<ProcessedSheet> {
   const layout = sheetLayout(anims, o.cell || (o.ref ? CLIP_CELL : undefined));
   const grid = sheetRows(layout);
@@ -428,6 +459,8 @@ export async function processSheet(
 
   for (const r of rects) cleanRect(px, w, r);
   const boxes = rects.map((r) => alphaBox(px, w, r.x0, r.y0, r.x1, r.y1));
+  // The image model sometimes turns part of a cycle around; those frames are mirrored back below.
+  const flipFrame = o.facing ? framesToMirror(boxes.map((b) => (b ? sidesOf(px, w, b) : null)), o.facing, o.ref?.sides) : boxes.map(() => false);
   const cell = layout.cell;
   const pad = cellPad(cell);
   const room = cell - pad * 2;
@@ -471,8 +504,7 @@ export async function processSheet(
     const s = refArea ? Math.min(Math.max(own, scale * 0.7), scale * 1.45, room / bw, room / bh) : scale;
     const nw = Math.max(1, Math.min(room, Math.round(bw * s)));
     const nh = Math.max(1, Math.min(room, Math.round(bh * s)));
-    // The image model sometimes turns half a cycle around ("the other leg" read as "mirror the character").
-    const mirror = !!(o.facing && o.ref?.sides && facesAway(sidesOf(px, w, b), o.ref.sides));
+    const mirror = flipFrame[k];
     if (mirror) mirrored++;
     const bodyX = (bodyCenterX(px, w, b) - b.x0) * s;
     const cx = mirror ? nw - bodyX : bodyX;

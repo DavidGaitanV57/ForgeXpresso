@@ -58,7 +58,7 @@ export const STAND_FILL = 0.72;
 /** Transparent gutter on every side of a cell, so texture filtering never pulls a neighbour frame's pixels in. */
 export const CELL_GUTTER = 0.035;
 /** Bump when clip packing changes: clips packed by an older version are repacked from their original drawing. */
-export const NORM_VERSION = 3;
+export const NORM_VERSION = 4;
 /** Gutter in pixels for a cell size; the runtime puts the feet of the physics body on `cell - cellPad(cell)`. */
 export const cellPad = (cell: number) => Math.max(4, Math.round(cell * CELL_GUTTER));
 export const SHEET_COLS = 4;
