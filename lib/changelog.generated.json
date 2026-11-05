@@ -1,7 +1,13 @@
 {
-  "sha": "65a1c3265f1e1dd8faea87190dfe5832f9b3ebe5",
-  "builtAt": "2026-11-05T23:01:15.675Z",
+  "sha": "97290bd8a28f3d775e2cffd27b4a49db38f929d0",
+  "builtAt": "2026-11-05T23:05:01.338Z",
   "entries": [
+    {
+      "sha": "97290bd8a28f3d775e2cffd27b4a49db38f929d0",
+      "date": "2026-11-05T18:01:15-05:00",
+      "title": "Studio UI: muted volume at 0, real changes in What's new, one-line asset chips, games in rows",
+      "body": "- Muting shows the volume slider at 0 and unmuting restores the last level. - The changelog skips merge commits and deepens shallow host clones, so a deploy lists the real changes. - Asset category chips stay on one compact line with a visible scrollbar and keep the selected one in view. - Your games shows every game in rows of 4 inside a box three rows tall that scrolls."
+    },
     {
       "sha": "65a1c3265f1e1dd8faea87190dfe5832f9b3ebe5",
       "date": "2026-11-05T17:41:50-05:00",
