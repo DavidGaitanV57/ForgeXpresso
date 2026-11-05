@@ -581,6 +581,23 @@ export async function generateAudioAsset(projectId: string, rec: AssetRecord, de
   }
 }
 
+const CHARACTER_MODEL = /\b(hero|player|playable|protagonist|enemy|enemies|foe|boss|npc|villager|guard|golem|monster|creature|character)\b/i;
+const OBJECT_MODEL = /\b(collectible|pickup|coin|crystal|gem|shard|goal|gate|door|altar|beacon|chest|key|prop|tex|texture|bg|background|platform|rock|tree|building)\b/i;
+const MAX_RIGGED_MODELS = 3;
+
+/**
+ * Models that walk around (hero first, then enemies/NPCs) get a Tripo skeleton with clips.
+ * Capped so a big cast doesn't multiply rig cost; objects and scenery stay static.
+ */
+export function riggedModelIds(design: GameDesign): string[] {
+  const models = design.assets.models || [];
+  const words = (m: ModelAssetSpec) => `${m.id.replace(/_/g, " ")} ${m.name} ${m.usage}`;
+  const isChar = (m: ModelAssetSpec) => CHARACTER_MODEL.test(words(m)) && !OBJECT_MODEL.test(m.id.replace(/_/g, " "));
+  const isHero = (m: ModelAssetSpec) => /\b(hero|player|playable|protagonist)\b/i.test(words(m));
+  const chars = models.filter(isChar);
+  return [...chars.filter(isHero), ...chars.filter((m) => !isHero(m))].slice(0, MAX_RIGGED_MODELS).map((m) => m.id);
+}
+
 export async function generateModelAsset(projectId: string, rec: AssetRecord, design: GameDesign): Promise<AssetUsage | null> {
   const spec = rec.spec as ModelAssetSpec;
   if (!config.tripo.key()) {
@@ -591,8 +608,27 @@ export async function generateModelAsset(projectId: string, rec: AssetRecord, de
   try {
     // Text→3D is the primary path for new 3D/2.5D mesh entities (no 2D intermediary).
     const result = await tripo.textToModel(`${spec.prompt}. Art style: ${design.artStyle.slice(0, 280)}`);
-    await finish(projectId, rec, "glb", result.data, "model/gltf-binary", "Tripo");
-    return { provider: "tripo", label: `model:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, models: 1 };
+    let data = result.data;
+    let usd = result.estimatedUsd;
+    let ms = result.ms;
+    // Characters that move get a skeleton and their clips now, so the game never ships a stiff statue.
+    if (riggedModelIds(design).includes(rec.id)) {
+      try {
+        const anim = await tripo.animateExistingGlb(data, {
+          onProgress: (label, p) => console.log(`[forge] animate ${rec.id} ${label} ${p}%`),
+        });
+        data = anim.data;
+        usd += anim.estimatedUsd;
+        ms += anim.ms;
+        console.log(`[forge] animate ${rec.id} rig=${anim.rigType} clips=${anim.clips.join(",")}`);
+      } catch (e) {
+        // Not riggable (or Tripo refused): keep the static mesh, the runtime puppets it.
+        console.warn(`[forge] animate ${rec.id} skipped`, e instanceof Error ? e.message : e);
+      }
+    }
+    await finish(projectId, rec, "glb", data, "model/gltf-binary", "Tripo");
+    await patchAsset(projectId, rec.id, { clips: glbClipNames(data) });
+    return { provider: "tripo", label: `model:${rec.id}`, estimatedUsd: usd, ms, models: 1 };
   } catch (e) {
     await fail(projectId, rec, e);
     return null;
@@ -600,7 +636,7 @@ export async function generateModelAsset(projectId: string, rec: AssetRecord, de
 }
 
 /**
- * Auto-rig + retarget an existing ready GLB (Tripo). Opt-in only — not called by default generate.
+ * Auto-rig + retarget an existing ready GLB (Tripo), when chat asks to animate a static 3D character.
  * Replaces the asset file with a skinned GLB that has baked clips (idle/walk/run/…).
  */
 export async function animateModelAsset(
@@ -608,27 +644,43 @@ export async function animateModelAsset(
   rec: AssetRecord,
   opts: { rigType?: string; animations?: string[] } = {},
 ): Promise<AssetUsage | null> {
-  if (!config.tripo.key()) {
-    await fail(projectId, rec, "Sin clave de Tripo: no se puede auto-rig.", "skipped");
-    return null;
-  }
-  if (rec.type !== "model" || !rec.file || rec.status !== "ready") {
-    await fail(projectId, rec, "Modelo no listo para animar.");
+  // Never break a working model over a rig that can't run: leave it as it is.
+  if (!config.tripo.key() || rec.type !== "model" || !rec.file || rec.status !== "ready") return null;
+
+  const glb = await readProjectFile(projectId, rec.file);
+  const have = glbClipNames(glb);
+  // Already skinned (rigged at creation or by hand): nothing to pay for.
+  if (have.length) {
+    await patchAsset(projectId, rec.id, { clips: have });
     return null;
   }
   await patchAsset(projectId, rec.id, { status: "generating", error: undefined });
   try {
-    const { readProjectFile } = await import("../store");
-    const glb = await readProjectFile(projectId, rec.file);
     const result = await tripo.animateExistingGlb(glb, {
       ...opts,
       onProgress: (label, p) => console.log(`[forge] animate ${rec.id} ${label} ${p}%`),
     });
     await finish(projectId, rec, "glb", result.data, "model/gltf-binary", "Tripo");
+    await patchAsset(projectId, rec.id, { clips: glbClipNames(result.data) });
     return { provider: "tripo", label: `anim:${rec.id}`, estimatedUsd: result.estimatedUsd, ms: result.ms, models: 1 };
   } catch (e) {
-    await fail(projectId, rec, e);
+    // The static mesh is still on disk and still plays: keep it usable and say why it has no skeleton.
+    const msg = e instanceof Error ? e.message : String(e);
+    await patchAsset(projectId, rec.id, { status: "ready", error: `Sin esqueleto: ${msg}`.slice(0, 300), clips: [] });
     return null;
+  }
+}
+
+/** Skeletal clip names baked into a GLB ([] when it has no skin or no animations). */
+export function glbClipNames(glb: Buffer): string[] {
+  try {
+    if (glb.readUInt32LE(0) !== 0x46546c67) return [];
+    const n = glb.readUInt32LE(12);
+    const json = JSON.parse(glb.subarray(20, 20 + n).toString("utf8")) as { skins?: unknown[]; animations?: { name?: string }[] };
+    if (!json.skins?.length) return [];
+    return (json.animations || []).map((a, i) => a.name || `clip_${i}`);
+  } catch {
+    return [];
   }
 }
 
@@ -637,4 +689,17 @@ export function generateAsset(projectId: string, rec: AssetRecord, design: GameD
   if (rec.type === "image") return generateImageAsset(projectId, rec, design, provider);
   if (rec.type === "audio") return generateAudioAsset(projectId, rec, design);
   return generateModelAsset(projectId, rec, design);
+}
+
+/** Records which 3D models already carry a skeleton, for models made before clips were tracked (reads only the GLB header). */
+export async function noteModelClips(projectId: string) {
+  const p = await getProject(projectId);
+  for (const a of Object.values(p?.assets || {})) {
+    if (a.type !== "model" || a.status !== "ready" || !a.file || a.clips) continue;
+    try {
+      await patchAsset(projectId, a.id, { clips: glbClipNames(await readProjectFile(projectId, a.file)) });
+    } catch {
+      /* unreadable file: leave it unknown */
+    }
+  }
 }

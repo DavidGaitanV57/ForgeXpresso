@@ -295,8 +295,11 @@ function normalize(r: Raw, dimension: Dimension, models3d: boolean, idea = ""): 
       seamless,
     };
   });
-  if (!images.some((i) => i.role === "hero")) {
-    const standIn = images.find((i) => i.role !== "keyart");
+  // A missing hero sprite gets a stand-in only when the hero really is a sprite. In mesh games the
+  // hero is a model, and promoting a texture or background here turned scenery into a Tripo "hero".
+  const meshCast = models3d && dimension !== "2d" && (dimension === "3d" || wantsMeshCharacters(idea, dimension));
+  if (!meshCast && !images.some((i) => i.role === "hero")) {
+    const standIn = images.find((i) => ["npc", "enemy", "prop", "collectible", "goal", "hazard"].includes(i.role));
     if (standIn) standIn.role = "hero";
   }
   if (!images.some((i) => i.role === "keyart")) {

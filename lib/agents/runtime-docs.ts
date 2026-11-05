@@ -118,6 +118,7 @@ export default async function createGame(forge, ctx) {
   bloom post‑processing (tune with \`forge.three.bloom(strength, radius, threshold)\`; 0 disables). \`camera\` is a PerspectiveCamera(55°).
   You must add your own lights: \`forge.three.lights({sun:"#fff2dd", sky:"#bcd4ff", ground:"#40302a", intensity:1, shadowSize:40})\` returns {sun, hemi};
   move \`sun.position\`/\`sun.target\` with the player for large levels.
+  Exposure is already balanced at intensity 1: keep it between 0.8 and 1 (golden hour, storms and night are done with colors, not more intensity). Bloom is for emissive things (crystals, runes, beacons): keep strength ≤ 0.4 and threshold ≥ 1 so lit ground, stone and skin never glow. Extra PointLights stay small (intensity ≤ 20, with a distance) except short flashes.
 - \`world\` is a RAPIER.World with gravity {x:0,y:-9.81,z:0} (affects dynamic bodies only; assign \`world.gravity = {x,y,z}\` to change it). The runtime calls \`world.step()\` after your update and syncs linked meshes.
 - Units: meters. A character is ~1.6–1.8 m tall.
 - Textures: \`forge.three.texture(imageId, {repeat:[x,y]})\` (sRGB, mipmapped, wrap repeat). \`forge.three.material(imageId|null, {color, repeat, roughness, metalness, emissive, emissiveIntensity})\` → MeshStandardMaterial.
@@ -142,6 +143,7 @@ export default async function createGame(forge, ctx) {
   - \`forge.physics.addDynamic(mesh, {shape:"box"|"ball"|"capsule", mass, restitution, friction, lockRotations})\` → {body, collider}.
   - \`forge.physics.character({radius, height, position:[x,y,z], stepHeight, maxSlopeDeg, snapToGround})\` → controller
     with \`.move(desiredDeltaVector3)\` (call once per frame with velocity*dt, including your own gravity), \`.grounded\`, \`.position\` (THREE.Vector3, read‑only copy), \`.teleport([x,y,z])\`, \`.body\`, \`.collider\`.
+    **All three are FEET positions** (the bottom of the capsule): \`position:[x, groundY, z]\` spawns standing on groundY, \`.position.y\` is the ground under the feet, and \`.teleport([x, groundY, z])\` lands there. Put the model at \`ctl.position\` as is (\`hero.position.copy(ctl.position)\`). Never add or subtract half the height or a "foot offset", and never calibrate it with a raycast: that sinks the character into the floor.
   - \`forge.physics.raycast(originVec3, dirVec3, maxDist)\` → {point, distance, collider} | null. \`forge.physics.remove(meshOrBody)\`.
   - For pickups, triggers, enemy contact and projectiles use simple distance / bounding‑box checks in update (no sensors).
 - 2.5D means: real 3D environment (depth, lighting, shadows, parallax depth layers with meshes) but gameplay constrained to a plane (lock z=0) with a side/three‑quarter camera.
