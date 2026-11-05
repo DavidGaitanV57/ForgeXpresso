@@ -562,7 +562,6 @@ async function loadProjects() {
     if (!box || !$("#projGrid")) return;
     box.hidden = !list.length;
     $("#projGrid").innerHTML = list
-      .slice(0, 12)
       .map((p, j) => {
         const fit = p.thumbFit === "contain" ? "contain" : "cover";
         const thumb = p.thumb
@@ -574,10 +573,21 @@ async function loadProjects() {
         <button type="button" class="del" data-del="${esc(p.id)}" title="${esc(t("intro.delete"))}" aria-label="${esc(t("intro.delete"))}">×</button></div>`;
       })
       .join("");
+    fitProjectRows();
   } catch (e) {
     console.warn("[forge] loadProjects", e);
     toast(esc((e as Error).message || t("intro.loadFail")), 4000);
   }
+}
+/** The games box shows exactly 3 rows; the rest scroll inside it (card height depends on the column width). */
+function fitProjectRows() {
+  const grid = document.querySelector<HTMLElement>("#projGrid");
+  const card = grid?.querySelector<HTMLElement>(".pj");
+  if (!grid || !card || !card.offsetHeight) return;
+  const cs = getComputedStyle(grid);
+  const gap = parseFloat(cs.rowGap) || 8;
+  const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  grid.style.setProperty("--proj-rows-h", `${Math.ceil(card.offsetHeight * 3 + gap * 2 + pad + 2)}px`);
 }
 function openZoom(url: string, title: string) {
   const img = $<HTMLImageElement>("#zoomImg");
@@ -1344,6 +1354,10 @@ function renderFlow() {
   f.innerHTML = `<div class="flowbox"><div class="ptabs" role="tablist">${tabs.map(([id, n]) => `<button type="button" role="tab" class="${S.ptab === id ? "on" : ""}" aria-selected="${S.ptab === id}" data-ptab="${id}">${n}</button>`).join("")}<i class="ptab-ink" style="--x:${tabs.findIndex((x) => x[0] === S.ptab)}"></i></div><div class="tabc ${tabAnim ? "anim" : ""}">${body}</div></div>`;
   tabAnim = false;
   $$(".fs-pad", f).forEach((pad) => Array.from(pad.children).forEach((c, j) => (c as HTMLElement).style.setProperty("--c", String(j))));
+  // Re-rendering resets the one-line chip row: bring the selected category back into view.
+  const chips = f.querySelector<HTMLElement>(".ctabs");
+  const on = chips?.querySelector<HTMLElement>("button.on");
+  if (chips && on) chips.scrollLeft = Math.max(0, on.offsetLeft - chips.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2);
 }
 function setOpen() {
   $$("#flow .fs").forEach((el) => {
@@ -1554,19 +1568,36 @@ function setSound(on: boolean) {
   }
   postGame({ type: "mute", on: !on });
   if (on && S.volume <= 0.01) setVolume(0.5);
+  else syncVolumeSliders();
 }
-function setVolume(v: number) {
-  S.volume = clamp(v, 0, 1);
+/** Muted shows the slider at 0; the remembered level comes back on unmute. */
+function syncVolumeSliders() {
+  const shown = S.sound ? S.volume : 0;
   for (const id of ["#volSlider", "#volSlider2"]) {
     const el = $<HTMLInputElement>(id);
-    if (el && Math.abs(Number(el.value) - S.volume) > 0.001) el.value = String(S.volume);
+    if (el && Math.abs(Number(el.value) - shown) > 0.001) el.value = String(shown);
   }
-  if (S.volume <= 0.01) {
+}
+function setVolume(v: number) {
+  const level = clamp(v, 0, 1);
+  if (level <= 0.01) {
+    // Dragging to 0 mutes but keeps the last audible level for the unmute button.
     if (S.sound) setSound(false);
-  } else if (!S.sound) {
-    S.sound = true;
-    for (const id of ["#sndBtn", "#sndBtn2"]) $(id)?.classList.add("on");
+    syncVolumeSliders();
+    return;
   }
+  S.volume = level;
+  if (!S.sound) {
+    S.sound = true;
+    for (const id of ["#sndBtn", "#sndBtn2"]) {
+      const b = $(id);
+      if (!b) continue;
+      b.classList.add("on");
+      const w = b.querySelector<SVGElement>("#sndWave, .sndWave2");
+      if (w) w.style.display = "";
+    }
+  }
+  syncVolumeSliders();
   postGame({ type: "mute", on: !S.sound });
   postGame({ type: "volume", master: S.volume });
 }
@@ -2921,6 +2952,7 @@ export function mount() {
   addEventListener("resize", () => {
     if (!$("#tour").hidden) showTourStep(true);
     railUpdate();
+    fitProjectRows();
   });
   addEventListener(
     "scroll",

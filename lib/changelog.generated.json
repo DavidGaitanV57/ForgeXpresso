@@ -1,7 +1,55 @@
 {
-  "sha": "f4837267239d9890095a8c18d96398157d8e8ed9",
-  "builtAt": "2026-11-03T18:10:55.522Z",
+  "sha": "65a1c3265f1e1dd8faea87190dfe5832f9b3ebe5",
+  "builtAt": "2026-11-05T23:01:15.675Z",
   "entries": [
+    {
+      "sha": "65a1c3265f1e1dd8faea87190dfe5832f9b3ebe5",
+      "date": "2026-11-05T17:41:50-05:00",
+      "title": "Rig 3D characters at creation, keep textures out of Tripo and tame 3D lighting",
+      "body": "- New 3D games rig the hero and up to two enemies/NPCs with Tripo (static mesh kept if it can't be rigged); chat \"animate\" now rigs a static 3D character without a new mesh, and models record their clips. - The director no longer promotes a texture or background to \"hero\" in mesh games, which sent scenery to Tripo. - Docs state that physics.character position/teleport are feet positions (games were sinking the hero by half its height). - lights() caps intensity at 1 and bloom keeps threshold >= "
+    },
+    {
+      "sha": "e84e9b7da75456f28afb04ab476c3ee7bd931f1c",
+      "date": "2026-11-05T17:03:44-05:00",
+      "title": "Stop 3D characters lying down in the air and add a hurt reaction",
+      "body": "Tripo's \"fall\" preset is a fall to the ground, but the animator played it whenever a character was airborne. Bipeds now get idle/walk/run/jump/hurt, the air always holds jump (old models ignore their fall clip), and animator.hurt() plays a one-shot hit reaction before locomotion resumes."
+    },
+    {
+      "sha": "fc7d683c9261a85ef0736ab4c8b7893dfbe1c509",
+      "date": "2026-11-05T13:32:04-05:00",
+      "title": "Keep the narration in every design and fix turned-around back clips",
+      "body": "The director's audio list was cut to 8 entries, and the narration, usually listed last, was dropped whenever 8 sound effects came first. Music and narration are now kept before the effects are trimmed, and a design with cinematic lines but no voice gets one from those lines. Back clips have no back still to compare with, so their frames now agree among themselves: frames drawn facing the other way from the majority are mirrored, and a tie goes to the still image. The packing version is bumped so"
+    },
+    {
+      "sha": "26c1a63b334a14e581dda3824f43e49228c7b02e",
+      "date": "2026-11-03T18:14:41-05:00",
+      "title": "Back clips for isometric characters and frames that keep their facing",
+      "body": "Isometric and top-down characters can have idle_back, walk_back and run_back clips. The director adds them for those cameras, the artist draws them from a rear three-quarter view, and the runtime picks front or back from vy and mirrors from vx, so four directions come from two drawings. Asking for the back in chat only adds the new clips, with no code edit. The programmer guide now mirrors isometric sprites to face left instead of forbidding it. Walk and run poses no longer say \"mirrored\" for th"
+    },
+    {
+      "sha": "26cb81f8a3965b3bd4f76eefbc2d0a5de763604b",
+      "date": "2026-11-03T17:00:08-05:00",
+      "title": "Repair only errors that come from the game",
+      "body": "Uncaught errors are now allowlisted instead of only blocklisted: the runtime reports an error only when its script or a stack frame is a Forge file served by the site (game module, runtime, vendored engine). Extensions, injected code, other sites' scripts and traceless errors are logged and never sent to repair. Load and loop failures caught by the runtime itself are marked as Forge's own. The repair endpoint applies the same rule: it accepts an error marked as own by a current runtime, or one w"
+    },
+    {
+      "sha": "0b318851b1cc116708b630f6a2eb8a15006cbf63",
+      "date": "2026-11-03T16:47:15-05:00",
+      "title": "Ignore browser-extension errors and release assets left generating",
+      "body": "Errors thrown by browser extensions (MetaMask's \"Failed to connect to MetaMask\" from inpage.js) reached the runtime's global handlers, which paused every game and sent working code to automatic repair. The runtime now ignores errors and rejections from extension scripts and opaque cross-origin \"Script error.\", and the repair endpoint refuses such errors too, for runtimes still cached in browsers. An interrupted job can be replaced by a later one, leaving its assets \"generating\" with no job behin"
+    },
+    {
+      "sha": "ccb2cf5a0f050f004bb95c68a17ee282c6fca7f9",
+      "date": "2026-11-03T15:47:28-05:00",
+      "title": "Close jobs cut off by a restart and time out stalled downloads",
+      "body": "The registry of running jobs lives in memory, so a restart (a deploy mid-generation) left the saved job unfinished and its assets \"generating\" forever, and the studio kept the game locked. Opening a project now closes such an orphaned job with an \"interrupted\" error: assets with an earlier revision go back to it, the rest are marked as failed, and the game unlocks. Provider responses are now read under the same timeout as the request, so a provider that sends headers and then stalls the image or"
+    },
+    {
+      "sha": "7ee56032c1b418f35158ea506fdbceccd146a55d",
+      "date": "2026-11-03T13:28:58-05:00",
+      "title": "Render 2D games at screen resolution and pack clips at 768 px",
+      "body": "Phaser games draw into a canvas buffer sized to the screen (up to 2x) while the game keeps its 1280x720 world: only the GL viewport and scissor on the screen framebuffer are scaled, so cameras, scroll, input and physics are unchanged. Games that read the canvas size stay at 1x, as do touch devices and machines that drop below 42 fps. Text is rasterized at the same scale and the frame is redrawn after every resize so a paused game never shows a black canvas. Animation clips are packed in 768 px c"
+    },
     {
       "sha": "f4837267239d9890095a8c18d96398157d8e8ed9",
       "date": "2026-11-03T12:55:25-05:00",
@@ -66,7 +114,7 @@
       "sha": "7a382ca2e11874a5db60101c9c4d9a229ed97360",
       "date": "2026-10-30T19:29:58-05:00",
       "title": "Version asset file URLs so the studio and game never show a stale cached file.",
-      "body": "Files are served immutable; a ?v=updatedAt query makes a replaced file (e.g. a renumbered spritesheet revision) load fresh instead of reusing the old cached image. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Files are served immutable; a ?v=updatedAt query makes a replaced file (e.g. a renumbered spritesheet revision) load fresh instead of reusing the old cached image."
     },
     {
       "sha": "75dd04fe100b7e362366a3fcc0033d44920677ba",
@@ -78,43 +126,43 @@
       "sha": "a7c54e8fe67e473bf6637b5c4800f8302a9fe7d1",
       "date": "2026-10-30T17:05:28-05:00",
       "title": "Add official landing at / and move the studio to /studio.",
-      "body": "Localized ES/EN/FR landing with real product screenshots and a reproducible capture script, a 3D Forgy intro mascot framed to its bounding sphere, and fixes for library thumbnails, the play header overlap, and Forge Pro node labels. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Localized ES/EN/FR landing with real product screenshots and a reproducible capture script, a 3D Forgy intro mascot framed to its bounding sphere, and fixes for library thumbnails, the play header overlap, and Forge Pro node labels."
     },
     {
       "sha": "a778051042ed89a8ee5b576ac79bfa3dc907df56",
       "date": "2026-10-30T15:30:23-05:00",
       "title": "Add Tripo auto-rig/retarget and a runtime skeletal animator.",
-      "body": "Supports biped and quadruped clips, locks root-motion bones, and grounds skinned GLBs so characters stay on their gameplay root. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Supports biped and quadruped clips, locks root-motion bones, and grounds skinned GLBs so characters stay on their gameplay root."
     },
     {
       "sha": "5b1ed6170785c17ffef059585ba5bd35142b7ca4",
       "date": "2026-10-30T14:37:57-05:00",
       "title": "Harden Tripo text-to-3D flow and mesh character studio UX.",
-      "body": "Prefer text-to-model for new games, DoubleSide/yaw fixes in the Three host, and hide provider chips behind a debug toggle with language controls top-right. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Prefer text-to-model for new games, DoubleSide/yaw fixes in the Three host, and hide provider chips behind a debug toggle with language controls top-right."
     },
     {
       "sha": "ecb21b8c22595b1d14672710c6eb6a5f7693d783",
       "date": "2026-10-29T20:53:36-05:00",
       "title": "Polish studio play UX: locale chrome, cinematic subtitles, and busy overlay.",
-      "body": "Keep start menu when maximizing, localize overlay copy to the studio language, strip voice-prompt leakage, and tighten pause/settings layout. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Keep start menu when maximizing, localize overlay copy to the studio language, strip voice-prompt leakage, and tighten pause/settings layout."
     },
     {
       "sha": "012661f63867f03a6dfcf9b204875dfaf05ab5f9",
       "date": "2026-10-29T20:05:04-05:00",
       "title": "Add silent cinematic director for unique in-engine intros.",
-      "body": "Plans camera/staging shots per game design (not a loader stage or video file), wires them into create + runtime onCinematic/forge.cinematic so intros match genre and art instead of a static frame. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Plans camera/staging shots per game design (not a loader stage or video file), wires them into create + runtime onCinematic/forge.cinematic so intros match genre and art instead of a static frame."
     },
     {
       "sha": "3ab6428380e1297243012a7e7439040e6e41c76c",
       "date": "2026-10-29T20:02:25-05:00",
       "title": "Ship i18n, mesh characters, and studio polish for Forge Xpresso.",
-      "body": "Adds ES/EN/FR UI and play runtime strings, 3D character/primitives fallback without Tripo, cutout prop prompts, asset hot-swap revisions, and related director/code/runtime hardening—excluding generated project data. Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": "Adds ES/EN/FR UI and play runtime strings, 3D character/primitives fallback without Tripo, cutout prop prompts, asset hot-swap revisions, and related director/code/runtime hardening—excluding generated project data."
     },
     {
       "sha": "a4a383098a013c6a826abdb7d4d4ad076ecc029d",
       "date": "2026-10-29T17:10:27-05:00",
       "title": "Initial ForgeXpresso app: multi-agent game generator with Phaser/Three.js.",
-      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>"
+      "body": ""
     }
   ]
 }

@@ -345,9 +345,10 @@ button.brand:hover .mascot{animation:hop .6s ease}
 .tabc>.fs,.tabc>.flow-h{margin:0}
 .tabc:has(.fs){gap:4px}
 .lib-h{display:flex;flex-direction:column;gap:8px}
-.ctabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-.ctabs::-webkit-scrollbar{display:none}
-.ctabs button{flex:none;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--muted);transition:all .2s}
+/* Category chips stay on one line: compact enough to fit the panel, and a visible scrollbar when a language makes them longer. */
+.ctabs{display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent;padding-bottom:5px;overscroll-behavior-x:contain}
+.ctabs::-webkit-scrollbar{height:4px}.ctabs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:4px}
+.ctabs button{flex:none;white-space:nowrap;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 9px;font-size:11.5px;font-weight:700;color:var(--muted);transition:all .2s}
 .ctabs button:hover{color:var(--text)}
 .ctabs button.on{background:rgba(139,92,246,.16);border-color:rgba(139,92,246,.5);color:#e4dbff}
 .lib-meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim)}
