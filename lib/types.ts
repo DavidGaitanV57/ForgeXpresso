@@ -189,6 +189,8 @@ export interface AssetRecord {
   custom?: boolean;
   rev: number;
   updatedAt: number;
+  /** 3D models: skeletal clips baked into the GLB ([] = static mesh). Unset on models made before this was tracked. */
+  clips?: string[];
 }
 
 export interface Version {

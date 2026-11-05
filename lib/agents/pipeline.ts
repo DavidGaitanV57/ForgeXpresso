@@ -6,7 +6,7 @@ import { runCinematicDirector } from "./cinematic";
 import { getProject, readCurrentCode, saveVersion, updateProject } from "../store";
 import type { ApiProvider, AssetRecord, AudioAssetSpec, ChatMsg, GameDesign, ImageAssetSpec, ImageRole, Job, JobStage, ModelAssetSpec, Project, StageStatus, UsageEvent, UsageReport } from "../types";
 import { addUsageEvent, emptyUsage, finishUsage } from "../usage";
-import { clipIdParts, ensureClipSheets, generateAsset, harmonizeClips, isSheetRecord, newRecord, queueClipRedraws, recordsFromDesign, sheetsForCharacter } from "./assets";
+import { animateModelAsset, clipIdParts, noteModelClips, ensureClipSheets, generateAsset, harmonizeClips, isSheetRecord, newRecord, queueClipRedraws, recordsFromDesign, sheetsForCharacter } from "./assets";
 import { deliveryGaps } from "./delivery";
 import { clipSpecFor, fluidCycles, sheetIdFor, type SheetAnimName } from "../sheets";
 import { planChange } from "./chat";
@@ -417,6 +417,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
   await addChat(projectId, { who: "you", text: message });
   // Clips drawn before shared-scale packing are repacked locally, so a new clip never resizes the character.
   await harmonizeClips(projectId);
+  await noteModelClips(projectId);
   const p = await getProject(projectId);
   if (!p?.design) return;
   const ctl = await startJob(projectId, "chat", [
@@ -489,6 +490,7 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
 
     // Assets.
     const toGenerate: AssetRecord[] = [];
+    const toRig: AssetRecord[] = [];
     const animated: string[] = [];
     const models3d = !!config.tripo.key() && p.dimension !== "2d";
     const entityRoles = meshEntityRoles(p.dimension, p.idea);
@@ -599,21 +601,33 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
             if (!toGenerate.includes(rec)) toGenerate.push(rec);
           }
         }
+      } else if (models3d) {
+        // 3D: "animate" rigs an existing static model (skeleton + idle/walk/run/jump/hurt), no new mesh.
+        for (const an of plan.animate || []) {
+          const rec = pp.assets[an.id]?.type === "model" ? pp.assets[an.id] : pp.assets[`${an.id}_3d`];
+          if (rec?.type !== "model" || rec.status !== "ready" || rec.clips?.length || toGenerate.includes(rec) || toRig.includes(rec)) continue;
+          toRig.push(rec);
+        }
       }
       design = d;
     });
+    if (toRig.length) {
+      const how = `Give ${toRig.map((r) => r.id).join(", ")} skeletal animation: for each of those characters create \`const anim = forge.three.animator(root)\` right after forge.three.character(...) (it returns null while the model has no clips, so keep the puppet only as the fallback when it is null), call \`anim.setLocomotion({vx, vz, vy, grounded, speed})\` every frame (also in onCinematic, standing still) and \`anim.hurt()\` on every hit.`;
+      plan.code = plan.code.trim() ? `${plan.code}\n${how}` : how;
+    }
     for (const a of toGenerate) emit(projectId, { type: "asset", asset: a });
     if (animated.length) {
       const how = `Animate ${animated.join(", ")} with frame spritesheets: right after creating each of those sprites call \`const anim = forge.phaser.animate(sprite)\` (before fit/body; it switches to the *_sheet texture when ready and falls back to the procedural puppet otherwise), then every frame \`anim.update({ vx, vy, grounded, dashing, sliding, attacking, hurt }, dt)\` — sliding while crouching/sliding under obstacles, dashing only for a forward burst. Remove forge.phaser.puppet from those sprites.`;
       plan.code = plan.code.trim() ? `${plan.code}\n${how}` : how;
     }
 
-    const assetsJob = toGenerate.length
+    const assetWork = toGenerate.length + toRig.length;
+    const assetsJob = assetWork
       ? (async () => {
-          await ctl.stage("assets", "run", `0/${toGenerate.length}`);
+          await ctl.stage("assets", "run", `0/${assetWork}`);
           let n = 0;
-          const trackOne = async (r: AssetRecord) => {
-            const u = await generateAsset(projectId, r, design, p.imageProvider);
+          const trackOne = async (r: AssetRecord, rig = false) => {
+            const u = rig ? await animateModelAsset(projectId, r) : await generateAsset(projectId, r, design, p.imageProvider);
             if (u) {
               await ctl.track({
                 provider: u.provider as ApiProvider,
@@ -627,15 +641,16 @@ async function chatFlow(projectId: string, message: string, playing: boolean) {
                 models: u.models,
               });
             }
-            await ctl.stage("assets", "run", `${++n}/${toGenerate.length}`);
+            await ctl.stage("assets", "run", `${++n}/${assetWork}`);
           };
           const imgs = toGenerate.filter((r) => r.type !== "model" && !isSheetRecord(r));
           const sheets = toGenerate.filter(isSheetRecord);
           const mods = toGenerate.filter((r) => r.type === "model");
-          await pool(imgs, 3, trackOne);
-          await pool(sheets, 2, trackOne);
-          await pool(mods, 2, trackOne);
-          await ctl.stage("assets", "ok", `${toGenerate.length} actualizados`);
+          await pool(imgs, 3, (r) => trackOne(r));
+          await pool(sheets, 2, (r) => trackOne(r));
+          await pool(mods, 2, (r) => trackOne(r));
+          await pool(toRig, 2, (r) => trackOne(r, true));
+          await ctl.stage("assets", "ok", `${assetWork} actualizados`);
         })()
       : ctl.stage("assets", "skip");
 

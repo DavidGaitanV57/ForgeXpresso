@@ -107,8 +107,10 @@ export async function createHost(createGame, ctx) {
   /* ---------- helpers ---------- */
   forge.three = {
     lights(o = {}) {
-      const hemi = new THREE.HemisphereLight(o.sky ?? "#bcd4ff", o.ground ?? "#40302a", (o.intensity ?? 1) * 0.9);
-      const sun = new THREE.DirectionalLight(o.sun ?? "#fff2dd", (o.intensity ?? 1) * 2.2);
+      // ACES + the studio environment already lift the scene: above 1 the sunlit ground washes out.
+      const k = clamp(Number.isFinite(o.intensity) ? o.intensity : 1, 0.2, 1);
+      const hemi = new THREE.HemisphereLight(o.sky ?? "#bcd4ff", o.ground ?? "#40302a", k * 0.8);
+      const sun = new THREE.DirectionalLight(o.sun ?? "#fff2dd", k * 1.9);
       sun.position.set(8, 14, 6);
       sun.castShadow = true;
       const s = (o.shadowSize ?? 40) / 2;
@@ -559,9 +561,10 @@ export async function createHost(createGame, ctx) {
       };
     },
     bloom(strength = 0.35, radius = 0.4, threshold = 0.85) {
-      R.bloom.strength = strength;
+      // Bloom runs on linear HDR before tone mapping: under 1 every sunlit wall glows. Keep it for emissives.
+      R.bloom.strength = Math.min(strength, 0.6);
       R.bloom.radius = radius;
-      R.bloom.threshold = threshold;
+      R.bloom.threshold = Math.max(threshold, 1);
       R.bloom.enabled = strength > 0;
     },
     burst(position, o = {}) {
@@ -767,7 +770,7 @@ export async function createHost(createGame, ctx) {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.35, 0.4, 0.85);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.35, 0.4, 1);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
     R = { scene, camera, world, composer, bloom, game: null, links: [], bodies: new Map(), billboards: new Set(), domes: new Set(), floats: [], controllers: [], mixers: new Set(), animPins: new Set(), debugLines: null };
