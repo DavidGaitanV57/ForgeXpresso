@@ -14,8 +14,12 @@ const GEN = {
   texture_quality: "detailed" as const,
 };
 
-/** Default biped locomotion pack for in-game characters (in-place; root motion stays with physics). */
-export const DEFAULT_BIPED_CLIPS = ["preset:idle", "preset:walk", "preset:run", "preset:jump", "preset:fall"] as const;
+/**
+ * Default biped pack for in-game characters (in-place; root motion stays with physics).
+ * Tripo's "fall" preset is a fall to the ground (the hips end on the floor), not an airborne
+ * pose, so it is never requested: the runtime holds "jump" in the air and plays "hurt" on hits.
+ */
+export const DEFAULT_BIPED_CLIPS = ["preset:idle", "preset:walk", "preset:run", "preset:jump", "preset:hurt"] as const;
 
 /**
  * Tripo only ships biped locomotion as a full pack; other skeletons get a single gait preset.
@@ -316,7 +320,16 @@ export async function animateExistingGlb(
   if (!rig.taskId) throw new ProviderError("Tripo", 500, "rig sin task_id");
 
   onProgress?.("retarget", 0);
-  const anim = await animateRetarget(rig.taskId, clips, { onProgress: prog("retarget") });
+  let anim: ModelResult;
+  try {
+    anim = await animateRetarget(rig.taskId, clips, { onProgress: prog("retarget") });
+  } catch (e) {
+    // A rig that rejects the hit reaction still gets its locomotion (the game falls back to flash/knockback).
+    const rest = clips.filter((c) => !/hurt$/.test(c));
+    if (rest.length === clips.length || !rest.length) throw e;
+    onProgress?.("retarget without hurt", 0);
+    anim = await animateRetarget(rig.taskId, rest, { onProgress: prog("retarget") });
+  }
   usd += anim.estimatedUsd;
 
   return { data: anim.data, estimatedUsd: usd, ms: Date.now() - t0, taskId: anim.taskId, rigType, clips };

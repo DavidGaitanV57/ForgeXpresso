@@ -409,10 +409,15 @@ export async function createHost(createGame, ctx) {
       const pin = () => {
         for (const { bone, pos } of pinBones) bone.position.copy(pos);
       };
+      let hurtUntil = 0;
       const api = {
         names: names.slice(),
         mixer,
         play(name, opts = {}) {
+          const want = String(name || "").toLowerCase();
+          // Tripo "fall" lies the character on the floor: an airborne request gets "jump" instead.
+          if (/(^|[:_\s-])fall$/.test(want)) return api.play("jump", opts);
+          if (/(^|[:_\s-])hurt$/.test(want) && !opts.loop) return api.hurt(opts);
           const next = find(name);
           if (!next) return false;
           if (current === next) return true;
@@ -429,20 +434,25 @@ export async function createHost(createGame, ctx) {
           current = next;
           return true;
         },
-        /** Pick idle/walk/run/jump/fall from movement state (Tripo preset names). */
+        /**
+         * Pick idle/walk/run/jump from movement state (Tripo preset names). Airborne always uses
+         * "jump": Tripo's "fall" preset is a fall to the ground, so it is never used for the air.
+         * While a hurt() reaction plays, locomotion waits for it to finish.
+         */
         setLocomotion(s = {}) {
+          if (hurtUntil && performance.now() < hurtUntil) return true;
+          hurtUntil = 0;
           const sp = s.speed ?? Math.hypot(s.vx || 0, s.vz || 0);
           const g = s.grounded !== false;
-          const vy = s.vy || 0;
           let clip = "idle";
-          if (!g) clip = vy > 0.6 ? "jump" : "fall";
+          if (!g) clip = "jump";
           else if (sp > 5.5) clip = "run";
           else if (sp > 0.45) clip = "walk";
           let rate = clip === "walk" ? 0.85 + Math.min(sp, 6) * 0.08 : clip === "run" ? 0.9 + Math.min(sp, 12) * 0.04 : 1;
           // Non-biped rigs (quadruped/hexapod/…) only get one gait clip ("walk" or "march"):
           // it covers walk AND run (sped up), and idle/air rest in bind pose.
           const gait = find("walk") || find("march");
-          const tries = [clip, clip === "fall" ? "jump" : null, clip === "run" ? "walk" : null, clip === "run" || clip === "walk" ? "march" : null, "idle"].filter(Boolean);
+          const tries = [clip, clip === "run" ? "walk" : null, clip === "run" || clip === "walk" ? "march" : null, "idle"].filter(Boolean);
           let next = null;
           let name = clip;
           for (const w of tries) {
@@ -453,7 +463,7 @@ export async function createHost(createGame, ctx) {
             }
           }
           if (clip === "run" && next === gait && !find("run")) rate = 1.2 + Math.min(sp, 12) * 0.06;
-          if (!next || ((clip === "idle" || clip === "jump" || clip === "fall") && next === gait && !find(clip))) {
+          if (!next || ((clip === "idle" || clip === "jump") && next === gait && !find(clip))) {
             if (current) api.stop();
             return false;
           }
@@ -462,6 +472,29 @@ export async function createHost(createGame, ctx) {
             return true;
           }
           return api.play(name, { fade, timeScale: rate });
+        },
+        /**
+         * One-shot hit reaction: plays "hurt" once (if the model has it), then setLocomotion takes
+         * over again. Returns false when the model has no hurt clip (use a flash/knockback instead).
+         */
+        hurt(opts = {}) {
+          const next = find("hurt");
+          if (!next) return false;
+          const f = opts.fade ?? 0.08;
+          const scale = opts.timeScale ?? 1.4;
+          next.reset();
+          next.setLoop(THREE.LoopOnce, 1);
+          next.clampWhenFinished = true;
+          next.setEffectiveTimeScale(scale);
+          next.enabled = true;
+          next.setEffectiveWeight(1);
+          next.fadeIn(f);
+          next.play();
+          if (current && current !== next) current.fadeOut(f);
+          current = next;
+          const dur = next.getClip().duration / scale;
+          hurtUntil = performance.now() + Math.min(dur, opts.maxSec ?? 0.9) * 1000;
+          return true;
         },
         stop(f = fade) {
           for (const a of actions.values()) a.fadeOut(f);
