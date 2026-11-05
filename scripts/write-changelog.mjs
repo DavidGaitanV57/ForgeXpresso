@@ -3,7 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const OUT = "lib/changelog.generated.json";
 const KEEP = 40;
-// Deploy branches only carry "Merge branch 'main' …" commits of their own: those say nothing to players.
+// A bare "Merge branch 'main' …" says nothing to players. Deploy merges made with
+// scripts/merge-to-deploy.mjs carry the merged changes as their message instead, so they pass.
 const MERGE_TITLE = /^Merge (branch|remote-tracking branch|pull request|commit)\b/i;
 
 function git(cmd) {
@@ -14,12 +15,7 @@ function git(cmd) {
   }
 }
 
-// Hosts clone with --depth 1, so the log would only hold the deploy merge. Fetch real history first.
-if (git("git rev-parse --is-shallow-repository") === "true") {
-  git(`git fetch --quiet --deepen=${KEEP * 3}`);
-}
-
-const raw = git(`git log -${KEEP * 3} --no-merges --pretty=format:%H%x1f%cI%x1f%s%x1f%b%x1e`);
+const raw = git(`git log -${KEEP} --no-merges --pretty=format:%H%x1f%cI%x1f%s%x1f%b%x1e`);
 const fresh = raw
   .split("\x1e")
   .map((s) => s.trim())
@@ -39,7 +35,7 @@ const fresh = raw
   })
   .filter((e) => e.sha && e.date && e.title && !MERGE_TITLE.test(e.title));
 
-// History the clone could not reach still lives in the committed file: keep it under the new commits.
+// Hosts build from a one-commit clone: older entries come from the committed file.
 let previous = [];
 if (existsSync(OUT)) {
   try {
